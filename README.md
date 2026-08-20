@@ -1,4 +1,4 @@
-# devops-sre-mini-projects
+# DevOps & SRE mini-projects
 
 DevOps & SRE mini-projects, each one a new challenge.
 
