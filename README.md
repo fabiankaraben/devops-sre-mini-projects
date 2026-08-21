@@ -6,63 +6,107 @@ DevOps & SRE mini-projects, each one a new challenge.
 
 ## Setup instructions
 
-1. Install essential CLI tools: `bash`, `git`, `curl`, `jq`, `openssl`, `python3`, `go`
-2. Install container & orchestration tools: `docker`, `docker-compose`, `kubectl`, `helm`, `minikube` (or `kind`)
-3. Install Infrastructure as Code & automation tools: `terraform` (or `opentofu`), `ansible`
-4. Set up environment variables and configuration files (`.env`) in each project directory where required
+1. **Local Container & VM Engine**: Install [OrbStack](https://orbstack.dev/) (recommended for macOS), Docker Desktop, or Podman
+2. **Local Kubernetes**: Use lightweight [K3s](https://k3s.io/), [K3d](https://k3d.io/), or OrbStack's built-in Kubernetes cluster
+3. **Local Cloud Emulators**: Install [LocalStack](https://localstack.cloud/) (`localstack` / `tflocal`) for zero-cost local AWS simulation
+4. **Cloud Free Tiers (Optional)**: AWS Free Tier, GCP Free Tier, or Azure Free Tier account with configured CLI credentials
+5. **DevOps & IaC Tooling**: Install `terraform` (or `opentofu`), `ansible`, `kubectl`, `helm`, `python3`, `go`, `curl`, `jq`, and `openssl`
+6. **Project Environment**: Copy `.env.example` to `.env` in each project directory and populate the required variables
 
 ---
 
 ## 01. Linux Scripting
 
 1. **System Resource Health Checker**  
-   🔹 Bash script that monitors CPU, memory, and disk usage against configurable thresholds, outputting structured JSON metrics and triggering warnings when limits are exceeded.  
-   🧪 **Testing**: Execute script with custom threshold flags (`--cpu-max 80`) and verify stdout output and non-zero exit code when thresholds are breached.  
+   🔹 **Goal & Context**: Build a local monitoring utility in Bash that inspects host/VM health (`/proc/stat`, `/proc/meminfo`, `df -h`) and emits formatted JSON metrics. This teaches foundational Linux system metrics and POSIX CLI flag parsing.  
+   📦 **Deliverables & Scope**:  
+   - `health_check.sh`: Main monitoring script accepting flags (`--cpu-max`, `--mem-max`, `--disk-max`) and outputting JSON status with standard Linux exit codes (`0` = OK, `1` = Warning, `2` = Critical).  
+   - `stress_simulator.sh`: Companion script utilizing `dd` and CPU spin-loops to safely generate controllable resource spikes for testing.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / Ubuntu container) or Cloud (AWS EC2 t2.micro Free Tier)  
+   🧪 **Testing**: Run `stress_simulator.sh` in the background, execute `health_check.sh --cpu-max 50`, and verify that the JSON output flags the CPU warning and returns exit code 1.  
    🔹 [Project directory](01-linux-scripting/01-system-resource-health-checker)
 
 2. **Log File Rotation and Archiver**  
-   🔹 Shell script to compress, timestamp, and archive logs older than N days to a backup directory, while safely handling locked or open file descriptors.  
-   🧪 **Testing**: Generate dummy log files with past timestamps and verify archived tarball contents and log directory clean-up.  
+   🔹 **Goal & Context**: Automate log file management on a Linux filesystem by archiving older files without interrupting active services writing to those logs.  
+   📦 **Deliverables & Scope**:  
+   - `log_rotate.sh`: Shell script that compresses (`gzip`), timestamps (ISO-8601), moves logs older than $N$ days to `/var/archive`, and purges archives beyond retention policy.  
+   - `mock_log_producer.py`: Background daemon producing continuous timestamped logs while maintaining an open file descriptor (`lsof`) to verify safe non-destructive rotation.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / Docker Ubuntu container)  
+   🧪 **Testing**: Start `mock_log_producer.py`, execute `log_rotate.sh`, and verify that active logs continue receiving entries while older files are compressed and archived cleanly.  
    🔹 [Project directory](01-linux-scripting/02-log-file-rotation-archiver)
 
 3. **User and Group Batch Provisioner**  
-   🔹 POSIX-compliant script that parses a CSV/JSON manifest of users, groups, and SSH public keys, idempotently creating system users and configuring `.ssh/authorized_keys` with strict permissions.  
-   🧪 **Testing**: Execute provisioner against a test manifest in a disposable container; verify `id`, `/etc/passwd`, `/etc/group`, and SSH key permissions for each provisioned user.  
+   🔹 **Goal & Context**: Automate user onboarding and access control on Linux servers by idempotently provisioning accounts, secondary groups, and SSH public keys from a declarative manifest.  
+   📦 **Deliverables & Scope**:  
+   - `provision_users.sh`: POSIX script that reads a user manifest, creates users/groups, sets home directories, configures `.ssh/authorized_keys` with `0600` permissions, and handles user deactivation.  
+   - `users_manifest.csv`: Sample dataset containing usernames, primary/secondary groups, sudo privileges, and public keys.  
+   - `cleanup_users.sh`: Rollback script to reset the test environment.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / disposable Docker container)  
+   🧪 **Testing**: Execute `provision_users.sh` against the manifest in a container; verify `id <username>`, file permissions in `/home/<user>/.ssh`, and test simulated SSH login.  
    🔹 [Project directory](01-linux-scripting/03-user-group-batch-provisioner)
 
 4. **Process Watchdog Daemon**  
-   🔹 Process watchdog in Bash/Python that monitors a list of critical PID/service names, automatically attempts restart upon unexpected termination, logs restart attempts to syslog, and triggers a webhook notification.  
-   🧪 **Testing**: Kill dummy target processes with `kill -9` and verify the watchdog restarts the service within 5 seconds and sends an alert.  
+   🔹 **Goal & Context**: Implement a resilient process supervisor that monitors critical background services, automatically restarts them upon unexpected termination, and alerts administrators.  
+   📦 **Deliverables & Scope**:  
+   - `watchdog.py` / `watchdog.sh`: Daemon running on a timer checking target PIDs/service names, tracking crash restart counts to prevent flapping, and firing webhook alerts.  
+   - `flaky_service.py`: Mock HTTP service programmed to crash on demand or at random intervals.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM with systemd / Docker container with supervisor)  
+   🧪 **Testing**: Start the flaky service and watchdog; trigger an intentional crash with `kill -9` or via HTTP endpoint, and verify the watchdog restarts the service within 5 seconds and logs the incident.  
    🔹 [Project directory](01-linux-scripting/04-process-watchdog-daemon)
 
 5. **Automated Backup with S3 Upload**  
-   🔹 Backup utility in Python/Bash that dumps specified directories and databases, creates GPG-encrypted tarballs, and uploads them to an S3-compatible bucket with SHA256 checksum validation.  
-   🧪 **Testing**: Run backup against test folder and local MinIO instance; verify remote object integrity via SHA256 checksum comparison and successful GPG decryption.  
+   🔹 **Goal & Context**: Create a robust backup pipeline that dumps target directories and databases, applies GPG symmetric encryption, and uploads encrypted tarballs to S3 object storage with integrity checks.  
+   📦 **Deliverables & Scope**:  
+   - `backup_s3.sh`: Script generating SQLite database dumps, compressing to `.tar.gz`, encrypting via `gpg --symmetric`, computing SHA256 hashes, and uploading via AWS CLI / S3 API.  
+   - `mock_db_seeder.py`: Script generating a sample SQLite database and test filesystem assets.  
+   - `verify_restore.sh`: Script downloading the backup from S3, decrypting, and comparing SHA256 checksums.  
+   🏗️ **Infrastructure**: Local (OrbStack/Docker with MinIO) or Cloud (AWS S3 Free Tier)  
+   🧪 **Testing**: Run the backup script against local MinIO; execute `verify_restore.sh` to confirm identical file contents and successful SQLite table recovery.  
    🔹 [Project directory](01-linux-scripting/05-automated-backup-s3-upload)
 
 6. **SSL/TLS Certificate Expiry Auditor**  
-   🔹 CLI tool in Python/Go that reads a list of domains or IP endpoints, connects via TLS, extracts X.509 certificate metadata, calculates days until expiration, and exports Prometheus metrics or alerts for certs expiring soon.  
-   🧪 **Testing**: Run auditor against endpoints with valid, near-expired, and self-signed certificates; verify accurate day calculation and alert triggering.  
+   🔹 **Goal & Context**: Develop a network auditing CLI tool that scans a list of web domains or IP endpoints, establishes TLS handshakes, extracts certificate metadata, and alerts on upcoming expirations.  
+   📦 **Deliverables & Scope**:  
+   - `cert_auditor.py` / `cert_auditor.go`: Concurrent scanner connecting to port 443, extracting `notAfter` timestamps, calculating days until expiry, and exporting JSON/Prometheus metrics.  
+   - `mock_tls_environment/`: Docker Compose setup hosting 3 local Nginx endpoints: valid cert (90 days), expiring soon (10 days), and expired.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / Host OS)  
+   🧪 **Testing**: Run the auditor against the mock TLS containers; verify that endpoints expiring in <30 days are flagged with warning status in the final summary report.  
    🔹 [Project directory](01-linux-scripting/06-ssl-certificate-expiry-auditor)
 
 7. **Network Port Scanner and Troubleshooter**  
-   🔹 Concurrent network diagnostics script in Go/Python that accepts CIDR blocks and port ranges, performs non-blocking TCP socket connect scans, checks DNS latency, and generates a formatted Markdown connectivity matrix.  
-   🧪 **Testing**: Run against a local test environment with known open and closed ports; benchmark execution time and assert accuracy against `nmap` output.  
+   🔹 **Goal & Context**: Build a concurrent network troubleshooting CLI tool that scans CIDR blocks and port ranges, checks DNS resolution latency, and diagnoses firewall connectivity issues.  
+   📦 **Deliverables & Scope**:  
+   - `net_troubleshoot.go` / `net_troubleshoot.py`: Non-blocking scanner using goroutines/asyncio for TCP connect scans, DNS lookup timing, and outputting formatted Markdown tables.  
+   - `mock_network_grid/`: Docker Compose bridge network hosting services with mixed open/closed ports (HTTP: 80, SSH: 22, DB: 5432, Filtered: 8080).  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / multi-container Docker bridge network)  
+   🧪 **Testing**: Scan the mock network grid; assert scan completion time under 3 seconds and verify 100% accuracy against standard `nmap` output.  
    🔹 [Project directory](01-linux-scripting/07-network-port-scanner-troubleshooter)
 
 8. **Zombie and Orphan Process Reaper**  
-   🔹 Linux kernel process tree analyzer in Python using `/proc` filesystem to inspect process states (`Z`, `D`), identify parent-child ancestry, report memory leaks from abandoned child processes, and safely signal parent processes to collect exit statuses.  
-   🧪 **Testing**: Compile a test script that spawns zombie and orphan processes, run the reaper tool, and verify that defunct entries are cleaned up from `/proc`.  
+   🔹 **Goal & Context**: Understand Linux kernel process lifecycles by building a diagnostic tool that inspects `/proc`, identifies zombie (`Z`) and orphan processes, traces parent ancestry, and cleans them up.  
+   📦 **Deliverables & Scope**:  
+   - `process_reaper.py`: Script parsing `/proc/[pid]/stat`, identifying defunct processes whose parents failed to call `wait()`, and sending `SIGCHLD` or `SIGKILL` to parent processes.  
+   - `zombie_spawner.c` / `zombie_spawner.py`: Test program that forks child processes and exits the parent or abandons children to create simulated zombies.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM with full `/proc` subsystem access)  
+   🧪 **Testing**: Launch `zombie_spawner`, run `process_reaper.py`, and verify through `ps aux` and `/proc` that defunct entries are successfully reaped.  
    🔹 [Project directory](01-linux-scripting/08-zombie-orphan-process-reaper)
 
 9. **Kernel and Sysctl Performance Tuner**  
-   🔹 Automated system hardening and performance optimization script that evaluates current Linux `sysctl` parameters (TCP buffer sizes, `file-max`, `swappiness`, `somaxconn`), backs up original config, and applies tuned profiles for high-throughput network servers.  
-   🧪 **Testing**: Apply the tuning script inside a privileged test container, verify `sysctl -p` application, and run rollback function to verify state restoration.  
+   🔹 **Goal & Context**: Write a system tuning script that assesses current Linux kernel parameters (`sysctl`), compares them against high-performance production baselines, and applies optimized configurations.  
+   📦 **Deliverables & Scope**:  
+   - `sysctl_tuner.sh`: Script inspecting parameters (TCP buffer sizes, `somaxconn`, `swappiness`, `file-max`), creating backups, applying `/etc/sysctl.d/99-performance.conf`, and providing `--rollback`.  
+   - `benchmark_network.sh`: Micro-benchmark script measuring socket connection throughput before and after tuning.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / privileged Docker container)  
+   🧪 **Testing**: Execute `sysctl_tuner.sh` inside a test VM; verify parameter application with `sysctl -a`, run the benchmark, and test the `--rollback` option.  
    🔹 [Project directory](01-linux-scripting/09-kernel-sysctl-performance-tuner)
 
 10. **Unified DevOps Toolkit CLI**  
-    🔹 Comprehensive unified CLI utility in Go (using Cobra) or Python (using Click) compiling system diagnostics, log analyzers, remote SSH execution pools, and cloud cost estimators into a single binary with shell autocompletion.  
-    🧪 **Testing**: Run unit and integration tests for all subcommands, test `--help` generation, and verify shell completion script generation.  
+    🔹 **Goal & Context**: Consolidate multiple DevOps utilities (system health, log analysis, SSH execution pools, and cloud cost estimation) into a single, production-grade CLI binary in Go or Python.  
+    📦 **Deliverables & Scope**:  
+    - `devops-cli` codebase (Go using Cobra or Python using Click) with structured subcommands (`sys health`, `log stats`, `ssh run`, `cost estimate`), flag parsing, and autocompletion scripts.  
+    - Comprehensive unit test suite with mock interfaces for remote execution and filesystem access.  
+    🏗️ **Infrastructure**: Local (Host OS / OrbStack Linux VM)  
+    🧪 **Testing**: Run automated unit tests (`go test ./...` or `pytest`), test shell completion in bash/zsh, and verify command execution with `--help` and `--json` flags.  
     🔹 [Project directory](01-linux-scripting/10-unified-devops-toolkit-cli)
 
 ---
@@ -70,53 +114,101 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 02. Networking & Traffic Routing
 
 1. **Static Web Nginx Reverse Proxy**  
-   🔹 Nginx configuration serving static assets with custom error pages, gzip compression, client-side caching headers (`Cache-Control`), and forwarding `/api/*` traffic to an upstream mock HTTP server.  
-   🧪 **Testing**: Use `curl -I` to verify `Content-Encoding: gzip`, `Cache-Control` header presence, and proxy upstream response code 200.  
+   🔹 **Goal & Context**: Configure Nginx as an edge reverse proxy to serve static files with aggressive client-side caching and gzip compression while proxying API requests to a dynamic backend.  
+   📦 **Deliverables & Scope**:  
+   - `nginx.conf`: Configuration enabling `gzip`, custom 404/50x error pages, `Cache-Control` headers for static assets, and `proxy_pass` to an upstream service.  
+   - `mock_api.py`: Lightweight Python/Node HTTP backend serving dynamic JSON endpoints.  
+   - Static web assets (`index.html`, `style.css`, `app.js`).  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose) or Cloud (AWS EC2 t2.micro / Lightsail Free Tier)  
+   🧪 **Testing**: Execute `curl -I` against static and `/api` endpoints; verify `Content-Encoding: gzip`, `Cache-Control: max-age`, and HTTP 200 responses.  
    🔹 [Project directory](02-networking/01-static-web-nginx-reverse-proxy)
 
 2. **Internal DNS Server with CoreDNS**  
-   🔹 Local DNS resolution service configured with CoreDNS supporting forward and reverse lookup zones, split-horizon DNS records for internal vs external clients, and custom upstream forwarding rules.  
-   🧪 **Testing**: Query DNS server using `dig @127.0.0.1 -p 53 <zone>` for A, CNAME, and PTR records; verify correct IP resolution and query response times.  
+   🔹 **Goal & Context**: Deploy CoreDNS to manage local name resolution for internal services (`.internal` zone) with split-horizon routing and upstream forwarding.  
+   📦 **Deliverables & Scope**:  
+   - `Corefile`: CoreDNS configuration defining local zone files, caching TTLs, health check endpoints, and fallback upstream forwarders (e.g. 1.1.1.1).  
+   - Zone definition files containing A, CNAME, and TXT records for simulated internal services.  
+   - `dns_test_client.sh`: Test script executing automated `dig` queries.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / Docker container running CoreDNS on port 53)  
+   🧪 **Testing**: Run `dig @127.0.0.1 -p 53 app.internal A`; verify correct IP resolution, authoritative answer flags, and fast response times (<5ms).  
    🔹 [Project directory](02-networking/02-internal-dns-server-coredns)
 
 3. **SSL/TLS Termination Reverse Proxy**  
-   🔹 Reverse proxy setup terminating TLS 1.3 using certificates, enforcing HTTP-to-HTTPS redirection, HSTS headers, and modern cipher suites while offloading unencrypted traffic to backend instances.  
-   🧪 **Testing**: Use `openssl s_client` to verify TLS 1.3 negotiation, cipher selection, HSTS header presence, and HTTP 301 redirection.  
+   🔹 **Goal & Context**: Terminate TLS 1.3 at the reverse proxy layer using modern cipher suites, enforce HTTP-to-HTTPS redirection, and forward clean HTTP traffic to internal backend services.  
+   📦 **Deliverables & Scope**:  
+   - Nginx/Traefik configuration with strict TLS 1.3 settings, HSTS (`Strict-Transport-Security`), and SSL session caching.  
+   - `generate_certs.sh`: Script generating self-signed certificates or using `mkcert` for trusted local HTTPS development.  
+   - Backend web application receiving forwarded `X-Forwarded-Proto` and `X-Forwarded-For` headers.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with `mkcert`) or Cloud (AWS EC2 + Let's Encrypt Free Tier)  
+   🧪 **Testing**: Run `openssl s_client -connect localhost:443 -tls1_3` to verify TLS 1.3 negotiation, and verify HTTP 301 redirection on port 80.  
    🔹 [Project directory](02-networking/03-ssl-tls-termination-reverse-proxy)
 
 4. **Layer 4 TCP HAProxy Load Balancer**  
-   🔹 HAProxy configuration operating at Layer 4 (TCP) balancing traffic across multiple backend TCP services with active health checks, round-robin and leastconn balancing algorithms, and a statistics dashboard.  
-   🧪 **Testing**: Spin up backend HTTP/TCP servers, send continuous requests, stop one backend, and verify traffic redistribution without dropped packets.  
+   🔹 **Goal & Context**: Build a Layer 4 (TCP) load balancer using HAProxy that distributes network connections across multiple backend instances with active TCP health checks.  
+   📦 **Deliverables & Scope**:  
+   - `haproxy.cfg`: Configuration in `mode tcp` using `roundrobin` and `leastconn` algorithms, active health checks (`check inter 2000`), and a web statistics dashboard on port 8404.  
+   - 3 identical backend TCP/HTTP services returning their container hostname.  
+   - `traffic_simulator.sh`: Script sending sequential TCP requests to verify load distribution.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with multi-container backend pool)  
+   🧪 **Testing**: Send 100 requests via `traffic_simulator.sh`; stop one backend container and verify that HAProxy removes it from the active pool without dropping connections.  
    🔹 [Project directory](02-networking/04-layer4-haproxy-load-balancer)
 
 5. **API Gateway with Leaky-Bucket Rate Limiting**  
-   🔹 Nginx / Envoy based API gateway with leaky-bucket rate limiting per client IP (`limit_req`), request body size validation, CORS header injection, and custom 429 JSON response payloads.  
-   🧪 **Testing**: Send rapid bursts of requests using `hey` or `autocannon` and verify that requests exceeding the rate limit receive HTTP 429 Too Many Requests.  
+   🔹 **Goal & Context**: Protect downstream APIs from traffic bursts and brute-force attacks by implementing IP-based rate limiting, request payload restrictions, and custom JSON error handling.  
+   📦 **Deliverables & Scope**:  
+   - Nginx / Envoy configuration implementing `limit_req_zone` (leaky bucket), burst allowances, and custom HTTP 429 JSON response payloads.  
+   - Mock REST API with authentication endpoints.  
+   - `burst_tester.py`: Concurrency test script sending requests exceeding the configured rate limit.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose API Gateway)  
+   🧪 **Testing**: Execute `burst_tester.py`; verify that requests within limits receive HTTP 200 while excess requests receive HTTP 429 with `Retry-After` headers.  
    🔹 [Project directory](02-networking/05-api-gateway-rate-limiting)
 
 6. **Site-to-Site WireGuard VPN Mesh**  
-   🔹 Fully configured WireGuard VPN mesh connecting two distinct virtual networks, complete with public/private key pairs, IP routing tables, and keep-alive configuration for NAT traversal.  
-   🧪 **Testing**: Execute ICMP ping and HTTP requests between containers across isolated subnets over the `wg0` tunnel interface, confirming packet encapsulation.  
+   🔹 **Goal & Context**: Establish a secure, high-performance encrypted VPN tunnel connecting two isolated network subnets using WireGuard.  
+   📦 **Deliverables & Scope**:  
+   - `wg0.conf` for Node A (Subnet 10.10.0.0/24) and Node B (Subnet 10.20.0.0/24) with cryptographic keypairs and `AllowedIPs` routing tables.  
+   - Docker Compose multi-network setup creating isolated bridge subnets.  
+   - `vpn_connectivity_test.sh`: Script executing cross-subnet ICMP and HTTP requests over the `wg0` interface.  
+   🏗️ **Infrastructure**: Local (Two isolated OrbStack Linux VMs / Docker networks with `NET_ADMIN` capability)  
+   🧪 **Testing**: Run ping and curl commands from Subnet A to an internal IP in Subnet B; inspect `tcpdump -i eth0` to confirm that all payload packets are WireGuard encrypted (UDP 51820).  
    🔹 [Project directory](02-networking/06-wireguard-vpn-mesh)
 
 7. **Linux Firewall Hardening with nftables**  
-   🔹 Comprehensive Linux firewall script using `nftables` / `iptables` implementing default-drop policies, stateful packet inspection, anti-spoofing rules, ICMP rate limiting, and port scan detection.  
-   🧪 **Testing**: Run `nmap` scans against the host to verify drop policies for closed ports, rate limiting on SYN floods, and legitimate SSH/HTTP ingress allowances.  
+   🔹 **Goal & Context**: Build a hardened Linux stateful firewall using `nftables` that enforces a default-drop policy, prevents IP spoofing, rate-limits ICMP, and defends against port scanning.  
+   📦 **Deliverables & Scope**:  
+   - `nftables.conf`: Stateful ruleset allowing established/related traffic, permitting specific ingress ports (SSH, HTTP), rate-limiting SYN floods, and dropping invalid packets.  
+   - `firewall_audit.sh`: Automated security audit script using `nmap` and `hping3` to test firewall defenses.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM with kernel nftables/iptables support)  
+   🧪 **Testing**: Execute `firewall_audit.sh`; verify closed ports are dropped silently, rate limits trigger on SYN floods, and legitimate SSH traffic connects uninterrupted.  
    🔹 [Project directory](02-networking/07-linux-firewall-nftables-hardening)
 
 8. **Shadow Traffic Mirroring Proxy**  
-   🔹 Traffic mirroring setup (using Nginx `mirror` or eBPF/tc) that duplicates live incoming production HTTP traffic to a shadow analysis backend for asynchronous telemetry and security anomaly detection.  
-   🧪 **Testing**: Send HTTP POST requests to primary endpoint and verify payload arrival on shadow service without impacting client response latency.  
+   🔹 **Goal & Context**: Safely test new software releases against real production traffic by asynchronously duplicating and routing incoming live requests to a shadow backend without impacting client latency.  
+   📦 **Deliverables & Scope**:  
+   - Nginx (with `ngx_http_mirror_module`) or Envoy Proxy configuration duplicating HTTP POST/GET traffic to a shadow cluster.  
+   - Primary Production API service + Shadow Experimental API service.  
+   - `traffic_injector.py`: Script simulating continuous user traffic and inspecting shadow logs for exact request replication.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with primary & shadow target services)  
+   🧪 **Testing**: Send 50 HTTP POST requests to the proxy; verify that the client receives immediate responses from the primary API and shadow logs reflect 100% of the mirrored payloads.  
    🔹 [Project directory](02-networking/08-shadow-traffic-mirroring-proxy)
 
 9. **Dynamic DNS Updater Daemon**  
-   🔹 Dynamic DNS (DDNS) daemon written in Python/Go that detects public IP changes via STUN/HTTP lookup, authenticates with Cloudflare/AWS Route53 API, and updates DNS A-records with idempotency and exponential backoff retry logic.  
-   🧪 **Testing**: Mock IP change responses in integration test suite; verify API patch call dispatch and record TTL preservation.  
+   🔹 **Goal & Context**: Build a resilient background daemon that monitors public WAN IP changes and dynamically updates DNS A-records via cloud DNS APIs (Cloudflare or AWS Route 53).  
+   📦 **Deliverables & Scope**:  
+   - `ddns_daemon.py` / `ddns_daemon.go`: Daemon performing STUN/HTTP IP lookups, evaluating IP cache to avoid redundant API calls, and updating DNS records with exponential backoff retries.  
+   - `mock_dns_api.py`: Mock Cloudflare/Route53 REST API for local offline validation.  
+   🏗️ **Infrastructure**: Local (OrbStack VM / Docker) + Cloud (Cloudflare Free Plan API / AWS Route 53)  
+   🧪 **Testing**: Run the daemon against the mock DNS API; simulate WAN IP changes and assert that the daemon detects the transition and issues the DNS record update within 30 seconds.  
    🔹 [Project directory](02-networking/09-dynamic-dns-updater-daemon)
 
 10. **Envoy L7 Canary Router and Circuit Breaker**  
-    🔹 Envoy Proxy deployment implementing Layer 7 weighted routing, header-based canary matching (`x-canary: true`), circuit breaking (outlier detection), and gRPC access logging.  
-    🧪 **Testing**: Route 1000 requests and verify an exact 90/10 traffic split between v1 and v2 services, along with 100% routing to v2 when the canary header is present.  
+    🔹 **Goal & Context**: Configure Envoy Proxy as an edge router performing Layer 7 canary traffic shifting (90% v1 / 10% v2), header-based canary overrides (`x-canary: true`), and automatic outlier detection circuit breaking.  
+    📦 **Deliverables & Scope**:  
+    - `envoy.yaml`: Advanced Envoy configuration with weighted clusters, header match routes, and circuit breaker connection pool thresholds.  
+    - `service_v1` (stable backend) and `service_v2` (canary backend).  
+    - `canary_verification.py`: Statistical load generator measuring traffic distribution across both versions.  
+    🏗️ **Infrastructure**: Local (OrbStack / Docker Compose running Envoy + upstream backends)  
+    🧪 **Testing**: Send 1000 requests; verify an approximate 90/10 traffic split, assert that requests with `x-canary: true` route 100% to v2, and confirm that injecting 500 errors into v2 trips the circuit breaker.  
     🔹 [Project directory](02-networking/10-envoy-canary-router-circuit-breaker)
 
 ---
@@ -124,53 +216,100 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 03. Containers & Image Optimization
 
 1. **Multi-Stage Minimal Dockerfile**  
-   🔹 Multi-stage Dockerfile for Go/Node.js/Python applications utilizing minimal base images (Alpine / Distroless / Scratch), non-root user execution (`UID 10001`), and proper `.dockerignore` filters to achieve <25MB final image sizes.  
-   🧪 **Testing**: Build image, inspect image layers with `docker history`, check size with `docker images`, and assert that the binary runs as a non-root user (`whoami`).  
+   🔹 **Goal & Context**: Reduce container attack surfaces and optimize image transfer speeds by refactoring fat container builds into ultra-minimal, non-root multi-stage images (<25MB).  
+   📦 **Deliverables & Scope**:  
+   - Sample Go / Node.js / Python application.  
+   - `Dockerfile.fat` (unoptimized single-stage baseline) vs `Dockerfile.slim` (multi-stage build using Alpine / Distroless and non-root `UID 10001`).  
+   - `.dockerignore` file optimized for build context reduction.  
+   - `compare_images.sh`: Script comparing image sizes, layer history, and execution security.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Engine with BuildKit)  
+   🧪 **Testing**: Build both images with `compare_images.sh`; verify that the slim image is <25MB, has fewer layers, and runs as an unprivileged user (`docker exec ... whoami`).  
    🔹 [Project directory](03-containers/01-multi-stage-minimal-dockerfile)
 
 2. **Multi-Service Docker Compose Stack**  
-   🔹 Production-ready Docker Compose environment linking a Web API, Redis cache, PostgreSQL database, and Adminer UI with dedicated custom bridge networks, named volumes, health checks, and restart policies.  
-   🧪 **Testing**: Execute `docker compose up -d`, verify container dependency order with `docker compose ps` (waiting for database healthy status), and perform end-to-end CRUD requests.  
+   🔹 **Goal & Context**: Orchestrate a multi-tier microservice architecture using Docker Compose, establishing custom bridge networks, volume persistence, and health-checked startup dependencies.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` linking Frontend (Nginx), Web API (Python/Go), Cache (Redis), Database (PostgreSQL), and Management UI (Adminer).  
+   - Network segmentation (frontend-net, backend-net, db-net) and service healthcheck conditions (`condition: service_healthy`).  
+   - `e2e_compose_test.sh`: End-to-end CRUD integration test.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose)  
+   🧪 **Testing**: Run `docker compose up -d`, monitor startup order with `docker compose ps`, and execute `e2e_compose_test.sh` to confirm database connectivity and cache hits.  
    🔹 [Project directory](03-containers/02-multi-service-docker-compose-stack)
 
 3. **Container Healthchecks and Autoheal Engine**  
-   🔹 Docker Compose setup featuring custom `HEALTHCHECK` instructions (HTTP endpoint probes and database ping scripts) integrated with an auto-healing watcher daemon that detects unhealthy states and restarts faulty containers.  
-   🧪 **Testing**: Trigger synthetic failure endpoint on the application container; verify Docker marks state as `unhealthy` and autoheal watcher restarts container.  
+   🔹 **Goal & Context**: Implement reliable application-level healthchecks inside Docker containers and build an auto-healing watcher daemon that detects unhealthy containers and restarts them automatically.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` with custom `HEALTHCHECK` commands probing HTTP endpoints and database connection pools.  
+   - `flaky_app/`: API with an intentional `/break` endpoint to simulate silent hangs and memory leaks.  
+   - `autoheal_daemon.py`: Docker socket event listener that detects `unhealthy` container events and initiates graceful restarts.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose)  
+   🧪 **Testing**: Trigger the `/break` endpoint; observe Docker marking the container as `unhealthy` and confirm that `autoheal_daemon.py` triggers an automatic restart.  
    🔹 [Project directory](03-containers/03-container-healthchecks-autoheal)
 
 4. **BuildKit Layer Caching and Secrets Mounting**  
-   🔹 Advanced Docker BuildKit configuration leveraging cache mounts (`--mount=type=cache`), secret mounts (`--mount=type=secret`), and remote inline cache export to optimize CI build times by >80%.  
-   🧪 **Testing**: Benchmark initial build vs warm cache build with dependency modifications; assert that unchanged package layers are fetched from cache.  
+   🔹 **Goal & Context**: Accelerate container build times in CI/CD pipelines by leveraging Docker BuildKit cache mounts (`--mount=type=cache`) and secure build-time secret injection without leaking credentials into image layers.  
+   📦 **Deliverables & Scope**:  
+   - `Dockerfile` using BuildKit syntax for package manager cache caching (`npm`/`pip`/`go cache`) and secret mounts (`--mount=type=secret,id=api_key`).  
+   - `benchmark_builds.sh`: Script testing cold vs warm build speeds and scanning image history for secret leaks.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker BuildKit)  
+   🧪 **Testing**: Run `benchmark_builds.sh`; verify that warm builds complete in <5 seconds and `docker history` reveals zero trace of build secrets.  
    🔹 [Project directory](03-containers/04-buildkit-caching-secrets)
 
 5. **Distroless Hardened Container Runtimes**  
-   🔹 Secure container build using GoogleContainerTools Distroless images and Chainguard Wolfi images, stripping all shells, package managers, and unnecessary binaries while preserving standard timezone and CA-certificate stores.  
-   🧪 **Testing**: Attempt `docker exec -it <container> sh` (expecting failure) and verify application function, SSL certificate verification, and zero critical CVEs via vulnerability scan.  
+   🔹 **Goal & Context**: Build ultra-secure container images using Google Distroless and Chainguard Wolfi base images, completely removing shells, package managers, and unnecessary binaries.  
+   📦 **Deliverables & Scope**:  
+   - `Dockerfile.distroless` for compiled binaries (Go/Rust/C) and interpreted runtimes (Node.js/Python).  
+   - `security_audit.sh`: Automated script scanning for CVEs and attempting interactive shell execution (`docker exec -it ... sh`).  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Engine)  
+   🧪 **Testing**: Execute `security_audit.sh`; assert zero critical/high CVEs via Trivy and confirm that interactive shell execution is completely impossible.  
    🔹 [Project directory](03-containers/05-distroless-hardened-runtimes)
 
 6. **Container Resource Constraints and OOM Profiler**  
-   🔹 Container benchmarking lab applying hard cgroups limits (`cpus`, `memory`, `memory-swap`, `pids-limit`) and profiling container behavior under OOM (Out Of Memory) conditions using Linux `systemd-cgls` and `docker stats`.  
-   🧪 **Testing**: Trigger memory leak script inside container; verify OOM-killer termination with exit code 137 and inspect Docker event streams.  
+   🔹 **Goal & Context**: Understand Linux cgroups v2 resource limits by configuring strict CPU and memory constraints on containers and profiling behavior when out-of-memory (OOM) limits are reached.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` configuring CPU quotas (`cpus: "0.5"`) and memory limits (`mem_limit: 128m`, `memswap_limit: 128m`).  
+   - `memory_hog.py`: Test program that gradually allocates memory in 10MB chunks to trigger controlled OOM events.  
+   - `oom_monitor.sh`: Script capturing Docker event streams and exit codes (exit code 137).  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / Docker with cgroups v2 enabled)  
+   🧪 **Testing**: Run `memory_hog.py` inside the constrained container; verify that the Linux kernel OOM-killer terminates the process and Docker reports exit code 137 (`OOMKilled: true`).  
    🔹 [Project directory](03-containers/06-container-resource-constraints-oom-profiler)
 
 7. **Docker Socket Security Proxy Gateway**  
-   🔹 Security proxy for Docker Daemon socket (`/var/run/docker.sock`) using HAProxy / Tecnativa Docker Socket Proxy, exposing a restricted read-only subset of the API to monitoring tools while blocking container creation and volume mounting.  
-   🧪 **Testing**: Run monitoring tools through proxy; verify read operations succeed while `POST /containers/create` requests return 403 Forbidden.  
+   🔹 **Goal & Context**: Secure access to the privileged Docker daemon socket (`/var/run/docker.sock`) by deploying an API security proxy that exposes a restricted read-only subset of the API to monitoring agents.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` deploying HAProxy / Tecnativa Docker Socket Proxy with granular permission rules (`CONTAINERS=1`, `POST=0`, `VOLUMES=0`).  
+   - `test_proxy_permissions.sh`: Test suite attempting permitted read requests (`GET /containers/json`) vs forbidden mutate requests (`POST /containers/create`).  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose)  
+   🧪 **Testing**: Run `test_proxy_permissions.sh`; confirm that `GET` operations return 200 OK while `POST` operations receive 403 Forbidden.  
    🔹 [Project directory](03-containers/07-docker-socket-security-proxy)
 
 8. **Multi-Architecture Image Builder with Buildx**  
-   🔹 Docker Buildx setup with QEMU virtualization configured to cross-compile and assemble multi-architecture container manifests supporting `linux/amd64` and `linux/arm64` architectures.  
-   🧪 **Testing**: Inspect generated multi-arch manifest using `docker buildx imagetools inspect` and verify container execution on both x86_64 and ARM emulation targets.  
+   🔹 **Goal & Context**: Build, assemble, and test multi-architecture container images (`linux/amd64` and `linux/arm64`) using Docker Buildx and QEMU hardware emulation.  
+   📦 **Deliverables & Scope**:  
+   - Sample Go/Python application compiled across CPU architectures.  
+   - `build_multiarch.sh`: Build script configuring Buildx builders, QEMU emulators, and pushing OCI multi-arch image manifests.  
+   - `verify_architectures.sh`: Script verifying image execution on simulated `amd64` and `arm64` targets.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Buildx with QEMU multi-arch emulation)  
+   🧪 **Testing**: Execute `verify_architectures.sh`; inspect the manifest using `docker buildx imagetools inspect` and verify correct architecture execution.  
    🔹 [Project directory](03-containers/08-multi-arch-builder-buildx)
 
 9. **Rootless Container Execution Environment**  
-   🔹 Rootless container execution environment using Podman / Rootless Docker with user namespaces (`subuid`/`subgid`), eliminating root daemon privileges and preventing container-breakout host root compromises.  
-   🧪 **Testing**: Run container under an unprivileged user account; verify process UID mapping inside container namespace vs host process table (`ps aux`).  
+   🔹 **Goal & Context**: Eliminate container-to-host root privilege escalation risks by configuring and running rootless containers using Podman or Rootless Docker with user namespaces.  
+   📦 **Deliverables & Scope**:  
+   - `setup_rootless.sh`: Automated setup script configuring subuid/subgid mappings (`/etc/subuid`, `/etc/subgid`) and rootless daemons.  
+   - `verify_isolation.sh`: Script inspecting UID mapping inside the container namespace vs the host process table (`ps aux`).  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM running Rootless Docker or Podman)  
+   🧪 **Testing**: Run a container under an unprivileged user; verify that `UID 0` inside the container maps to an unprivileged user ID (>100000) on the host operating system.  
    🔹 [Project directory](03-containers/09-rootless-container-environment)
 
 10. **Custom Container Runtime from Scratch**  
-    🔹 Minimal container runtime written in Go/C leveraging Linux kernel namespaces (`CLONE_NEWPID`, `CLONE_NEWNET`, `CLONE_NEWNS`), cgroups v2 resource limits, and `pivot_root` into an unpacked rootfs.  
-    🧪 **Testing**: Execute custom runtime binary with isolation flags, check isolated process list (`ps`), verify filesystem sandbox boundary, and confirm memory limits.  
+    🔹 **Goal & Context**: Build a fundamental understanding of container technology by implementing a minimal container runtime in Go or C using Linux kernel namespaces, cgroups, and `pivot_root`.  
+    📦 **Deliverables & Scope**:  
+    - `my_runtime.go` / `my_runtime.c`: Program configuring `CLONE_NEWPID`, `CLONE_NEWUTS`, `CLONE_NEWNS`, mounting an isolated rootfs, and setting cgroup memory limits.  
+    - Minimal Alpine rootfs archive used as the container filesystem bundle.  
+    - `runtime_test_suite.sh`: Verification script asserting PID isolation, filesystem boundaries, and hostname segregation.  
+    🏗️ **Infrastructure**: Local (OrbStack Linux VM with root privileges for namespace creation)  
+    🧪 **Testing**: Execute a process with `my_runtime`; run `ps` inside to confirm PID 1 status, verify inability to see host files, and confirm memory constraint enforcement.  
     🔹 [Project directory](03-containers/10-custom-container-runtime-from-scratch)
 
 ---
@@ -178,53 +317,102 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 04. Kubernetes & Orchestration
 
 1. **Stateless Application Deployment and Service**  
-   🔹 Kubernetes declarative manifest defining a multi-replica Deployment, ClusterIP Service, Readiness/Liveness Probes, and resource requests/limits for a stateless web application.  
-   🧪 **Testing**: Apply manifest to local cluster (Kind/Minikube); verify pod rollout status, endpoint resolution via `kubectl port-forward`, and probe success.  
+   🔹 **Goal & Context**: Deploy a resilient, scalable stateless web application on Kubernetes using declarative manifests, multi-replica Deployments, ClusterIP Services, and HTTP health probes.  
+   📦 **Deliverables & Scope**:  
+   - `deployment.yaml`: Deployment with 3 replicas, rolling update strategy, resource requests/limits, and HTTP `livenessProbe` and `readinessProbe`.  
+   - `service.yaml`: ClusterIP service routing traffic across healthy pods.  
+   - `app/`: Simple REST API in Go/Python returning pod hostname and environment info.  
+   - `rollout_test.sh`: Script performing zero-downtime rolling updates.  
+   🏗️ **Infrastructure**: Local (K3s / K3d / OrbStack Kubernetes / Kind)  
+   🧪 **Testing**: Apply manifests, port-forward the service, execute `rollout_test.sh` during an image update, and verify 100% request success rate with zero dropped connections.  
    🔹 [Project directory](04-orchestration/01-stateless-app-deployment-service)
 
 2. **ConfigMaps, Secrets, and Dynamic Reloading**  
-   🔹 Configuration management in Kubernetes using ConfigMaps and Secrets mounted as environment variables and volume files, with automatic pod reload upon config changes via Reloader.  
-   🧪 **Testing**: Update ConfigMap data; verify mounted configuration updates in running pods and verify secret decryption inside container.  
+   🔹 **Goal & Context**: Decouple application configuration and credentials from container images using Kubernetes ConfigMaps and Secrets, and automate pod reloads upon config changes.  
+   📦 **Deliverables & Scope**:  
+   - `configmap.yaml`, `secret.yaml`: Manifests defining environment variables and mounted configuration files.  
+   - `deployment.yaml`: Deployment mounting configs as volumes and environment variables.  
+   - Stakater Reloader deployment or custom watcher script to trigger rolling restarts on config mutations.  
+   🏗️ **Infrastructure**: Local (K3s / K3d / OrbStack Kubernetes)  
+   🧪 **Testing**: Update a value in `configmap.yaml` and apply it; verify that the pods automatically undergo a rolling restart and load the new configuration value.  
    🔹 [Project directory](04-orchestration/02-configmaps-secrets-reloading)
 
 3. **Ingress Routing with Automated TLS via cert-manager**  
-   🔹 Nginx Ingress Controller setup with host-based and path-based routing rules, TLS termination, and automated certificate issuance and renewal using cert-manager with Let's Encrypt / Self-Signed Issuer.  
-   🧪 **Testing**: Send curl requests with custom `Host` headers; verify routing to separate backend services and check TLS certificate validity.  
+   🔹 **Goal & Context**: Expose internal Kubernetes services to external traffic using Nginx Ingress Controller with host/path routing and automated TLS certificate issuance with cert-manager.  
+   📦 **Deliverables & Scope**:  
+   - `ingress.yaml`: Ingress rules routing `api.local.dev` and `web.local.dev` to distinct backend services.  
+   - cert-manager `ClusterIssuer` and `Certificate` manifests (Self-Signed / Let's Encrypt staging).  
+   - `test_ingress_tls.sh`: Script sending HTTPS requests with custom Host headers to verify routing and certificate chains.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with Ingress controller and cert-manager) or Cloud (AWS EKS / GCP GKE Free Tier credits)  
+   🧪 **Testing**: Run `test_ingress_tls.sh`; verify that `https://api.local.dev` and `https://web.local.dev` return valid TLS certificates and route to their respective backend services.  
    🔹 [Project directory](04-orchestration/03-ingress-routing-tls-cert-manager)
 
 4. **StatefulSet and Dynamic Persistent Volumes**  
-   🔹 StatefulSet deployment for a distributed storage system (e.g. MongoDB/Redis) utilizing dynamic PersistentVolumeClaims (PVC), StorageClasses, and Headless Services for stable network identities.  
-   🧪 **Testing**: Write data to primary pod, delete pod forcefully (`kubectl delete pod <pod-0>`), and verify state retention on newly scheduled replacement pod.  
+   🔹 **Goal & Context**: Deploy stateful distributed services (e.g. Redis Cluster / PostgreSQL) requiring stable network hostnames, ordered rollouts, and persistent volume storage.  
+   📦 **Deliverables & Scope**:  
+   - `statefulset.yaml`: StatefulSet with 3 replicas, volumeClaimTemplates requesting dynamic PVs via `StorageClass`, and Headless Service for DNS resolution.  
+   - `persistence_test.sh`: Script writing unique data to `pod-0`, deleting the pod, and verifying state recovery upon pod restart.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with built-in `local-path` storage provisioner)  
+   🧪 **Testing**: Execute `persistence_test.sh`; verify that data written to `/data` persists across forced pod deletions (`kubectl delete pod <name>`).  
    🔹 [Project directory](04-orchestration/04-statefulset-persistent-volumes)
 
 5. **Horizontal Pod Autoscaler with Custom Metrics**  
-   🔹 Horizontal Pod Autoscaler (HPA v2) configuration scaling pods based on average CPU utilization, memory thresholds, and custom Prometheus metrics with scale-up and scale-down stabilization windows.  
-   🧪 **Testing**: Generate artificial traffic load using `hey`; monitor `kubectl get hpa -w` and verify deployment scales from 2 to 10 replicas and stabilizes.  
+   🔹 **Goal & Context**: Implement dynamic horizontal pod autoscaling (HPA v2) to scale application replicas automatically under varying CPU, memory, and custom application traffic load.  
+   📦 **Deliverables & Scope**:  
+   - `hpa.yaml`: HPA manifest with CPU/memory targets and scale-up/scale-down stabilization windows.  
+   - `load_generator.sh`: Script generating concurrent HTTP traffic bursts using `hey` or `k6`.  
+   - Metrics Server / Prometheus Adapter configuration.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with Metrics Server enabled)  
+   🧪 **Testing**: Run `load_generator.sh`; monitor `kubectl get hpa -w` and verify that the deployment scales from 2 to 10 replicas and stabilizes back to 2 replicas once load ceases.  
    🔹 [Project directory](04-orchestration/05-horizontal-pod-autoscaler)
 
 6. **Production-Grade Helm Chart Packaging**  
-   🔹 Helm 3 chart with parameterized `values.yaml`, helper templates (`_helpers.tpl`), JSON schema validation, conditional dependency subcharts, and linting automation.  
-   🧪 **Testing**: Run `helm lint`, `helm template`, and `helm test` against local test cluster to verify dry-run output and live release deployment.  
+   🔹 **Goal & Context**: Package a multi-tier microservice application into a reusable, parameter-driven Helm 3 chart with templates, helper functions, JSON schema validation, and conditional subcharts.  
+   📦 **Deliverables & Scope**:  
+   - Helm chart directory (`Chart.yaml`, `values.yaml`, `values.schema.json`, `templates/`, `_helpers.tpl`).  
+   - `helm_test_pipeline.sh`: Automation script executing `helm lint`, `helm template`, `helm install`, and `helm test`.  
+   🏗️ **Infrastructure**: Local (K3s / K3d / OrbStack Kubernetes + Helm 3)  
+   🧪 **Testing**: Execute `helm_test_pipeline.sh`; verify that custom values override templates correctly, schema validation catches invalid values, and `helm test` succeeds.  
    🔹 [Project directory](04-orchestration/06-production-helm-chart-packaging)
 
 7. **RBAC Least-Privilege Policies and Pod Security**  
-   🔹 Role-Based Access Control (RBAC) architecture defining Namespaces, ServiceAccounts, Roles, ClusterRoles, RoleBindings, and Least-Privilege access rules, complemented by Pod Security Standards (PSS/PSA).  
-   🧪 **Testing**: Use `kubectl auth can-i` under various ServiceAccount contexts to assert authorized vs forbidden operations across namespaces.  
+   🔹 **Goal & Context**: Secure Kubernetes clusters by implementing least-privilege Role-Based Access Control (RBAC) and enforcing Pod Security Admission (PSA) standards across namespaces.  
+   📦 **Deliverables & Scope**:  
+   - RBAC manifests (`Role`, `ClusterRole`, `RoleBinding`, `ServiceAccount`) defining Developer, CI/CD, and Read-Only personas.  
+   - Namespace configuration with Pod Security Admission labels (`pod-security.kubernetes.io/enforce: restricted`).  
+   - `rbac_audit_test.sh`: Script using `kubectl auth can-i` to validate permission boundaries.  
+   🏗️ **Infrastructure**: Local (K3s / K3d cluster)  
+   🧪 **Testing**: Run `rbac_audit_test.sh`; confirm that unauthorized actions are forbidden and deploying a privileged pod into the restricted namespace is blocked by the admission controller.  
    🔹 [Project directory](04-orchestration/07-rbac-pod-security-policies)
 
 8. **Canary and Blue-Green Deployments with Argo Rollouts**  
-   🔹 Advanced deployment strategies using Argo Rollouts implementing progressive traffic shifting (Canary: 10% -> 25% -> 50% -> 100%) with automated analysis templates pausing/aborting rollouts on error rate spikes.  
-   🧪 **Testing**: Trigger canary release with intentional error injection; verify Argo Rollout detects metrics breach and executes automatic rollback to stable revision.  
+   🔹 **Goal & Context**: Implement progressive traffic delivery using Argo Rollouts, performing automated canary steps (20% -> 40% -> 80% -> 100%) and automatic rollback on metric threshold breaches.  
+   📦 **Deliverables & Scope**:  
+   - `rollout.yaml`: Argo Rollouts manifest defining canary steps and `AnalysisTemplate` monitoring HTTP 500 error rates.  
+   - `sample_app_v1` and `sample_app_v2` (with synthetic error injection endpoint).  
+   - `canary_test_runner.sh`: Script driving traffic and triggering automated rollouts and rollbacks.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with Argo Rollouts controller installed)  
+   🧪 **Testing**: Trigger a canary rollout with intentional errors in v2; verify that Argo Rollout pauses, detects the error rate breach, and executes an automatic rollback to v1.  
    🔹 [Project directory](04-orchestration/08-canary-blue-green-argo-rollouts)
 
 9. **Zero-Trust Network Policies with Cilium CNI**  
-   🔹 Zero-trust network segmentation using Kubernetes NetworkPolicies and Cilium CNI, enforcing default-deny ingress/egress, namespace isolation, and egress CIDR whitelisting.  
-   🧪 **Testing**: Spin up test pods across namespaces; verify blocked inter-pod communication where disallowed and successful connection across explicitly permitted ports.  
+   🔹 **Goal & Context**: Implement zero-trust micro-segmentation in Kubernetes using Cilium and `CiliumNetworkPolicy` to enforce default-deny policies, L7 HTTP filtering, and egress CIDR limits.  
+   📦 **Deliverables & Scope**:  
+   - Network policy manifests defining default-deny ingress/egress, allowing only Frontend -> Backend (HTTP POST `/api`) and Backend -> Database (TCP 5432).  
+   - 3 test microservices (Frontend, Backend, Database) across separate namespaces.  
+   - `network_policy_test.sh`: Connectivity matrix verification script.  
+   🏗️ **Infrastructure**: Local (K3s / Kind cluster deployed with Cilium CNI)  
+   🧪 **Testing**: Execute `network_policy_test.sh`; verify that unauthorized inter-pod traffic is dropped and authorized API calls pass with L7 visibility in `cilium monitor`.  
    🔹 [Project directory](04-orchestration/09-zero-trust-network-policies-cilium)
 
 10. **Custom Kubernetes Operator with Kubebuilder**  
-    🔹 Custom Kubernetes Operator written in Go using Kubebuilder and Controller-Runtime, managing a custom CustomResourceDefinition (CRD) with reconciliation loop, status subresources, and finalizers.  
-    🧪 **Testing**: Run integration test suite using `envtest`; apply CRD manifest to live cluster and verify the operator creates backing resources and updates status conditions.  
+    🔹 **Goal & Context**: Build a custom Kubernetes Operator in Go using Kubebuilder and Controller-Runtime to automate the lifecycle of a custom resource (e.g. `ScheduledBackup`).  
+    📦 **Deliverables & Scope**:  
+    - Custom Resource Definition (`ScheduledBackup` CRD) with OpenAPI v3 validation and status subresources.  
+    - Go Operator controller implementing the reconciliation loop, finalizers, and event recording.  
+    - `operator_test_suite.sh`: Automated integration tests using `envtest` and live cluster deployment.  
+    🏗️ **Infrastructure**: Local (K3s / K3d cluster + Kubebuilder / `envtest` suite)  
+    🧪 **Testing**: Apply a `ScheduledBackup` custom resource; verify that the operator creates the backing CronJob/Pod, updates the CR status conditions, and cleans up upon deletion.  
     🔹 [Project directory](04-orchestration/10-custom-kubernetes-operator-kubebuilder)
 
 ---
@@ -232,107 +420,204 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 05. CI/CD Pipelines
 
 1. **GitHub Actions Matrix Lint and Test Workflow**  
-   🔹 GitHub Actions workflow implementing parallel job matrix testing across multiple language versions, static code analysis (linter/formatter), and unit test execution with code coverage reporting.  
-   🧪 **Testing**: Trigger workflow on pull request; verify all matrix jobs pass and code coverage artifacts are uploaded to GitHub Actions summary.  
+   🔹 **Goal & Context**: Create a scalable GitHub Actions CI workflow that runs static code analysis, linting, and unit tests across multiple language runtimes and operating systems in parallel.  
+   📦 **Deliverables & Scope**:  
+   - `.github/workflows/ci.yml`: Workflow with build matrix (`node: [18, 20, 22]` or `go: [1.21, 1.22]`), dependency caching (`actions/cache`), and artifact upload.  
+   - Sample multi-file application with linter configuration and unit test suite.  
+   - `local_ci_test.sh`: Script running the workflow locally using `act`.  
+   🏗️ **Infrastructure**: Cloud (GitHub Actions Free Tier - 2,000 min/month) or Local (Act CLI with OrbStack / Docker)  
+   🧪 **Testing**: Push a pull request (or run `act`); verify that all matrix jobs execute in parallel, pass lint/test checks, and generate code coverage reports.  
    🔹 [Project directory](05-ci-cd/01-github-actions-lint-test-workflow)
 
 2. **Multi-Arch Docker Build and Push Pipeline**  
-   🔹 Automated CI pipeline that builds multi-arch Docker images, tags them with git commit SHA and semantic release tags, and securely authenticates and pushes images to GitHub Container Registry (GHCR) using OIDC.  
-   🧪 **Testing**: Push git release tag; verify GHCR image repository receives new image digest with correct labels and metadata.  
+   🔹 **Goal & Context**: Construct an automated CI pipeline that builds multi-architecture Docker images (`linux/amd64` and `linux/arm64`), generates semantic tags, and securely pushes images to GitHub Container Registry (GHCR) using OIDC.  
+   📦 **Deliverables & Scope**:  
+   - `.github/workflows/docker_publish.yml`: Workflow using `docker/setup-buildx-action` and `docker/metadata-action` with OIDC authentication.  
+   - Sample containerized microservice with multi-stage Dockerfile.  
+   - Image pull and signature verification script.  
+   🏗️ **Infrastructure**: Cloud (GitHub Actions + GHCR Free Tier)  
+   🧪 **Testing**: Push a Git tag (e.g. `v1.0.0`); verify that GHCR receives the multi-arch image digest with corresponding semantic version and commit SHA tags.  
    🔹 [Project directory](05-ci-cd/02-multi-arch-docker-build-push-pipeline)
 
 3. **Semantic Release and Automated Changelog**  
-   🔹 Automated release management pipeline using Semantic Release and Conventional Commits to calculate next semantic version (semver), generate `CHANGELOG.md`, create GitHub Releases, and tag the repository.  
-   🧪 **Testing**: Push commits with `feat:` and `fix:` prefixes; verify automated release tag creation, version bump, and release notes accuracy.  
+   🔹 **Goal & Context**: Automate software release management by parsing Conventional Commits (`feat:`, `fix:`, `BREAKING CHANGE:`), calculating the next semantic version, updating `CHANGELOG.md`, and creating GitHub Releases.  
+   📦 **Deliverables & Scope**:  
+   - `.releaserc.json`: Semantic Release configuration defining commit analyzer plugins, changelog generator, and GitHub release publisher.  
+   - `.github/workflows/release.yml`: Release automation workflow.  
+   - `simulate_commits.sh`: Script generating mock commit sequences to test patch, minor, and major version increments.  
+   🏗️ **Infrastructure**: Cloud (GitHub Actions Free Tier)  
+   🧪 **Testing**: Execute `simulate_commits.sh`; push commits to main branch and verify that the workflow automatically creates release tags and publishes release notes.  
    🔹 [Project directory](05-ci-cd/03-semantic-release-automated-changelog)
 
 4. **Multi-Stage Security Scanning Pipeline**  
-   🔹 Multi-tier security scanning pipeline integrating Trivy (container vulnerabilities), Gitleaks (hardcoded secrets detection), and Semgrep (SAST), blocking pull requests on high/critical findings.  
-   🧪 **Testing**: Commit a dummy test secret and vulnerable package; assert that CI pipeline fails, emits actionable report, and blocks PR merge.  
+   🔹 **Goal & Context**: Implement Shift-Left security in CI/CD by embedding automated security scanners: Trivy (container CVEs), Gitleaks (hardcoded secrets), and Semgrep (Static Application Security Testing).  
+   📦 **Deliverables & Scope**:  
+   - `.github/workflows/security.yml`: Workflow running security scanners and failing builds on critical vulnerabilities.  
+   - `test_fixtures/`: Sample code repository containing intentional dummy vulnerabilities (leaked token, outdated package, SQL injection pattern).  
+   - `security_report_parser.py`: Script aggregating scan outputs into SARIF reports.  
+   🏗️ **Infrastructure**: Cloud (GitHub Actions Free Tier) or Local (OrbStack / Docker running Trivy & Semgrep)  
+   🧪 **Testing**: Run the security pipeline against test fixtures; verify that Gitleaks and Trivy detect intentional flaws, block PR merge, and output actionable reports.  
    🔹 [Project directory](05-ci-cd/04-multi-stage-security-scanning-pipeline)
 
 5. **GitLab CI Multi-Environment Delivery Pipeline**  
-   🔹 GitLab CI/CD pipeline (`.gitlab-ci.yml`) with distinct stages (`build`, `test`, `deploy-staging`, `deploy-production`), manual approval gates, environment URL tracking, and dynamic review apps for feature branches.  
-   🧪 **Testing**: Simulate branch pipeline execution in GitLab runner; verify staging auto-deploys while production requires manual gate approval.  
+   🔹 **Goal & Context**: Build an enterprise delivery pipeline in GitLab CI (`.gitlab-ci.yml`) managing stages for build, automated testing, staging auto-deployment, and manual-gated production deployment.  
+   📦 **Deliverables & Scope**:  
+   - `.gitlab-ci.yml`: Pipeline defining stages (`build`, `test`, `deploy-staging`, `deploy-prod`), environment URL tracking, artifacts, and manual approval triggers.  
+   - `deploy_mock.sh`: Deployment script simulating zero-downtime deployment to staging and production targets.  
+   🏗️ **Infrastructure**: Cloud (GitLab.com Free Tier) or Local (GitLab Runner in OrbStack / Docker)  
+   🧪 **Testing**: Trigger a pipeline execution; verify that staging deploys automatically, environment URLs are registered, and production deployment waits for manual operator approval.  
    🔹 [Project directory](05-ci-cd/05-gitlab-ci-multi-environment-pipeline)
 
 6. **GitOps Continuous Delivery with ArgoCD**  
-   🔹 Declarative GitOps deployment workflow using ArgoCD Application manifests tracking a Kubernetes repository, configuring automated sync policies, self-healing, and drift detection.  
-   🧪 **Testing**: Commit an image tag change to the config repo; verify ArgoCD detects change and syncs application to new state within 60 seconds.  
+   🔹 **Goal & Context**: Establish a GitOps deployment workflow where a Kubernetes cluster automatically synchronizes its state with a Git repository using ArgoCD.  
+   📦 **Deliverables & Scope**:  
+   - `argocd_app.yaml`: ArgoCD Application manifest pointing to a Git repository containing Kubernetes manifests.  
+   - `config_repo/`: Git repository containing Deployment, Service, and Ingress manifests.  
+   - `gitops_sync_test.sh`: Script committing an image tag update to the config repository and measuring ArgoCD reconciliation speed.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with ArgoCD) or Cloud (GCP GKE / AWS EKS Free Tier credits)  
+   🧪 **Testing**: Execute `gitops_sync_test.sh`; verify that ArgoCD detects the Git commit, marks the application as `OutOfSync`, and synchronizes the cluster within 60 seconds.  
    🔹 [Project directory](05-ci-cd/06-gitops-cd-argocd)
 
 7. **Jenkins Declarative Pipeline with Shared Libraries**  
-   🔹 Enterprise Jenkins Declarative Pipeline utilizing a custom Groovy Shared Library, dynamic Docker agent provisioning, credential masking, and post-build Slack notification webhooks.  
-   🧪 **Testing**: Execute Jenkinsfile in test Jenkins controller; verify shared step execution, agent ephemeral container lifecycle, and Slack webhook delivery.  
+   🔹 **Goal & Context**: Build an enterprise Jenkins CI pipeline utilizing reusable Groovy Shared Libraries, dynamic Docker agent provisioning, and credential masking.  
+   📦 **Deliverables & Scope**:  
+   - `Jenkinsfile`: Declarative pipeline invoking shared library steps (`buildApp()`, `runTests()`, `notifySlack()`).  
+   - `vars/standardPipeline.groovy`: Reusable Groovy Shared Library code.  
+   - `docker-compose.yml`: Jenkins controller and Docker-in-Docker agent test environment.  
+   🏗️ **Infrastructure**: Local (Jenkins Controller & Docker Agent running in OrbStack / Docker Compose)  
+   🧪 **Testing**: Execute the pipeline in Jenkins; verify that ephemeral Docker agents spawn dynamically, shared steps execute cleanly, and credentials remain masked in console logs.  
    🔹 [Project directory](05-ci-cd/07-jenkins-declarative-pipeline-shared-libraries)
 
 8. **Ephemeral Preview Environments per Pull Request**  
-   🔹 CI workflow that dynamically provisions an isolated preview environment on Kubernetes for every pull request with unique subdomains, and automatically tears it down when PR is closed/merged.  
-   🧪 **Testing**: Open PR; verify preview namespace and ingress creation with live URL. Close PR; verify namespace and associated cloud resources deletion.  
+   🔹 **Goal & Context**: Automatically provision isolated preview environments on Kubernetes for every pull request with unique subdomains (`pr-123.preview.local`), and destroy them when the PR is merged or closed.  
+   📦 **Deliverables & Scope**:  
+   - `.github/workflows/preview_env.yml`: Workflow creating an ephemeral namespace, deploying application Helm chart, and posting preview URL to PR comments.  
+   - Cleanup workflow triggered on PR close event.  
+   - `test_pr_lifecycle.sh`: Script simulating PR open, update, and close events.  
+   🏗️ **Infrastructure**: Local (K3s / K3d + GitHub Actions runner / webhook) or Cloud (AWS EKS / GCP GKE)  
+   🧪 **Testing**: Run `test_pr_lifecycle.sh`; verify namespace creation and accessible preview URL upon PR opening, and confirm complete resource teardown upon PR close.  
    🔹 [Project directory](05-ci-cd/08-ephemeral-preview-environments-pr)
 
 9. **ChatOps Slack Deployment Bot**  
-   🔹 ChatOps service in Go/Node.js integrated with Slack/Discord Slash Commands and GitHub/GitLab APIs, allowing engineers to trigger deployments, rollbacks, and status queries directly from chat channels with RBAC authorization.  
-   🧪 **Testing**: Send `/deploy app staging` slash command via mock Slack webhook; verify authorized dispatch to CI runner and channel status confirmation.  
+   🔹 **Goal & Context**: Enable developers and operators to trigger deployments, check environment statuses, and perform rollbacks directly from Slack or Discord via slash commands with RBAC authorization.  
+   📦 **Deliverables & Scope**:  
+   - `chatops_bot.go` / `chatops_bot.py`: Webhook server handling Slack slash commands (`/deploy <app> <env>`, `/rollback <app>`), verifying user permissions, and triggering CI pipelines.  
+   - `mock_chatops_client.sh`: Test script sending signed mock Slack payload requests.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker + Slack API Sandbox) or Cloud (AWS Lambda Free Tier)  
+   🧪 **Testing**: Send a simulated `/deploy api staging` command via `mock_chatops_client.sh`; verify that the bot checks authorization, dispatches the deployment, and returns status updates.  
    🔹 [Project directory](05-ci-cd/09-chatops-slack-deployment-bot)
 
 10. **Multi-Region Blue-Green Deployment Orchestrator**  
-    🔹 End-to-end continuous deployment orchestrator coordinating zero-downtime blue-green deployments across multi-region / multi-cluster environments with automated smoke testing and instant DNS switchover.  
-    🧪 **Testing**: Run end-to-end deployment runbook; verify traffic shifts seamlessly from blue to green pool with zero dropped requests during live load testing.  
-    🔹 [Project directory](05-ci-cd/10-multi-region-blue-green-orchestrator)
+    🔹 **Goal & Context**: Build an automated zero-downtime Blue-Green deployment orchestrator that manages parallel environments across multiple clusters and switches traffic instantaneously upon passing health checks.  
+    📦 **Deliverables & Scope**:  
+    - `blue_green_orchestrator.py` / `blue_green_orchestrator.go`: CLI tool managing deployment to idle environment (Green), running automated smoke tests, and updating ingress/DNS pointers.  
+    - Blue and Green environment manifests + automated smoke test suite.  
+    - Continuous load generator measuring downtime during traffic switchover.  
+    🏗️ **Infrastructure**: Local (Multi-cluster K3d / Kind setup) or Cloud (AWS / GCP multi-region Free Tier)  
+    🧪 **Testing**: Execute a blue-green rollout under active load; assert zero HTTP connection drops and verify instant rollback if smoke tests fail on the green environment.  
+   🔹 [Project directory](05-ci-cd/10-multi-region-blue-green-orchestrator)
 
 ---
 
 ## 06. Infrastructure as Code (IaC)
 
 1. **Terraform Local Docker Provider Infrastructure**  
-   🔹 Terraform project utilizing the `kreuzwerker/docker` provider to provision custom networks, volumes, and containerized services locally with variables, outputs, and state files.  
-   🧪 **Testing**: Run `terraform init`, `terraform validate`, `terraform apply -auto-approve`, and verify running containers with `docker ps`.  
+   🔹 **Goal & Context**: Master Terraform fundamentals (providers, resources, variables, outputs, and local state management) by provisioning local container networks, volumes, and services using the Docker provider.  
+   📦 **Deliverables & Scope**:  
+   - `main.tf`, `variables.tf`, `outputs.tf`: Terraform code defining custom Docker bridge networks, persistent volumes, and Nginx containers.  
+   - `terraform_lifecycle_test.sh`: Script running `terraform init`, `plan`, `apply`, and verifying running containers.  
+   🏗️ **Infrastructure**: Local (Terraform / OpenTofu + OrbStack / Docker)  
+   🧪 **Testing**: Execute `terraform_lifecycle_test.sh`; verify container creation and inspect `terraform.tfstate` to understand state tracking.  
    🔹 [Project directory](06-infrastructure-as-code/01-terraform-local-docker-infrastructure)
 
 2. **Modular High-Availability AWS VPC**  
-   🔹 Reusable, modular Terraform codebase provisioning a highly available AWS VPC across 3 Availability Zones with public/private subnets, Internet Gateway, NAT Gateways, and route tables.  
-   🧪 **Testing**: Execute `tflint` and `terraform plan` against LocalStack/AWS; verify output subnet IDs and routing table associations.  
+   🔹 **Goal & Context**: Write a reusable, production-ready Terraform module provisioning a highly available AWS VPC across 3 Availability Zones with public/private subnets, Internet Gateways, NAT Gateways, and route tables.  
+   📦 **Deliverables & Scope**:  
+   - `modules/vpc/`: Reusable VPC module (`main.tf`, `variables.tf`, `outputs.tf`).  
+   - `environments/dev/` and `environments/prod/`: Root modules consuming the VPC module.  
+   - `tflint` and `terraform-docs` automated validation scripts.  
+   🏗️ **Infrastructure**: Local (LocalStack Community Free / `tflocal`) or Cloud (AWS Free Tier)  
+   🧪 **Testing**: Run `tflint` and `terraform plan` against LocalStack/AWS; verify output subnet CIDRs, routing table associations, and zero hardcoded parameters.  
    🔹 [Project directory](06-infrastructure-as-code/02-modular-aws-vpc-terraform)
 
 3. **Remote State Locking with S3 and DynamoDB**  
-   🔹 Terraform backend architecture using AWS S3 bucket with server-side encryption and versioning, combined with a DynamoDB state-locking table to prevent concurrent apply race conditions.  
-   🧪 **Testing**: Attempt concurrent `terraform apply` executions from two terminals; verify that the second execution is blocked by the DynamoDB lock.  
+   🔹 **Goal & Context**: Configure a team-safe Terraform remote backend using AWS S3 bucket (with versioning and encryption) and a DynamoDB state locking table to prevent concurrent execution conflicts.  
+   📦 **Deliverables & Scope**:  
+   - `backend_bootstrap/`: Terraform script to provision the S3 backend bucket and DynamoDB lock table.  
+   - `backend.tf`: Configuration block enabling the remote S3 backend.  
+   - `test_state_lock.sh`: Script attempting simultaneous `terraform apply` executions from two terminals to test lock acquisition.  
+   🏗️ **Infrastructure**: Local (LocalStack S3 & DynamoDB emulators) or Cloud (AWS S3 & DynamoDB Free Tier)  
+   🧪 **Testing**: Execute `test_state_lock.sh`; confirm that the second apply process is blocked by the DynamoDB lock and terminates with an error.  
    🔹 [Project directory](06-infrastructure-as-code/03-remote-state-locking-s3-dynamodb)
 
 4. **Ansible Baseline Server Hardening Playbook**  
-   🔹 Ansible playbook and roles applying CIS Linux benchmark hardening: disabling root SSH, configuring UFW/firewalld, updating packages, installing fail2ban, and setting up automated security updates.  
-   🧪 **Testing**: Run `ansible-playbook -i inventory site.yml --check` (dry-run) and apply to test VM; verify SSH config changes and fail2ban service status.  
+   🔹 **Goal & Context**: Automate Linux operating system hardening against CIS benchmarks using modular Ansible roles (SSH hardening, UFW firewall, fail2ban, automatic security updates).  
+   📦 **Deliverables & Scope**:  
+   - `site.yml`, `roles/hardening/` (`tasks/`, `handlers/`, `defaults/`, `templates/`).  
+   - `inventory.ini`: Inventory file targeting test Linux VMs.  
+   - `ansible_audit.sh`: Script testing playbook idempotency and verifying security configurations.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM / Multipass Ubuntu instance) or Cloud (AWS EC2 t2.micro Free Tier)  
+   🧪 **Testing**: Run `ansible-playbook -i inventory.ini site.yml`; re-run to confirm zero changes (`changed=0`), and verify that root SSH login is disabled.  
    🔹 [Project directory](06-infrastructure-as-code/04-ansible-server-baseline-hardening)
 
 5. **OpenTofu Multi-Environment Workspaces**  
-   🔹 OpenTofu / Terraform setup implementing workspace-based multi-environment deployments (`dev`, `staging`, `prod`) with environment-specific `.tfvars`, resource tagging, and sizing rules.  
-   🧪 **Testing**: Switch workspaces with `tofu workspace select prod` and assert that resource count and instance types match production specifications in `tofu plan`.  
+   🔹 **Goal & Context**: Manage multi-environment infrastructure (`dev`, `staging`, `prod`) using OpenTofu workspaces and environment-specific `.tfvars` files to enforce environment isolation.  
+   📦 **Deliverables & Scope**:  
+   - OpenTofu infrastructure files utilizing `terraform.workspace` expressions for dynamic resource naming and sizing.  
+   - `dev.tfvars`, `staging.tfvars`, and `prod.tfvars` configuration files.  
+   - `workspace_deployer.sh`: Script switching workspaces and validating plans.  
+   🏗️ **Infrastructure**: Local (LocalStack) or Cloud (AWS / GCP Free Tier)  
+   🧪 **Testing**: Execute `workspace_deployer.sh`; switch between `dev` and `prod` workspaces, and confirm that `prod` plans allocate production-sized instances and tags.  
    🔹 [Project directory](06-infrastructure-as-code/05-opentofu-multi-environment-workspaces)
 
 6. **Ansible Dynamic Inventory for Cloud Fleets**  
-   🔹 Ansible dynamic inventory plugin configuring automated host discovery from AWS/GCP/Docker tags, orchestrating rolling application updates across dynamic server groups without hardcoded IPs.  
-   🧪 **Testing**: Provision temporary cloud instances with tags; execute `ansible-inventory --graph` and run a playbook targeting tag-based host groups.  
+   🔹 **Goal & Context**: Automate configuration management across dynamic cloud server fleets using Ansible dynamic inventory plugins without maintaining static IP lists.  
+   📦 **Deliverables & Scope**:  
+   - `aws_ec2.yml` / `docker_inventory.py`: Dynamic inventory configuration grouping hosts by tags (`Environment=production`, `Role=web`).  
+   - Rolling update playbook applying application patches with `serial: 1` and pre/post health checks.  
+   - Mock fleet setup script.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VMs / Docker containers) or Cloud (AWS EC2 Free Tier)  
+   🧪 **Testing**: Provision test instances with specific tags; run `ansible-inventory --graph` and execute the rolling update playbook targeting dynamic host groups.  
    🔹 [Project directory](06-infrastructure-as-code/06-ansible-dynamic-inventory-cloud)
 
 7. **DRY Multi-Account Architecture with Terragrunt**  
-   🔹 DRY (Don't Repeat Yourself) infrastructure architecture using Terragrunt to manage multi-account, multi-region Terraform modules with root `terragrunt.hcl` inheritance and remote state generation.  
-   🧪 **Testing**: Run `terragrunt run-all plan` across all service folders and verify proper variable inheritance and zero duplicated backend configs.  
+   🔹 **Goal & Context**: Eliminate IaC code duplication across multiple AWS accounts and regions by implementing a DRY Terragrunt architecture with root inheritance and remote state generation.  
+   📦 **Deliverables & Scope**:  
+   - Root `terragrunt.hcl` generating backend and provider configurations.  
+   - Multi-environment directory hierarchy (`prod/us-east-1/vpc`, `staging/us-east-1/vpc`).  
+   - `terragrunt_run_all_test.sh`: Script executing `terragrunt run-all plan`.  
+   🏗️ **Infrastructure**: Local (LocalStack) or Cloud (AWS Free Tier)  
+   🧪 **Testing**: Run `terragrunt_run_all_test.sh`; verify that Terragrunt generates remote state backends dynamically and plans all modules in proper dependency order.  
    🔹 [Project directory](06-infrastructure-as-code/07-terragrunt-dry-architecture)
 
 8. **Pulumi TypeScript Kubernetes Infrastructure**  
-   🔹 Real programming language IaC using Pulumi (TypeScript/Python) to provision a Kubernetes cluster, configure namespaces, and deploy an application stack with strongly-typed configurations.  
-   🧪 **Testing**: Run `pulumi preview` and `pulumi up --yes`; verify created resources via `kubectl` and assert Pulumi stack outputs.  
+   🔹 **Goal & Context**: Define and provision Kubernetes and cloud infrastructure using TypeScript and Pulumi, leveraging type safety, loops, conditionals, and unit testing.  
+   📦 **Deliverables & Scope**:  
+   - `index.ts`, `Pulumi.yaml`, `package.json`: Pulumi TypeScript project provisioning namespaces, deployments, and configmaps.  
+   - Unit test suite using Pulumi Mocks to validate infrastructure rules before deployment.  
+   - `pulumi_test.sh`: Script running preview, up, and stack output tests.  
+   🏗️ **Infrastructure**: Local (K3s / K3d + Pulumi Local State Backend)  
+   🧪 **Testing**: Execute `npm test` to run unit tests, followed by `pulumi up --yes`; verify created resources via `kubectl` and assert stack outputs.  
    🔹 [Project directory](06-infrastructure-as-code/08-pulumi-typescript-k8s-infrastructure)
 
 9. **Automated Terraform Drift Detection and Alerting**  
-   🔹 Automated infrastructure drift detection tool running on a cron schedule that compares live cloud state with Terraform state files, flags out-of-band modifications, and triggers Slack alerts or auto-remediation.  
-   🧪 **Testing**: Manually modify a security group rule out-of-band; run drift detection pipeline and verify alert generation detailing the exact drift diff.  
+   🔹 **Goal & Context**: Detect and remediate out-of-band infrastructure changes by building an automated drift detection tool that runs on a schedule and reports diffs to Slack.  
+   📦 **Deliverables & Scope**:  
+   - `drift_detector.sh`: Script executing `terraform plan -detailed-exitcode` and parsing plan output JSON for unmanaged changes.  
+   - `slack_notifier.py`: Webhook script formatting drift diffs into Slack alerts.  
+   - `inject_drift.sh`: Script making intentional out-of-band cloud modifications to simulate drift.  
+   🏗️ **Infrastructure**: Local (LocalStack + Cron in OrbStack / GitHub Actions) or Cloud (AWS Free Tier)  
+   🧪 **Testing**: Run `inject_drift.sh` to modify a security group rule out-of-band; execute `drift_detector.sh` and verify that the drift is detected and alert posted.  
    🔹 [Project directory](06-infrastructure-as-code/09-terraform-drift-detection-alerting)
 
 10. **Self-Service Cloud Sandbox Provisioning Portal**  
-    🔹 Infrastructure self-service platform backend wrapping Terraform / OpenTofu modules behind a lightweight API/CLI, allowing developers to request ephemeral sandbox environments with automatic TTL expiration.  
-    🧪 **Testing**: Send API request to provision an ephemeral environment; verify cloud resource creation, expiration timer trigger, and automatic `terraform destroy` upon TTL timeout.  
+    🔹 **Goal & Context**: Build an internal developer platform (IDP) self-service API that allows developers to request ephemeral cloud sandboxes from IaC templates with automatic TTL expiration.  
+    📦 **Deliverables & Scope**:  
+    - FastAPI / Go REST API wrapping Terraform CLI (`POST /sandboxes`, `DELETE /sandboxes/{id}`).  
+    - Background worker monitoring sandbox expiration timers and executing automated `terraform destroy`.  
+    - `sandbox_client_test.py`: Integration test suite requesting and verifying sandbox lifecycles.  
+    🏗️ **Infrastructure**: Local (FastAPI / Go backend in OrbStack + LocalStack / Docker)  
+    🧪 **Testing**: Send an API request to provision a sandbox with a 2-minute TTL; verify cloud resource creation and confirm automated destruction upon TTL timeout.  
     🔹 [Project directory](06-infrastructure-as-code/10-self-service-cloud-sandbox-portal)
 
 ---
@@ -340,53 +625,100 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 07. Cloud Providers & Serverless
 
 1. **AWS IAM Least-Privilege and Role Boundaries**  
-   🔹 AWS IAM architecture implementing least-privilege permission boundaries, role assumption policies with MFA conditions, and Service Control Policies (SCPs) for developer and CI/CD roles.  
-   🧪 **Testing**: Use AWS IAM Policy Simulator to test permitted vs denied actions across S3, EC2, and KMS actions.  
+   🔹 **Goal & Context**: Architect a least-privilege IAM security model defining granular permission boundaries, MFA-enforced role assumption, and Service Control Policies (SCPs).  
+   📦 **Deliverables & Scope**:  
+   - IAM policy JSON documents and Terraform IAM manifests for Developer, Read-Only, and CI/CD roles.  
+   - `iam_policy_evaluator.py`: Test script using AWS IAM Policy Simulator API to assert permitted vs denied actions across S3, EC2, and KMS.  
+   🏗️ **Infrastructure**: Cloud (AWS Free Tier / IAM Policy Simulator) or Local (LocalStack Pro/Community)  
+   🧪 **Testing**: Run `iam_policy_evaluator.py`; verify that Developer roles cannot delete S3 buckets without MFA and CI/CD roles cannot modify IAM policies.  
    🔹 [Project directory](07-cloud-providers/01-aws-iam-least-privilege-policies)
 
 2. **Secure Static Web Hosting with S3 and CloudFront**  
-   🔹 High-performance static web hosting architecture using private AWS S3 bucket with CloudFront CDN, Origin Access Control (OAC), ACM SSL/TLS certificate, and custom security headers via CloudFront Functions.  
-   🧪 **Testing**: Request site via CloudFront domain; verify HTTPS certificate, HTTP 200 response, security headers, and verify that direct S3 bucket access is blocked (403 Forbidden).  
+   🔹 **Goal & Context**: Deploy a high-performance, secure static website on AWS using private S3 storage, CloudFront CDN, Origin Access Control (OAC), ACM TLS certificates, and security headers.  
+   📦 **Deliverables & Scope**:  
+   - Terraform / CloudFormation code provisioning private S3 bucket, CloudFront distribution with OAC, and CloudFront Functions injecting security headers.  
+   - Sample single-page static web application.  
+   - `verify_cdn_security.sh`: Automated security header and access control audit script.  
+   🏗️ **Infrastructure**: Cloud (AWS Free Tier: S3 + CloudFront 1TB/month data transfer Free Tier)  
+   🧪 **Testing**: Request the site via CloudFront domain; verify HTTPS certificate, security headers (`X-Frame-Options`, `CSP`), and confirm that direct S3 access returns 403 Forbidden.  
    🔹 [Project directory](07-cloud-providers/02-s3-cloudfront-static-hosting)
 
 3. **Event-Driven Serverless Pipeline with Lambda and SQS**  
-   🔹 Serverless event-driven processing pipeline using AWS Lambda (Python/Go), SQS FIFO queues, and Dead Letter Queues (DLQ) with exponential backoff and CloudWatch error alarms.  
-   🧪 **Testing**: Publish 100 messages to SQS queue including bad payloads; verify Lambda batches process valid events and bad payloads route to DLQ.  
+   🔹 **Goal & Context**: Build a resilient, asynchronous event processing pipeline using AWS Lambda (Python/Go), SQS FIFO queues, and Dead Letter Queues (DLQ) with automatic retries.  
+   📦 **Deliverables & Scope**:  
+   - Lambda handler code (`index.py` / `main.go`) processing message batches with error handling.  
+   - Terraform configuration provisioning SQS FIFO queues, DLQs, CloudWatch alarms, and Lambda event source mappings.  
+   - `message_producer.py`: Script publishing 100 valid and malformed messages to test processing and DLQ routing.  
+   🏗️ **Infrastructure**: Local (LocalStack SQS & Lambda) or Cloud (AWS Lambda & SQS Free Tier - 1M free requests/month)  
+   🧪 **Testing**: Execute `message_producer.py`; verify that valid messages process successfully while poisoned messages route to the DLQ after 3 failed attempts.  
    🔹 [Project directory](07-cloud-providers/03-serverless-pipeline-lambda-sqs)
 
 4. **CloudWatch Alarms and SNS Incident Routing**  
-   🔹 AWS CloudWatch monitoring infrastructure configuring composite alarms on CPU utilization, 5xx errors, and disk I/O, routing notifications via SNS topics to email and webhook endpoints.  
-   🧪 **Testing**: Trigger test metric data using AWS CLI `put-metric-data`; verify alarm transition from `OK` to `ALARM` and verify SNS notification payload.  
+   🔹 **Goal & Context**: Build a comprehensive cloud monitoring infrastructure configuring composite CloudWatch alarms, metric filters, and SNS topic routing to email and webhook endpoints.  
+   📦 **Deliverables & Scope**:  
+   - Terraform manifests defining CloudWatch alarms (CPU > 80%, HTTP 5xx rate, disk space) and SNS topic subscriptions.  
+   - `simulate_cloud_incident.sh`: Script using AWS CLI `put-metric-data` to inject synthetic metric anomalies.  
+   🏗️ **Infrastructure**: Local (LocalStack CloudWatch & SNS) or Cloud (AWS CloudWatch & SNS Free Tier)  
+   🧪 **Testing**: Run `simulate_cloud_incident.sh`; observe alarm transition from `OK` to `ALARM` and verify notification payload delivery to the SNS webhook.  
    🔹 [Project directory](07-cloud-providers/04-cloudwatch-alarms-sns-routing)
 
 5. **Multi-VPC Networking with Transit Gateway**  
-   🔹 Multi-VPC networking architecture establishing AWS Transit Gateway / VPC Peering between Production, Staging, and Shared Services VPCs with strict route table isolation.  
-   🧪 **Testing**: Launch EC2 instances in each VPC; verify ping connectivity between permitted subnets and complete packet drop between isolated tiers.  
+   🔹 **Goal & Context**: Connect multiple isolated AWS VPCs (Production, Staging, Shared Services) using AWS Transit Gateway or VPC Peering with non-overlapping CIDRs and strict routing tables.  
+   📦 **Deliverables & Scope**:  
+   - IaC manifests provisioning 3 distinct VPCs, route tables, and Transit Gateway attachments.  
+   - `vpc_reachability_test.sh`: Script verifying network connectivity between authorized subnets and confirming complete packet drops between isolated environments.  
+   🏗️ **Infrastructure**: Cloud (AWS Free Tier - VPC Peering without NAT Gateway charges) or Local (LocalStack)  
+   🧪 **Testing**: Run `vpc_reachability_test.sh`; confirm successful communication between Staging and Shared Services, and assert that Production cannot communicate with Staging.  
    🔹 [Project directory](07-cloud-providers/05-multi-vpc-transit-gateway)
 
 6. **High-Availability Auto Scaling EC2 Fleet behind ALB**  
-   🔹 Fault-tolerant AWS Auto Scaling Group (ASG) behind an Application Load Balancer (ALB) across multiple AZs, with Launch Templates, dynamic scaling policies based on request count, and graceful instance termination lifecycle hooks.  
-   🧪 **Testing**: Apply synthetic HTTP traffic load to ALB endpoint; verify ASG scales up new EC2 instances and scales down once traffic subsides.  
+   🔹 **Goal & Context**: Deploy a resilient, auto-scaling web application fleet on AWS EC2 across multiple Availability Zones behind an Application Load Balancer with dynamic scaling policies.  
+   📦 **Deliverables & Scope**:  
+   - Terraform code provisioning Launch Template, Auto Scaling Group (ASG), target groups, dynamic CPU scaling policies, and ALB.  
+   - User data initialization script bootstrapping a web server.  
+   - `load_test_asg.sh`: Stress testing script driving traffic to trigger scale-out events.  
+   🏗️ **Infrastructure**: Cloud (AWS Free Tier: 750 hrs/month t2.micro / t3.micro ASG + ALB)  
+   🧪 **Testing**: Run `load_test_asg.sh`; observe ASG scaling from 1 to 3 instances and verify traffic distribution across all active instances.  
    🔹 [Project directory](07-cloud-providers/06-auto-scaling-ec2-alb-fleet)
 
 7. **GCP Cloud Run Scalable Microservice**  
-   🔹 Google Cloud Run microservice deployment with container concurrency settings, minimum/maximum instance scaling, Secret Manager integration, and custom domain mapping.  
-   🧪 **Testing**: Deploy container to Cloud Run via `gcloud` / Terraform; test zero-scale cold start vs warm concurrency latency.  
+   🔹 **Goal & Context**: Deploy containerized microservices to Google Cloud Run with fine-grained concurrency tuning, minimum/maximum instance scaling, Secret Manager integration, and custom domain mapping.  
+   📦 **Deliverables & Scope**:  
+   - Containerized Go/Python API application.  
+   - Terraform / `gcloud` deployment configuration with IAM service accounts and secret bindings.  
+   - `benchmark_cloud_run.sh`: Benchmarking script measuring cold start latency and concurrent throughput.  
+   🏗️ **Infrastructure**: Cloud (GCP Free Tier: Cloud Run 2M requests/month free) or Local (K3s with Knative / Google Cloud Run Emulator)  
+   🧪 **Testing**: Execute `benchmark_cloud_run.sh`; verify that the service scales from 0 to multiple instances under load and measures cold start response times.  
    🔹 [Project directory](07-cloud-providers/07-gcp-cloud-run-microservice)
 
 8. **Azure Functions Event Grid Blob Processor**  
-   🔹 Azure Serverless pipeline with Azure Functions triggered by Event Grid events (blob uploads), performing image resizing/processing and saving metadata to Azure Cosmos DB.  
-   🧪 **Testing**: Upload test file to Azure Blob Storage; verify Event Grid event trigger, function execution logs, and output record in Cosmos DB.  
+   🔹 **Goal & Context**: Build a serverless event-driven processing pipeline on Microsoft Azure where Blob Storage uploads trigger Azure Functions via Event Grid to extract metadata and store it in Cosmos DB.  
+   📦 **Deliverables & Scope**:  
+   - Azure Function code (Python/TypeScript) with Event Grid trigger bindings and Cosmos DB output bindings.  
+   - Bicep / Terraform IaC configuration provisioning Azure Storage, Function App, and Cosmos DB.  
+   - `upload_test_blobs.py`: Script uploading test images and checking Cosmos DB records.  
+   🏗️ **Infrastructure**: Cloud (Azure Free Tier: Functions 1M executions/mo + Cosmos DB Free Tier) or Local (Azurite Storage Emulator + Azure Functions Core Tools)  
+   🧪 **Testing**: Run `upload_test_blobs.py`; upload a test image to Azure Blob Storage and verify that the Azure Function processes the event and writes metadata to Cosmos DB.  
    🔹 [Project directory](07-cloud-providers/08-azure-functions-eventgrid-processor)
 
 9. **Cloud Cost Governance and Tag Compliance Engine**  
-   🔹 Automated FinOps governance engine using AWS Lambda / Cloud Custodian to audit AWS/GCP resources for mandatory billing tags (`Environment`, `Owner`, `CostCenter`), flagging or stopping untagged non-compliant resources.  
-   🧪 **Testing**: Provision an EC2 instance without mandatory tags; run governance script and verify compliance warning event and scheduled termination alert.  
+   🔹 **Goal & Context**: Implement automated FinOps governance using Cloud Custodian or AWS Lambda to continuously audit cloud resources for mandatory billing tags (`Environment`, `Owner`, `CostCenter`) and enforce compliance.  
+   📦 **Deliverables & Scope**:  
+   - Cloud Custodian policy YAML / Python Lambda auditor scanning EC2, S3, and RDS resources.  
+   - Compliance reporting script sending daily summaries to Slack.  
+   - `provision_untagged_resources.sh`: Test script provisioning compliant and non-compliant resources.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker running Cloud Custodian) or Cloud (AWS Lambda Free Tier)  
+   🧪 **Testing**: Provision untagged resources with `provision_untagged_resources.sh`; run the governance engine and verify that non-compliant resources are tagged for termination and alerts fired.  
    🔹 [Project directory](07-cloud-providers/09-cloud-cost-tagging-governance-engine)
 
 10. **Multi-Region Disaster Recovery with Route 53 Failover**  
-    🔹 Comprehensive AWS Disaster Recovery architecture implementing Route 53 DNS failover routing, cross-region DynamoDB global tables / S3 replication, and automated RTO/RPO validation runbook.  
-    🧪 **Testing**: Simulate primary region outage by failing health check endpoint; verify Route 53 health check triggers DNS failover to secondary region within 60 seconds.  
+    🔹 **Goal & Context**: Implement an active-passive multi-region disaster recovery architecture on AWS using Route 53 DNS health checks, S3 cross-region replication, and automated failover routing.  
+    📦 **Deliverables & Scope**:  
+    - Terraform code deploying Primary Region (`us-east-1`) and Secondary DR Region (`us-west-2`) infrastructure.  
+    - Route 53 Failover Routing policies and endpoint health check configuration.  
+    - `dr_failover_test.sh`: Script simulating primary region outage and measuring DNS failover recovery time.  
+    🏗️ **Infrastructure**: Cloud (AWS Free Tier: Route 53 DNS Failover + S3 Cross-Region Replication)  
+    🧪 **Testing**: Run `dr_failover_test.sh` to fail the primary endpoint; verify that Route 53 detects the failure within 60 seconds and redirects traffic to the DR region.  
     🔹 [Project directory](07-cloud-providers/10-multi-region-disaster-recovery-route53)
 
 ---
@@ -394,53 +726,103 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 08. Monitoring & Observability
 
 1. **Prometheus Node Exporter Monitoring Stack**  
-   🔹 Prometheus server scraping Node Exporter metrics in Docker Compose, collecting host metrics (CPU, disk I/O, network traffic, memory) with custom scrape intervals.  
-   🧪 **Testing**: Access Prometheus web UI (`:9090`), query `node_cpu_seconds_total` and `node_memory_MemAvailable_bytes`, and verify data scrapers return status `UP`.  
+   🔹 **Goal & Context**: Deploy and configure a core Prometheus monitoring server scraping host and container hardware metrics from Node Exporter with customized scrape intervals and retention policies.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml`: Stack running Prometheus and Node Exporter.  
+   - `prometheus.yml`: Scrape configuration defining jobs, scrape intervals, and evaluation rules.  
+   - `promql_validation.py`: Script querying Prometheus API for key host metrics (CPU, RAM, disk I/O).  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Prometheus & Node Exporter)  
+   🧪 **Testing**: Start the stack, run `promql_validation.py`, and verify that Prometheus scrapes Node Exporter successfully and returns valid time-series data.  
    🔹 [Project directory](08-observability-and-monitoring/01-prometheus-node-exporter-stack)
 
 2. **Application RED and USE Metrics Instrumentation**  
-   🔹 Web application (Go/Python/Node) instrumented with official Prometheus client library, exporting custom business metrics (counter for total orders, histogram for request duration, gauge for active connections) at `/metrics`.  
-   🧪 **Testing**: Send simulated user requests; verify Prometheus scrapes and accurately computes request duration percentiles (`p95`, `p99`) and request rates (`rate()`).  
+   🔹 **Goal & Context**: Instrument a web microservice with official Prometheus client libraries, exposing RED (Rate, Errors, Duration) and USE (Utilization, Saturation, Errors) metrics at `/metrics`.  
+   📦 **Deliverables & Scope**:  
+   - Web application (Go/Python/Node) instrumented with Prometheus Counter (requests), Histogram (latency), and Gauge (active connections).  
+   - `traffic_simulator.py`: Script generating varied traffic patterns (steady load, latency spikes, error bursts).  
+   - PromQL query test suite computing p95/p99 latencies and error percentages.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose)  
+   🧪 **Testing**: Run `traffic_simulator.py`; query Prometheus for `rate(http_requests_total[1m])` and `histogram_quantile(0.99, ...)` and verify accurate computation.  
    🔹 [Project directory](08-observability-and-monitoring/02-application-metrics-instrumentation)
 
 3. **Grafana Dashboards as Code Provisioning**  
-   🔹 Grafana deployment utilizing Dashboards-as-Code (provisioning YAML and JSON model files), building comprehensive RED (Rate, Errors, Duration) and USE (Utilization, Saturation, Errors) method dashboards.  
-   🧪 **Testing**: Spin up Grafana container; verify dashboards load automatically from disk without manual UI creation and all panels display active time-series data.  
+   🔹 **Goal & Context**: Build and provision production-grade Grafana monitoring dashboards declaratively using JSON models and YAML provider configs without manual UI setup.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml`: Grafana container with automated provisioning volumes.  
+   - Provisioning YAML configs (`datasources.yml`, `dashboards.yml`) and dashboard JSON model files featuring RED/USE panels and threshold alerts.  
+   - `dashboard_smoke_test.sh`: Script verifying dashboard API availability.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Grafana)  
+   🧪 **Testing**: Start Grafana; navigate to the web UI (`:3000`) and confirm that dashboards load automatically from disk and render live Prometheus metric data.  
    🔹 [Project directory](08-observability-and-monitoring/03-grafana-dashboards-as-code)
 
 4. **Prometheus Alertmanager Routing and Slack Notifications**  
-   🔹 Prometheus Alerting Rules configuration coupled with Alertmanager, featuring route trees, alert grouping, inhibition rules, deduplication, and rich notifications to Slack/Discord webhooks.  
-   🧪 **Testing**: Trigger test alert condition (e.g. simulated high CPU / endpoint down); verify Alertmanager receives alert and posts formatted notification to webhook.  
+   🔹 **Goal & Context**: Construct an alerting pipeline with Prometheus alert rules, Alertmanager routing trees, alert grouping, inhibition rules, deduplication, and Slack/Discord webhook notifications.  
+   📦 **Deliverables & Scope**:  
+   - `alerts.yml`: Prometheus alerting rules detecting high error rates, slow response times, and service downtime.  
+   - `alertmanager.yml`: Alertmanager routing configuration with fallback receivers and inhibition rules.  
+   - `trigger_synthetic_alert.sh`: Script triggering threshold breaches to verify alert delivery.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose + Slack Webhook Sandbox)  
+   🧪 **Testing**: Execute `trigger_synthetic_alert.sh`; verify that Prometheus transitions alert state to `FIRING`, Alertmanager deduplicates events, and formatted notifications arrive in Slack.  
    🔹 [Project directory](08-observability-and-monitoring/04-alertmanager-routing-slack)
 
 5. **Blackbox Exporter Endpoint Uptime Probing**  
-   🔹 Prometheus Blackbox Exporter configuration probing external endpoints over HTTP/HTTPS, DNS, TCP, and ICMP, monitoring SSL certificate expiration, response codes, and network latency.  
-   🧪 **Testing**: Configure probes for public and internal targets; query `probe_success` and `probe_duration_seconds` metrics in Prometheus.  
+   🔹 **Goal & Context**: Set up synthetic external uptime monitoring using Prometheus Blackbox Exporter to probe HTTP/HTTPS, DNS, TCP, and ICMP endpoints, tracking SSL cert expiration and network latency.  
+   📦 **Deliverables & Scope**:  
+   - `blackbox.yml`: Blackbox exporter configuration defining `http_2xx`, `dns_query`, and `tcp_connect` probe modules.  
+   - Prometheus scrape config targeting public and internal endpoints.  
+   - `mock_target_endpoints/`: Test HTTP endpoints (healthy, slow, failing).  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Blackbox Exporter)  
+   🧪 **Testing**: Start the stack; query `probe_success` and `probe_duration_seconds` in Prometheus and verify accurate uptime and response latency tracking.  
    🔹 [Project directory](08-observability-and-monitoring/05-blackbox-exporter-uptime-probing)
 
 6. **Distributed Tracing with OpenTelemetry and Jaeger**  
-   🔹 Multi-tier microservices application instrumented with OpenTelemetry SDK, propagating W3C trace context (`traceparent`) across HTTP boundaries, and exporting traces to Jaeger for distributed visualization.  
-   🧪 **Testing**: Execute end-to-end request traversing frontend, auth service, and database; view unified trace in Jaeger UI (`:16686`) and inspect span durations.  
+   🔹 **Goal & Context**: Implement distributed tracing across a multi-tier microservice architecture using OpenTelemetry SDKs, propagating W3C trace context across HTTP boundaries, and visualizing traces in Jaeger.  
+   📦 **Deliverables & Scope**:  
+   - 3 microservices (Frontend -> Auth -> Payment) instrumented with OpenTelemetry SDK.  
+   - `docker-compose.yml` running microservices and Jaeger All-in-One.  
+   - `trace_verification.py`: Script executing end-to-end user transactions and validating span relationships via Jaeger API.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Jaeger all-in-one)  
+   🧪 **Testing**: Send transactions via `trace_verification.py`; open Jaeger UI (`:16686`) and verify that unified traces link spans across all 3 microservices with detailed timing breakdowns.  
    🔹 [Project directory](08-observability-and-monitoring/06-opentelemetry-distributed-tracing-jaeger)
 
 7. **OpenTelemetry Collector Telemetry Pipeline**  
-   🔹 OpenTelemetry Collector deployment with custom pipelines (receivers, processors: batch/memory_limiter/attributes, exporters) routing metrics to Prometheus and traces to Tempo/Jaeger.  
-   🧪 **Testing**: Stream telemetry through collector; verify collector metrics and confirm processed telemetry data arrives at respective backend stores.  
+   🔹 **Goal & Context**: Deploy an OpenTelemetry Collector to receive, process, batch, filter, and export metrics, logs, and traces to multiple backend destinations (Prometheus, Jaeger, Tempo).  
+   📦 **Deliverables & Scope**:  
+   - `otel-collector-config.yaml`: Configuration defining receivers (OTLP gRPC/HTTP), processors (`batch`, `memory_limiter`, `attributes`), and exporters.  
+   - Sample application exporting OTLP telemetry.  
+   - `pipeline_health_check.sh`: Script verifying collector internal metrics and backend delivery.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with OTel Collector & Backends)  
+   🧪 **Testing**: Stream telemetry through the collector; inspect collector logs and verify that processed metrics appear in Prometheus and traces appear in Jaeger.  
    🔹 [Project directory](08-observability-and-monitoring/07-opentelemetry-collector-pipeline)
 
 8. **VictoriaMetrics Long-Term Metric Storage**  
-   🔹 High-performance long-term time-series storage setup using VictoriaMetrics as a remote-write destination for Prometheus, with data downsampling and retention policies.  
-   🧪 **Testing**: Configure Prometheus `remote_write` to VictoriaMetrics; query metrics through VictoriaMetrics API and verify storage compression efficiency.  
+   🔹 **Goal & Context**: Configure scalable, high-performance long-term time-series metric storage using VictoriaMetrics as a remote-write destination for Prometheus with data downsampling.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` deploying Prometheus (with `remote_write`) and VictoriaMetrics Single-Node.  
+   - `benchmark_metrics_ingestion.py`: Script generating high-cardinality metric streams to measure compression ratios.  
+   - Storage utilization comparison script.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with VictoriaMetrics single-node)  
+   🧪 **Testing**: Ingest 1 million data points; compare disk space usage between standard Prometheus TSDB and VictoriaMetrics, confirming superior compression efficiency.  
    🔹 [Project directory](08-observability-and-monitoring/08-victoriametrics-long-term-storage)
 
 9. **Kubernetes Observability with kube-prometheus-stack**  
-   🔹 Full Kubernetes observability stack deployed via `kube-prometheus-stack` Helm chart, configuring ServiceMonitors, PodMonitors, PrometheusRules, and Grafana Operator.  
-   🧪 **Testing**: Deploy a sample microservice with a custom `ServiceMonitor`; verify Prometheus Operator automatically discovers targets and scrapes endpoints.  
+   🔹 **Goal & Context**: Deploy and operate the complete Kubernetes monitoring stack using `kube-prometheus-stack` Helm chart, configuring custom `ServiceMonitor`, `PodMonitor`, and `PrometheusRule` CRDs.  
+   📦 **Deliverables & Scope**:  
+   - Helm `values.yaml` customizing Prometheus, Alertmanager, and Grafana Operator.  
+   - Sample microservice deployment with a dedicated `ServiceMonitor` CRD.  
+   - `k8s_monitoring_test.sh`: Script verifying target discovery and metric ingestion.  
+   🏗️ **Infrastructure**: Local (K3s / K3d / OrbStack Kubernetes + Helm 3)  
+   🧪 **Testing**: Deploy the sample app and ServiceMonitor; verify in Prometheus Operator UI that the target is automatically discovered and scraped without manual configuration.  
    🔹 [Project directory](08-observability-and-monitoring/09-kube-prometheus-stack-helm-k8s)
 
 10. **Synthetic User Journey Monitoring with Playwright**  
-    🔹 Continuous synthetic end-to-end monitoring service using Playwright/Puppeteer in headless containers, executing simulated user checkout workflows on a schedule and exporting latency and failure metrics to Prometheus.  
-    🧪 **Testing**: Run synthetic suite against staging application; verify screenshot capture on test failure and Prometheus counter increment on step anomalies.  
+    🔹 **Goal & Context**: Build an automated synthetic user journey monitoring service that runs headless Playwright browser scripts on a schedule, tests multi-step user workflows (e.g. login, checkout), and exports latency metrics to Prometheus.  
+    📦 **Deliverables & Scope**:  
+    - Playwright test script (TypeScript/Python) simulating user transactions and capturing step execution timings.  
+    - Custom Prometheus exporter daemon exposing synthetic journey latencies and failure counters.  
+    - Target e-commerce test web application.  
+    🏗️ **Infrastructure**: Local (OrbStack / Docker Compose running Playwright + Prometheus client)  
+    🧪 **Testing**: Execute synthetic journeys under normal and degraded network conditions; verify screenshot capture on step failure and Prometheus metric updates.  
     🔹 [Project directory](08-observability-and-monitoring/10-synthetic-journey-monitoring-playwright)
 
 ---
@@ -448,53 +830,103 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 09. Centralized Logging & Log Aggregation
 
 1. **Structured JSON Logging Framework**  
-   🔹 Application logging framework setup (Go Zap / Python Loguru / Winston) enforcing structured JSON log formats with standard fields (`timestamp`, `level`, `trace_id`, `caller`, `message`, `context`).  
-   🧪 **Testing**: Trigger various application actions and errors; verify stdout outputs valid JSON lines matching log schema.  
+   🔹 **Goal & Context**: Implement standardized structured JSON logging across application services, ensuring all log events include timestamps, log levels, caller info, trace correlation IDs, and contextual metadata.  
+   📦 **Deliverables & Scope**:  
+   - Application logging library setup (Go Zap / Python Loguru / Node Winston).  
+   - Sample microservice generating structured logs across various error conditions.  
+   - `validate_log_schema.py`: JSON schema validator script testing log format compliance.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker container)  
+   🧪 **Testing**: Run `validate_log_schema.py` against application stdout; assert that 100% of log entries conform strictly to the required JSON schema.  
    🔹 [Project directory](09-logging/01-structured-json-logging-framework)
 
 2. **Logrotate Daemon System Policy**  
-   🔹 Custom `logrotate` configuration for application and web server log files managing daily rotation, size thresholds (`maxsize 100M`), compression (`gzip`), and post-rotate process reloading (`kill -HUP`).  
-   🧪 **Testing**: Force log rotation using `logrotate -f /etc/logrotate.d/custom-app`; verify rotated `.1.gz` file creation and continuous uninterrupted logging.  
+   🔹 **Goal & Context**: Write and validate system-level `logrotate` configurations managing size-based rotation, daily compression, archive retention, and non-disruptive daemon reloads (`kill -HUP`).  
+   📦 **Deliverables & Scope**:  
+   - `/etc/logrotate.d/custom-app` configuration file with `maxsize 50M`, `rotate 7`, and `postrotate` scripts.  
+   - `continuous_log_writer.py`: Daemon continuously writing logs with open file descriptors.  
+   - `test_logrotate.sh`: Script forcing log rotation and asserting zero dropped log entries.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM with logrotate daemon)  
+   🧪 **Testing**: Execute `test_logrotate.sh`; verify that logs are rotated to `.1.gz`, active log writes continue uninterrupted, and expired archives are purged.  
    🔹 [Project directory](09-logging/02-logrotate-daemon-system-policy)
 
 3. **Docker Daemon Logging Drivers and Fluentd**  
-   🔹 Docker daemon logging configuration routing container stdout/stderr through the `fluentd` or `syslog` logging driver, preventing local disk filling and centralizing log delivery.  
-   🧪 **Testing**: Run container producing rapid logs; verify logs stream directly to the centralized receiver while host container log json files stay constrained.  
+   🔹 **Goal & Context**: Configure Docker daemon logging to route container stdout/stderr streams to a centralized Fluentd log collector using the native `fluentd` logging driver.  
+   📦 **Deliverables & Scope**:  
+   - `daemon.json` logging configuration and `fluent.conf` receiver configuration.  
+   - `docker-compose.yml` deploying Fluentd and high-volume test log containers.  
+   - `log_delivery_test.sh`: Script verifying that logs stream directly to Fluentd while host container log files remain constrained.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Fluentd service)  
+   🧪 **Testing**: Generate 10,000 log lines in a test container; inspect Fluentd output to verify zero log loss and confirm host disk preservation.  
    🔹 [Project directory](09-logging/03-docker-logging-drivers-fluentd)
 
 4. **Promtail, Loki, and Grafana LogQL Pipeline**  
-   🔹 Lightweight log aggregation pipeline using Grafana Loki and Promtail, scraping container and system log files, parsing log labels, and querying logs in Grafana using LogQL.  
-   🧪 **Testing**: Emit error logs with custom metadata; query `{app="api"} |= "error"` in Grafana Explore and verify sub-second log query response.  
+   🔹 **Goal & Context**: Deploy a lightweight, scalable log aggregation pipeline using Grafana Loki and Promtail, scraping container and system log files, parsing labels, and querying logs using LogQL.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` running Loki, Promtail, and Grafana.  
+   - `promtail-config.yaml` with regex parsing stages and dynamic label extraction (`level`, `app`, `endpoint`).  
+   - `logql_test_queries.sh`: Script querying Loki API with LogQL filter expressions.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Loki, Promtail, Grafana)  
+   🧪 **Testing**: Emit error logs with custom metadata; query `{app="api"} |= "error"` via `logql_test_queries.sh` and verify sub-second search responses.  
    🔹 [Project directory](09-logging/04-promtail-loki-grafana-logql)
 
 5. **Fluent Bit Kubernetes Log DaemonSet**  
-   🔹 Fluent Bit deployed as a Kubernetes DaemonSet, extracting container logs from `/var/log/containers/`, enriching logs with Kubernetes metadata (pod, namespace, container name), and forwarding to Loki / Elasticsearch.  
-   🧪 **Testing**: Deploy test pods across multiple nodes; verify log entries in the backend store contain accurate Kubernetes labels and metadata annotations.  
+   🔹 **Goal & Context**: Deploy Fluent Bit as a Kubernetes DaemonSet to collect container logs from `/var/log/containers/`, enrich entries with Kubernetes pod metadata, and forward logs to Loki or Elasticsearch.  
+   📦 **Deliverables & Scope**:  
+   - Fluent Bit Helm configuration / DaemonSet manifest (`fluent-bit.conf` with `kubernetes` filter).  
+   - Sample workloads generating logs across multiple namespaces.  
+   - `k8s_log_metadata_audit.sh`: Script validating enriched metadata fields (`pod_name`, `namespace_name`, `container_image`).  
+   🏗️ **Infrastructure**: Local (K3s / K3d with Fluent Bit DaemonSet)  
+   🧪 **Testing**: Run `k8s_log_metadata_audit.sh`; query the log backend and confirm that log entries contain accurate Kubernetes metadata tags.  
    🔹 [Project directory](09-logging/05-fluent-bit-kubernetes-daemonset)
 
 6. **ELK Stack with Logstash Grok Parsers**  
-   🔹 Complete ELK Stack deployment (Elasticsearch, Logstash, Kibana) in Docker Compose, configuring Logstash pipelines with Grok filters to parse unstructured legacy server logs into indexed fields.  
-   🧪 **Testing**: Feed raw Apache/Nginx access logs to Logstash input; verify Elasticsearch index creation and Kibana index pattern visualization.  
+   🔹 **Goal & Context**: Deploy the Elasticsearch, Logstash, and Kibana (ELK) stack, configuring Logstash Grok filter pipelines to parse unstructured legacy access logs into indexed, searchable fields.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` running Elasticsearch, Logstash, and Kibana.  
+   - `logstash.conf` with custom Grok patterns, GeoIP enrichment, and date filters.  
+   - `log_injector.py`: Script streaming raw Apache/Nginx access logs to Logstash.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Elasticsearch single-node & Kibana)  
+   🧪 **Testing**: Stream raw access logs via `log_injector.py`; open Kibana (`:5601`) and verify that logs are parsed into structured fields (`client_ip`, `response_code`, `request_path`).  
    🔹 [Project directory](09-logging/06-elk-stack-logstash-grok-parsers)
 
 7. **Vector Log Sanitization and PII Masking**  
-   🔹 High-performance observability data pipeline using Datadog Vector, performing in-flight log sanitization, PII (Personally Identifiable Information) masking (credit cards, emails), and log sampling.  
-   🧪 **Testing**: Stream logs containing mock SSNs and credit card numbers; verify Vector transforms sensitive fields to `[REDACTED]` before forwarding downstream.  
+   🔹 **Goal & Context**: Build a high-throughput telemetry transformation pipeline using Datadog Vector, performing in-flight log sanitization to redact Personally Identifiable Information (PII) like credit cards and SSNs.  
+   📦 **Deliverables & Scope**:  
+   - `vector.toml`: Vector pipeline configuration with VRL (Vector Remap Language) transforms for regex masking and field redaction.  
+   - `pii_log_generator.py`: Test script emitting logs containing mock credit card numbers, emails, and passwords.  
+   - `pii_sanitization_test.sh`: Verification script asserting zero raw PII in output sinks.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Vector pipeline)  
+   🧪 **Testing**: Run `pii_sanitization_test.sh`; confirm that all sensitive fields are replaced with `[REDACTED]` before forwarding downstream.  
    🔹 [Project directory](09-logging/07-vector-log-sanitization-pii-masking)
 
 8. **OpenSearch Index Lifecycle Management (ISM)**  
-   🔹 OpenSearch cluster configuration with Index State Management (ISM) policies defining hot-warm-cold storage tiering, automated rollover, and scheduled index deletion after 30 days.  
-   🧪 **Testing**: Apply ISM policy; simulate index aging and verify that indices transition automatically from hot to warm read-only tiers.  
+   🔹 **Goal & Context**: Configure Index State Management (ISM) policies in OpenSearch to automate index rollouts across hot, warm, and cold storage tiers and enforce scheduled retention deletion.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` running OpenSearch and OpenSearch Dashboards.  
+   - ISM policy JSON document defining rollover triggers (size > 10GB or age > 7 days), read-only transitions, and retention deletion.  
+   - `simulate_ism_lifecycle.py`: Script simulating index aging and verifying state transitions.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with OpenSearch single-node)  
+   🧪 **Testing**: Execute `simulate_ism_lifecycle.py`; verify that indices transition from hot to warm read-only tiers and delete on schedule.  
    🔹 [Project directory](09-logging/08-opensearch-index-lifecycle-management)
 
 9. **Log-Based Metrics Extraction and Alerting**  
-   🔹 Loki LogQL metric queries and Fluent Bit metric filters extracting real-time Prometheus metrics from raw log streams (e.g. counting 5xx errors per minute from Nginx logs) to trigger alerts.  
-   🧪 **Testing**: Inject 500 error logs into stream; verify Loki/Prometheus generates alert metric and Alertmanager fires threshold alert.  
+   🔹 **Goal & Context**: Extract real-time numerical Prometheus metrics directly from raw unstructured log streams using Loki LogQL metric queries or Fluent Bit metric filters to trigger immediate alerts.  
+   📦 **Deliverables & Scope**:  
+   - Loki metric alerting rules computing `rate({app="nginx"} |= "500"[1m])`.  
+   - `error_spike_injector.sh`: Script generating sudden bursts of 500 error logs.  
+   - Alertmanager validation script.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Loki, Promtail, Prometheus)  
+   🧪 **Testing**: Run `error_spike_injector.sh`; verify that Loki extracts the metric count, Prometheus records the anomaly, and Alertmanager fires a threshold alert.  
    🔹 [Project directory](09-logging/09-log-based-metrics-extraction-alerting)
 
 10. **Auditd Linux Security Event Log Analysis**  
-    🔹 Linux Audit Framework (`auditd`) setup monitoring critical system calls (`execve`, file modifications in `/etc/passwd`, `/etc/sudoers`), shipping audit logs to a SIEM / OpenSearch instance for real-time security analysis.  
-    🧪 **Testing**: Trigger unauthorized file write or privilege escalation command; verify `audit.log` records event and SIEM dashboard flags the security alert.  
+    🔹 **Goal & Context**: Configure Linux Audit Framework (`auditd`) rules to capture critical security events (unauthorized file modifications in `/etc`, privilege escalation attempts), shipping audit logs to a SIEM for analysis.  
+    📦 **Deliverables & Scope**:  
+    - `/etc/audit/rules.d/security.rules`: Auditd rules monitoring `execve` system calls, `/etc/passwd`, and sudoer modifications.  
+    - Audit log shipper daemon and SIEM parser.  
+    - `simulate_security_event.sh`: Script simulating unauthorized file writes and privilege escalations.  
+    🏗️ **Infrastructure**: Local (OrbStack Linux VM with Linux Audit subsystem)  
+    🧪 **Testing**: Execute `simulate_security_event.sh`; verify that `audit.log` captures the event with full user/process context and the SIEM dashboard flags the security alert.  
     🔹 [Project directory](09-logging/10-auditd-security-event-logging-analysis)
 
 ---
@@ -502,53 +934,101 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 10. SRE, Reliability & Incident Response
 
 1. **SLI, SLO, and Error Budget Calculator**  
-   🔹 Tool in Python/Go that queries Prometheus metrics over rolling 30-day windows, calculates Service Level Indicators (SLIs), Service Level Objectives (SLOs, e.g. 99.9% availability), and remaining Error Budgets.  
-   🧪 **Testing**: Feed synthetic availability time-series data; verify SLI percentage calculation, error budget burn rate computation, and markdown report output.  
+   🔹 **Goal & Context**: Build an SRE analytics tool in Python/Go that queries Prometheus metrics over rolling 30-day windows, calculates Service Level Indicators (SLIs), Service Level Objectives (SLOs, e.g. 99.9% availability), and remaining Error Budgets.  
+   📦 **Deliverables & Scope**:  
+   - `slo_calculator.py` / `slo_calculator.go`: Program querying Prometheus, computing availability percentages, and generating Markdown SLO reports.  
+   - `mock_prometheus_metrics.py`: Synthetic time-series generator simulating varying outage profiles.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Prometheus & Python/Go SLI tool)  
+   🧪 **Testing**: Feed synthetic availability data to Prometheus; run `slo_calculator.py` and verify accurate SLI percentage calculation and remaining error budget output.  
    🔹 [Project directory](10-sre-and-reliability/01-sli-slo-error-budget-calculator)
 
 2. **Multiwindow Multi-Burn-Rate Alerting Rules**  
-   🔹 Implementation of Google SRE Multiwindow Multi-Burn-Rate alerting rules in Prometheus, calculating 14.4x (1hr), 6x (6hr), and 1x (3-day) burn rates to eliminate alert fatigue while catching catastrophic outages early.  
-   🧪 **Testing**: Inject simulated outage metrics into Prometheus; verify that fast burn rate alerts fire within 2 minutes while slow burn alerts trigger appropriately over longer windows.  
+   🔹 **Goal & Context**: Implement Google SRE Multiwindow Multi-Burn-Rate alerting rules in Prometheus to detect rapid catastrophic outages (14.4x burn rate in 1hr) and slow silent budget drains (6x in 6hr) without alert fatigue.  
+   📦 **Deliverables & Scope**:  
+   - `slo_alerts.yml`: Prometheus recording rules and multi-burn-rate alerting rules.  
+   - `burn_rate_simulator.py`: Tool injecting fast and slow error rate spikes into Prometheus metrics.  
+   - Alert verification script.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Prometheus & Alertmanager)  
+   🧪 **Testing**: Simulate a 15% error rate; verify that fast burn rate alerts fire within 2 minutes while slow burn rate alerts trigger appropriately over longer time windows.  
    🔹 [Project directory](10-sre-and-reliability/02-multiwindow-multi-burn-rate-alerts)
 
 3. **Automated Incident Runbook Executor**  
-   🔹 Automated incident remediation engine triggered by PagerDuty / Webhook alerts, executing self-healing runbook tasks (restarting hung workers, clearing stuck queues) via secure SSH/Kubernetes APIs.  
-   🧪 **Testing**: Send simulated PagerDuty webhook event; verify runbook executor runs target remediation script, logs output, and resolves incident.  
+   🔹 **Goal & Context**: Create an automated incident remediation daemon that executes self-healing runbook tasks (e.g. restarting hung workers, clearing stuck queues, scaling deployments) when specific PagerDuty/Webhook alerts trigger.  
+   📦 **Deliverables & Scope**:  
+   - `runbook_executor.py` / `runbook_executor.go`: Webhook listener verifying alert signatures and executing modular remediation scripts.  
+   - Modular runbooks (`restart_service.sh`, `flush_cache.sh`, `scale_deployment.sh`).  
+   - `simulate_pagerduty_alert.sh`: Script sending synthetic alert payloads.  
+   🏗️ **Infrastructure**: Local (OrbStack VM / Docker + PagerDuty Developer Sandbox API)  
+   🧪 **Testing**: Send an alert payload via `simulate_pagerduty_alert.sh`; verify that the executor runs the corresponding runbook, logs output, and auto-resolves the alert.  
    🔹 [Project directory](10-sre-and-reliability/03-automated-incident-runbook-executor)
 
 4. **k6 Distributed Performance and Stress Testing**  
-   🔹 Comprehensive load and stress testing suite using Grafana k6, defining ramping arrival rate scenarios, threshold assertions (`p99 < 200ms`, `error_rate < 1%`), and exporting metrics to InfluxDB/Grafana.  
-   🧪 **Testing**: Run `k6 run load-test.js` against target service; verify test execution through ramp-up, peak, and recovery phases, and check threshold exit codes.  
+   🔹 **Goal & Context**: Design comprehensive load, stress, and spike performance tests using Grafana k6, configuring ramping arrival rate scenarios and asserting strict percentile latency thresholds (`p95 < 200ms`, `error_rate < 1%`).  
+   📦 **Deliverables & Scope**:  
+   - `load_test.js`: k6 script defining realistic user journeys, ramping stages (warmup, peak, cooldown), and threshold assertions.  
+   - Target REST API microservice.  
+   - `run_performance_suite.sh`: Automation script running k6 and exporting metrics to InfluxDB/Grafana.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with k6 + InfluxDB + Grafana)  
+   🧪 **Testing**: Execute `run_performance_suite.sh`; observe real-time metrics in Grafana and confirm that k6 returns non-zero exit codes when thresholds are breached.  
    🔹 [Project directory](10-sre-and-reliability/04-k6-performance-load-testing-suite)
 
 5. **Container Chaos Engineering with Pumba**  
-   🔹 Chaos testing framework using Pumba / Chaos Mesh for Docker containers, injecting random network latency, packet loss, paused containers, and forced SIGKILLs against microservices.  
-   🧪 **Testing**: Run chaos experiment during continuous load test; verify application handles pod failures gracefully with circuit breakers without crashing.  
+   🔹 **Goal & Context**: Validate containerized microservice fault tolerance by injecting random chaos experiments (network latency, packet loss, paused containers, forced SIGKILLs) using Pumba under active traffic.  
+   📦 **Deliverables & Scope**:  
+   - `pumba_chaos.sh`: Chaos execution script targeting specific containers with network delays and unexpected kills.  
+   - Resilient microservice stack (with circuit breakers and retries).  
+   - Continuous load test runner measuring service availability during chaos injections.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with Pumba)  
+   🧪 **Testing**: Run the load generator while injecting chaos via Pumba; assert that the overall service error rate remains <1% and services recover automatically.  
    🔹 [Project directory](10-sre-and-reliability/05-container-chaos-engineering-pumba)
 
 6. **Circuit Breaker and Resilient Retry Engine**  
-   🔹 Microservice resilience implementation in Go/Node.js utilizing the Circuit Breaker pattern (Closed, Open, Half-Open states), fallback responses, and exponential backoff retry mechanisms.  
-   🧪 **Testing**: Simulate downstream API failure; assert that circuit breaker trips to Open state after consecutive errors and serves fallback responses without downstream calls.  
+   🔹 **Goal & Context**: Implement microservice resilience by integrating the Circuit Breaker pattern (Closed, Open, Half-Open states), fallback degradation responses, and exponential backoff retry algorithms.  
+   📦 **Deliverables & Scope**:  
+   - Microservice client in Go/Node.js/Python implementing circuit breaker state machines.  
+   - Mock downstream service with controllable latency and error injection endpoints.  
+   - `circuit_breaker_test.py`: Concurrency test suite validating state transitions.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose multi-service setup)  
+   🧪 **Testing**: Inject errors into the downstream service; verify that the circuit breaker trips to `OPEN` after 5 consecutive failures and serves fallback responses without network calls.  
    🔹 [Project directory](10-sre-and-reliability/06-circuit-breaker-resilience-pattern)
 
 7. **Kubernetes Chaos Mesh Fault Injection**  
-   🔹 Chaos Mesh deployment on Kubernetes executing declarative Chaos Experiments (`PodChaos`, `NetworkChaos`, `IOChaos`, `TimeChaos`) to validate cluster self-healing and service mesh resiliency.  
-   🧪 **Testing**: Apply `pod-kill` chaos experiment manifest; verify Kubernetes scheduler restarts pods and service availability remains >99.9% during the experiment.  
+   🔹 **Goal & Context**: Execute declarative chaos experiments on Kubernetes using Chaos Mesh (`PodChaos`, `NetworkChaos`, `TimeChaos`) to validate cluster self-healing and service mesh resiliency.  
+   📦 **Deliverables & Scope**:  
+   - Chaos Mesh experiment manifests (`pod-failure.yaml`, `network-latency.yaml`, `io-fault.yaml`).  
+   - Target multi-replica Kubernetes application.  
+   - `chaos_validation_suite.sh`: Automated test suite monitoring cluster health during experiments.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with Chaos Mesh Operator)  
+   🧪 **Testing**: Apply `pod-failure.yaml`; verify that Kubernetes automatically reschedules replacement pods and service availability remains >99.9%.  
    🔹 [Project directory](10-sre-and-reliability/07-kubernetes-chaos-mesh-fault-injection)
 
 8. **Incident Timeline and Postmortem Generator**  
-   🔹 Incident management tool that aggregates Git commits, Slack incident channel messages, Prometheus alert timestamps, and PagerDuty logs into a structured Markdown Postmortem document with Root Cause Analysis (RCA) and Action Items.  
-   🧪 **Testing**: Run generator with incident timeframe; verify timeline reconstruction, metrics snapshot inclusion, and markdown postmortem generation.  
+   🔹 **Goal & Context**: Build an incident management tool that aggregates Git commits, Slack incident discussions, Prometheus alert timestamps, and deployment events into a structured Markdown Postmortem document.  
+   📦 **Deliverables & Scope**:  
+   - `postmortem_generator.py`: CLI tool querying alert and commit APIs to construct a chronological incident timeline, 5-Whys Root Cause Analysis (RCA), and action items.  
+   - `mock_incident_logs/`: Sample data fixtures simulating a major production outage.  
+   🏗️ **Infrastructure**: Local (Host OS / OrbStack Linux VM)  
+   🧪 **Testing**: Execute `postmortem_generator.py --incident-id INC-402`; verify the generated Markdown document contains an accurate timeline and action item checklist.  
    🔹 [Project directory](10-sre-and-reliability/08-incident-timeline-postmortem-generator)
 
 9. **Graceful Shutdown and Connection Draining**  
-   🔹 Application lifecycle and Kubernetes `preStop` hook configuration implementing zero-downtime graceful shutdowns, finishing in-flight requests, closing database pools, and unregistering from service discovery.  
-   🧪 **Testing**: Send SIGTERM signal to application during active HTTP request stream; verify in-flight connections complete while new connections are cleanly rejected or rerouted.  
+   🔹 **Goal & Context**: Implement zero-downtime application lifecycle management handling `SIGTERM` signals, finishing in-flight HTTP requests, closing database connection pools cleanly, and configuring Kubernetes `preStop` hooks.  
+   📦 **Deliverables & Scope**:  
+   - Web application implementing graceful shutdown signal handling with configurable timeout.  
+   - `deployment.yaml` configured with `lifecycle.preStop` sleep hooks and `terminationGracePeriodSeconds`.  
+   - `flood_during_restart.sh`: Continuous HTTP load tester running during rolling updates.  
+   🏗️ **Infrastructure**: Local (K3s / K3d or Docker Compose in OrbStack)  
+   🧪 **Testing**: Run `flood_during_restart.sh` while triggering a rolling update; verify that 100% of in-flight requests complete successfully with zero connection resets.  
    🔹 [Project directory](10-sre-and-reliability/09-graceful-shutdown-connection-draining)
 
 10. **Automated Disaster Recovery GameDay Simulator**  
-    🔹 Automated GameDay orchestration script that simulates total zone failure, orchestrating database failover, DNS traffic shift, and state reconciliation while continuously measuring Recovery Time Objective (RTO) and Recovery Point Objective (RPO).  
-    🧪 **Testing**: Trigger game day script in staging environment; record automated failover timeline, assert zero data loss, and verify RTO under 3 minutes.  
+    🔹 **Goal & Context**: Automate a Disaster Recovery GameDay simulation that fails an entire availability zone or region, orchestrates database failover and DNS redirection, and measures Recovery Time Objective (RTO) and Recovery Point Objective (RPO).  
+    📦 **Deliverables & Scope**:  
+    - `gameday_orchestrator.py`: Simulation runner injecting primary infrastructure failures and executing failover runbooks.  
+    - Continuous data integrity validator and downtime timer logger.  
+    - Automated GameDay executive summary report generator.  
+    🏗️ **Infrastructure**: Local (Multi-container Docker / K3s) or Cloud (AWS Free Tier with multi-AZ simulate)  
+    🧪 **Testing**: Run the GameDay simulator; confirm that automated failover completes within the target RTO (<3 minutes) with zero data loss (RPO = 0).  
     🔹 [Project directory](10-sre-and-reliability/10-disaster-recovery-gameday-simulator)
 
 ---
@@ -556,53 +1036,102 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 11. Security & DevSecOps
 
 1. **Pre-Commit Git Secrets Detection Suite**  
-   🔹 Git pre-commit hook suite using Gitleaks and detect-secrets to prevent accidental commits of API keys, private certificates, AWS credentials, and environment tokens into version control.  
-   🧪 **Testing**: Attempt to stage and commit a file containing a dummy private key or AWS access key; verify pre-commit hook blocks the commit.  
+   🔹 **Goal & Context**: Prevent accidental commits of private credentials, API keys, AWS tokens, and certificates into version control by configuring automated pre-commit git hooks with Gitleaks and detect-secrets.  
+   📦 **Deliverables & Scope**:  
+   - `.pre-commit-config.yaml` configuring Gitleaks and detect-secrets hooks.  
+   - `.gitleaks.toml`: Custom rule definitions and allowlists.  
+   - `test_secret_blocking.sh`: Script attempting to commit mock API keys to verify pre-commit blocking.  
+   🏗️ **Infrastructure**: Local (Host Git environment with `pre-commit` & Gitleaks)  
+   🧪 **Testing**: Run `test_secret_blocking.sh`; verify that the pre-commit hook intercepts the commit, outputs a secret detection warning, and prevents code push.  
    🔹 [Project directory](11-security-devsecops/01-pre-commit-secrets-detection)
 
 2. **Container Image Vulnerability Scanning with Trivy**  
-   🔹 Automated container scanning pipeline using Trivy, scanning Docker images for OS package vulnerabilities, language-specific dependencies (SCA), and misconfigurations, generating SARIF reports.  
-   🧪 **Testing**: Scan a known vulnerable image; verify Trivy identifies CVEs, filters by severity (CRITICAL/HIGH), and returns non-zero exit code when policy fails.  
+   🔹 **Goal & Context**: Build an automated container scanning pipeline using Trivy to inspect Docker images for OS package CVEs, language dependencies (SCA), and misconfigurations, outputting SARIF reports.  
+   📦 **Deliverables & Scope**:  
+   - `scan_image.sh`: Automation script scanning images, filtering by severity (`CRITICAL`, `HIGH`), and enforcing `.trivyignore` policies.  
+   - `Dockerfile.vulnerable` (outdated base image) vs `Dockerfile.patched`.  
+   - Automated SARIF report generator.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with Trivy CLI)  
+   🧪 **Testing**: Execute `scan_image.sh` against both images; verify that the vulnerable image fails CI policy with non-zero exit code while the patched image passes.  
    🔹 [Project directory](11-security-devsecops/02-container-vulnerability-scanning-trivy)
 
 3. **IaC Security Scanning with Checkov and tfsec**  
-   🔹 Infrastructure as Code security scanning setup using Checkov and tfsec, evaluating Terraform, Dockerfiles, and Kubernetes manifests against CIS Benchmarks and compliance rules.  
-   🧪 **Testing**: Run scanner against an unencrypted S3 bucket or overly permissive security group manifest; assert that Checkov flags violations and fails CI build.  
+   🔹 **Goal & Context**: Enforce infrastructure security compliance by integrating Checkov and tfsec into development workflows to scan Terraform, Kubernetes manifests, and Dockerfiles for security misconfigurations.  
+   📦 **Deliverables & Scope**:  
+   - `.checkov.yml` / `.tfsec.yml` configuration rulesets.  
+   - Test IaC manifests containing intentional security violations (public S3 buckets, open 0.0.0.0/0 security groups, unencrypted EBS volumes).  
+   - `iac_security_audit.sh`: Script running scans and generating compliance scorecards.  
+   🏗️ **Infrastructure**: Local (Checkov / tfsec CLI in Host or OrbStack / Docker)  
+   🧪 **Testing**: Run `iac_security_audit.sh`; confirm that Checkov flags all intentional misconfigurations and provides actionable remediation guidance.  
    🔹 [Project directory](11-security-devsecops/03-iac-security-scanning-checkov-tfsec)
 
 4. **HashiCorp Vault Secrets Engine Deployment**  
-   🔹 HashiCorp Vault server deployed locally in Docker with KV version 2 secrets engine, AppRole authentication, dynamic secret generation, and token renewal policies.  
-   🧪 **Testing**: Authenticate using AppRole credentials via CLI/API, write secret, retrieve secret with short-lived token, and verify token revocation.  
+   🔹 **Goal & Context**: Deploy and operate HashiCorp Vault locally, configuring KV v2 secrets engines, AppRole machine-to-machine authentication, dynamic secrets, and automated token renewal policies.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` deploying Vault server in production-like configuration.  
+   - `vault_bootstrap.sh`: Script configuring AppRoles, read/write policies, and initializing secrets.  
+   - `app_vault_client.py`: Application retrieving short-lived tokens and reading dynamic database secrets.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with HashiCorp Vault)  
+   🧪 **Testing**: Execute `app_vault_client.py`; authenticate via AppRole credentials, retrieve secrets, and verify that expired tokens are cleanly revoked.  
    🔹 [Project directory](11-security-devsecops/04-hashicorp-vault-secrets-engine)
 
 5. **Vault Agent Sidecar Secret Injector for Kubernetes**  
-   🔹 Vault Agent Sidecar Injector configuration on Kubernetes, dynamically mounting secrets into application pod memory at `/vault/secrets/` with template-based rendering and automated pod reloads.  
-   🧪 **Testing**: Deploy application pod with Vault annotations; verify sidecar container injects decrypted secrets and updates them upon Vault secret rotation.  
+   🔹 **Goal & Context**: Mount secrets dynamically into application pod memory on Kubernetes without writing secrets to Git or ConfigMaps using Vault Agent Sidecar Injector and Consul templates.  
+   📦 **Deliverables & Scope**:  
+   - Vault Kubernetes authentication configuration and secret policies.  
+   - `deployment.yaml` annotated with `vault.hashicorp.com/agent-inject` annotations and secret templates.  
+   - `secret_rotation_test.sh`: Script updating secrets in Vault and verifying live in-memory updates inside running pods.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with Vault Helm chart)  
+   🧪 **Testing**: Deploy the application pod; verify that secrets appear at `/vault/secrets/config` and execute `secret_rotation_test.sh` to confirm dynamic secret updates.  
    🔹 [Project directory](11-security-devsecops/05-vault-agent-sidecar-injector-k8s)
 
 6. **Container Image Signing and SBOM with Cosign**  
-   🔹 Container supply-chain security pipeline using Sigstore Cosign to sign container images with keyless OIDC authentication, generate Software Bill of Materials (SBOM) with Syft, and attach SBOM attestations.  
-   🧪 **Testing**: Sign container image, verify signature using `cosign verify`, and validate that unsigned images cannot be pulled in admission controller.  
+   🔹 **Goal & Context**: Secure the container supply chain by signing container images with Sigstore Cosign, generating Software Bill of Materials (SBOM) with Syft, and validating image signatures before deployment.  
+   📦 **Deliverables & Scope**:  
+   - `sign_pipeline.sh`: Script generating keypairs, creating SBOMs with Syft, attaching SBOM attestations, and signing images with Cosign.  
+   - `verify_image_signature.sh`: Admission verification script rejecting unsigned or tampered container images.  
+   🏗️ **Infrastructure**: Local (Cosign, Syft & local OCI registry in OrbStack / Docker)  
+   🧪 **Testing**: Run `sign_pipeline.sh` on a test image; verify that `cosign verify` passes for signed images and immediately rejects tampered image digests.  
    🔹 [Project directory](11-security-devsecops/06-cosign-image-signing-sbom)
 
 7. **Kubernetes Admission Control with Kyverno & Gatekeeper**  
-   🔹 Kubernetes Admission Controller policies using Kyverno / OPA Gatekeeper enforcing security policies: disallowing privileged containers, enforcing read-only root filesystems, requiring non-root UIDs, and mandating resource limits.  
-   🧪 **Testing**: Attempt to deploy a pod requesting `privileged: true` or `latest` image tag; verify admission controller denies deployment with descriptive error message.  
+   🔹 **Goal & Context**: Enforce cluster-wide security governance on Kubernetes using Kyverno or OPA Gatekeeper to disallow privileged containers, mandate read-only root filesystems, require non-root UIDs, and block `:latest` image tags.  
+   📦 **Deliverables & Scope**:  
+   - Kyverno `ClusterPolicy` / OPA Gatekeeper `ConstraintTemplate` manifests.  
+   - Test pod manifests (compliant vs non-compliant).  
+   - `admission_policy_audit.sh`: Automated test suite attempting deployments of non-compliant pods.  
+   🏗️ **Infrastructure**: Local (K3s / K3d with Kyverno / Gatekeeper)  
+   🧪 **Testing**: Execute `admission_policy_audit.sh`; confirm that the admission controller blocks non-compliant pods with descriptive error messages.  
    🔹 [Project directory](11-security-devsecops/07-kyverno-gatekeeper-admission-policies)
 
 8. **Runtime Threat Detection with Falco and eBPF**  
-   🔹 Cloud-native runtime security monitoring using Falco deployed on Linux host / Kubernetes, capturing kernel system calls via eBPF to detect unauthorized shell spawns inside containers and sensitive directory writes.  
-   🧪 **Testing**: Execute `bash` inside a running container or touch `/etc/shadow`; verify Falco generates critical security alert to syslog and alert webhook.  
+   🔹 **Goal & Context**: Deploy Falco with modern eBPF probes to monitor Linux kernel system calls in real time, detecting unauthorized shell executions inside containers and modifications to sensitive directories.  
+   📦 **Deliverables & Scope**:  
+   - `falco_rules.local.yaml`: Custom Falco rules detecting container interactive shells, `/etc/shadow` reads, and network reverse shells.  
+   - `simulate_threats.sh`: Exploit simulation script triggering suspicious actions inside a test container.  
+   - Alert notification verification script.  
+   🏗️ **Infrastructure**: Local (OrbStack Linux VM with eBPF / Falco driver)  
+   🧪 **Testing**: Run `simulate_threats.sh`; verify that Falco catches the security events instantly and dispatches formatted alerts to syslog and webhooks.  
    🔹 [Project directory](11-security-devsecops/08-runtime-threat-detection-falco-ebpf)
 
 9. **Automated SSL/TLS Cipher Hardening Audit**  
-   🔹 Automated TLS security analyzer script running `testssl.sh` / Python SSL scanner against public and internal web endpoints, verifying cipher suite strength, disabling SSLv3/TLS 1.0/1.1, and auditing certificate chains.  
-   🧪 **Testing**: Run audit against test server with weak ciphers enabled; verify tool outputs vulnerability warnings and generates compliance scorecard.  
+   🔹 **Goal & Context**: Develop an automated TLS scanner script using `testssl.sh` or Python SSL sockets to audit public and internal HTTPS endpoints for weak ciphers, disabled TLS protocols, and certificate validity.  
+   📦 **Deliverables & Scope**:  
+   - `tls_audit.py` / `tls_audit.sh`: Automated scanner evaluating TLS 1.0-1.3 support, cipher suite strength, and certificate chains.  
+   - Mock Nginx servers configured with weak ciphers vs hardened TLS 1.3 settings.  
+   - HTML/JSON compliance scorecard generator.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with `testssl.sh`)  
+   🧪 **Testing**: Run the audit tool against the test endpoints; verify that weak ciphers and legacy TLS versions are flagged with security warnings in the scorecard.  
    🔹 [Project directory](11-security-devsecops/09-automated-ssl-tls-hardening-audit)
 
 10. **Zero-Trust Service Mesh mTLS with Istio**  
-    🔹 Istio Service Mesh deployment enforcing STRICT Mutual TLS (mTLS) between all microservices, SPIFFE identity verification, and fine-grained AuthorizationPolicies based on source service identities.  
-    🧪 **Testing**: Attempt unauthorized plaintext connection between services; verify mTLS rejects unauthenticated traffic while authorized services communicate over encrypted TLS tunnel.  
+    🔹 **Goal & Context**: Enforce zero-trust Mutual TLS (mTLS) and fine-grained `AuthorizationPolicy` across microservices using Istio Service Mesh, preventing unauthorized plaintext or lateral network traffic.  
+    📦 **Deliverables & Scope**:  
+    - Istio manifests (`PeerAuthentication` with `STRICT` mTLS, `AuthorizationPolicy` scoping service-to-service access).  
+    - 3 microservices (Frontend, Backend, Rogue Pod).  
+    - `mtls_verification_test.sh`: Script proving end-to-end encryption and access control enforcement.  
+    🏗️ **Infrastructure**: Local (K3s / K3d with Istio Service Mesh installed)  
+    🧪 **Testing**: Run `mtls_verification_test.sh`; confirm that authorized services communicate over encrypted TLS channels while unauthenticated requests from rogue pods are rejected with 403.  
     🔹 [Project directory](11-security-devsecops/10-zero-trust-service-mesh-istio-mtls)
 
 ---
@@ -610,51 +1139,100 @@ DevOps & SRE mini-projects, each one a new challenge.
 ## 12. Database Operations & Resilience
 
 1. **Automated PostgreSQL Backup and Restore Validation**  
-   🔹 Bash/Python automated backup utility executing `pg_dump` with compression, timestamping, checksum generation, retention pruning, and a verified test restore script into a temporary database container.  
-   🧪 **Testing**: Seed test database with records, run backup script, execute restore script into clean instance, and assert row count equality.  
+   🔹 **Goal & Context**: Write a production-grade database backup script using `pg_dump` with gzip compression, timestamping, SHA256 checksums, retention pruning, and an automated test restore routine into a temporary container.  
+   📦 **Deliverables & Scope**:  
+   - `backup_postgres.sh`: Backup script dumping tables, computing hashes, and enforcing retention.  
+   - `restore_postgres.sh`: Validation script restoring dumps into a clean test database and validating row count parity.  
+   - `seed_database.py`: Script generating sample database records and relational tables.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with PostgreSQL container)  
+   🧪 **Testing**: Seed the database, run `backup_postgres.sh`, followed by `restore_postgres.sh`; verify 100% data integrity and schema consistency.  
    🔹 [Project directory](12-databases-ops/01-automated-postgres-backup-restore)
 
 2. **PostgreSQL Streaming Replication Cluster**  
-   🔹 High-availability PostgreSQL cluster configuration using Docker Compose with physical streaming replication (Primary-Replica), WAL (Write-Ahead Logging) archiving, and read-only query routing.  
-   🧪 **Testing**: Insert data on primary instance; query replica instance and assert immediate data consistency with near-zero replication lag (`pg_stat_replication`).  
+   🔹 **Goal & Context**: Deploy a high-availability PostgreSQL primary-replica cluster with physical streaming replication, Write-Ahead Logging (WAL) archiving, and read-only query routing.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` configuring Primary and Standby PostgreSQL nodes with shared WAL volumes.  
+   - Replication configuration files (`pg_hba.conf`, `postgresql.conf`).  
+   - `replication_lag_monitor.py`: Script inserting continuous write load and measuring replication lag via `pg_stat_replication`.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with primary & replica containers)  
+   🧪 **Testing**: Insert 50,000 records on the primary node; query the replica node and confirm near-zero replication lag (<10ms) and read-only query execution.  
    🔹 [Project directory](12-databases-ops/02-postgres-streaming-replication-cluster)
 
 3. **Database Migration Pipeline with Version Locking**  
-   🔹 Automated database schema migration pipeline using `golang-migrate` / Flyway integrated into CI/CD, managing transactional forward (`up`) and backward (`down`) SQL migrations with version locking.  
-   🧪 **Testing**: Run migration `up` to create tables and indexes, insert data, run migration `down`, and verify schema returns cleanly to initial state.  
+   🔹 **Goal & Context**: Build an automated database schema migration pipeline using `golang-migrate` or Flyway in CI/CD, managing transactional forward (`up`) and rollback (`down`) SQL migrations with version locking.  
+   📦 **Deliverables & Scope**:  
+   - SQL migration files (`001_init.up.sql`, `001_init.down.sql`, `002_add_index.up.sql`).  
+   - `migrate.sh`: CLI runner handling migration application, rollbacks, and dirty-state recovery.  
+   - Migration test suite validating rollback state cleanliness.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with PostgreSQL + golang-migrate)  
+   🧪 **Testing**: Run `migrate.sh up` to apply migrations; execute `migrate.sh down 1` to test rollback, and verify that the database schema returns cleanly to the prior version.  
    🔹 [Project directory](12-databases-ops/03-database-migration-pipeline-version-locking)
 
 4. **PgBouncer Connection Pooling and Tuning**  
-   🔹 PgBouncer connection pooler deployment in front of PostgreSQL, configuring transaction-level pooling, max client connections, pool reserve settings, and monitoring stats via `SHOW POOLS`.  
-   🧪 **Testing**: Run concurrency benchmark with 500 simulated client connections; verify PgBouncer handles concurrency without exhausting PostgreSQL max connections limit.  
+   🔹 **Goal & Context**: Deploy PgBouncer in front of PostgreSQL to handle high-concurrency client connections via transaction pooling, and benchmark connection overhead under heavy load.  
+   📦 **Deliverables & Scope**:  
+   - `pgbouncer.ini` (pool mode: transaction, max client connections: 1000, default pool size: 20) and `userlist.txt`.  
+   - `docker-compose.yml` deploying PostgreSQL and PgBouncer.  
+   - `benchmark_concurrency.py`: Script opening 500 simultaneous connections directly vs through PgBouncer.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with PostgreSQL + PgBouncer)  
+   🧪 **Testing**: Execute `benchmark_concurrency.py`; verify that direct PostgreSQL connections exhaust connection limits while PgBouncer handles all 500 clients with lower memory overhead.  
    🔹 [Project directory](12-databases-ops/04-pgbouncer-connection-pooling-tuning)
 
 5. **Redis Sentinel High Availability and Failover**  
-   🔹 Redis Sentinel cluster setup (1 Master, 2 Replicas, 3 Sentinels) providing automatic failover, health monitoring, and client reconnection handling.  
-   🧪 **Testing**: Forcefully stop Master node; verify Sentinel quorum elects a Replica as new Master within 5 seconds and cluster accepts write commands.  
+   🔹 **Goal & Context**: Build a resilient in-memory caching cluster using Redis Sentinel (1 Master, 2 Replicas, 3 Sentinels) providing automatic quorum election, master failover, and client reconnection.  
+   📦 **Deliverables & Scope**:  
+   - `docker-compose.yml` deploying 3 Redis nodes and 3 Sentinel nodes with quorum configuration.  
+   - `sentinel.conf` configuration files.  
+   - `redis_client_resilience.py`: Client script writing continuous data while simulating Master node crash (`kill -9`).  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with 3 Redis + 3 Sentinel nodes)  
+   🧪 **Testing**: Run `redis_client_resilience.py` and kill the Master container; verify that Sentinel elects a Replica as the new Master within 5 seconds and client writes resume automatically.  
    🔹 [Project directory](12-databases-ops/05-redis-sentinel-ha-failover)
 
 6. **MySQL Point-in-Time Recovery (PITR) Lab**  
-   🔹 Disaster recovery lab for MySQL / MariaDB implementing Point-In-Time Recovery (PITR) using full physical backups and binary logs (`mysqlbinlog`) to recover data to an exact second before accidental `DROP TABLE`.  
-   🧪 **Testing**: Perform backup, insert transactions, execute accidental drop table, run PITR recovery procedure, and verify all transactions up to the drop second are recovered.  
+   🔹 **Goal & Context**: Master disaster recovery by executing Point-in-Time Recovery (PITR) on MySQL using full physical backups and binary logs (`mysqlbinlog`) to restore data to an exact second before an accidental `DROP TABLE`.  
+   📦 **Deliverables & Scope**:  
+   - MySQL backup scripts with binary logging enabled (`binlog_format = ROW`).  
+   - `simulate_disaster.py`: Script performing a backup, inserting valid transactions, and executing an accidental drop table at timestamp $T$.  
+   - `pitr_restore_runbook.sh`: Recovery script replaying binlogs up to timestamp $T-1$.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with MySQL container)  
+   🧪 **Testing**: Run `simulate_disaster.py` followed by `pitr_restore_runbook.sh`; verify that all records up to the exact second before the drop are recovered with zero data loss.  
    🔹 [Project directory](12-databases-ops/06-mysql-point-in-time-recovery-pitr)
 
 7. **Database Slow Query Analyzer with pgBadger**  
-   🔹 Automated query performance analyzer configuring PostgreSQL `log_min_duration_statement` and `pg_stat_statements`, generating daily HTML and JSON performance reports using `pgBadger`.  
-   🧪 **Testing**: Execute unindexed queries under synthetic load; run analyzer and verify that slow queries, missing indexes, and lock contentions are highlighted in report.  
+   🔹 **Goal & Context**: Automate PostgreSQL query performance profiling by tuning log duration settings (`log_min_duration_statement`, `pg_stat_statements`) and generating daily visual HTML and JSON analysis reports using pgBadger.  
+   📦 **Deliverables & Scope**:  
+   - `postgresql.conf` performance logging configuration.  
+   - `query_workload_generator.py`: Script executing mixed workloads (indexed fast queries vs unindexed slow table scans and lock contention).  
+   - `generate_pgbadger_report.sh`: Automation script parsing logs and generating reports.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with PostgreSQL + pgBadger)  
+   🧪 **Testing**: Execute the workload generator and run `generate_pgbadger_report.sh`; open the resulting HTML report and verify that slow queries and missing index recommendations are highlighted.  
    🔹 [Project directory](12-databases-ops/07-database-slow-query-analyzer-pgbadger)
 
 8. **CloudNative-PG Operator on Kubernetes**  
-   🔹 Kubernetes database management using CloudNative-PG / Zalando Postgres Operator, provisioning self-healing clusters with automated failover, WAL archiving to S3, and replica scaling.  
-   🧪 **Testing**: Deploy cluster CRD; terminate primary pod with `kubectl delete pod`; verify operator promotes replica to primary and provisions new standby replica.  
+   🔹 **Goal & Context**: Deploy and operate self-healing, enterprise PostgreSQL clusters on Kubernetes using CloudNative-PG Operator with automated WAL archiving to S3, replica scaling, and automatic failovers.  
+   📦 **Deliverables & Scope**:  
+   - CloudNative-PG `Cluster` CRD manifest specifying 3 instances, backup storage policies, and resource limits.  
+   - `operator_failover_test.sh`: Script testing primary pod deletion, replica promotion, and WAL archive recovery.  
+   🏗️ **Infrastructure**: Local (K3s / K3d / OrbStack Kubernetes + CloudNative-PG Operator)  
+   🧪 **Testing**: Apply the cluster CRD; execute `operator_failover_test.sh` to terminate the primary pod, and confirm that the operator promotes a standby replica to primary in under 10 seconds.  
    🔹 [Project directory](12-databases-ops/08-cloudnative-pg-operator-k8s)
 
 9. **Data Anonymization and PII Masking Pipeline**  
-   🔹 ETL data masking pipeline in Python/SQL that sanitizes production database dumps before importing into staging/dev environments, hashing emails, obfuscating credit cards, and faking PII while preserving referential integrity.  
-   🧪 **Testing**: Run masking script on sample production dataset; verify no raw PII remains while foreign key constraints and dataset volume remain valid.  
+   🔹 **Goal & Context**: Build an automated ETL data sanitization pipeline that anonymizes production database dumps before importing them into staging or development environments, masking PII while preserving foreign key integrity.  
+   📦 **Deliverables & Scope**:  
+   - `mask_database.py`: Sanitization script replacing real names, emails, credit cards, and addresses with realistic synthetic data using Faker while maintaining referential integrity.  
+   - `seed_production_dump.sql`: Sample database dump containing sensitive user records.  
+   - `verify_anonymization.py`: Verification script scanning for unmasked PII.  
+   🏗️ **Infrastructure**: Local (OrbStack / Docker with PostgreSQL + Python script)  
+   🧪 **Testing**: Run `mask_database.py` on the sample dump; verify via `verify_anonymization.py` that all PII is redacted and foreign key constraints remain intact.  
    🔹 [Project directory](12-databases-ops/09-data-anonymization-pii-masking-pipeline)
 
 10. **Zero-Downtime Expand and Contract Schema Refactoring**  
-    🔹 Blue-green zero-downtime database schema refactoring implementing the Expand-and-Contract (Parallel Run) pattern (column rename / table split) with triggers and dual-writing application layer.  
-    🧪 **Testing**: Run continuous read/write load during all 3 migration phases (expand, dual-write, contract); verify zero transaction failures and zero downtime.  
+    🔹 **Goal & Context**: Execute a complex database schema refactoring (e.g. splitting a table or renaming a column) with zero application downtime using the Expand-and-Contract (Parallel Run) migration pattern.  
+    📦 **Deliverables & Scope**:  
+    - Migration scripts for Phase 1 (Expand: add new column + database triggers), Phase 2 (Dual-write & Backfill), and Phase 3 (Contract: drop legacy triggers and columns).  
+    - Web application supporting dual-write mode.  
+    - `continuous_traffic_runner.py`: Continuous read/write traffic simulator asserting zero failed transactions during migration.  
+    🏗️ **Infrastructure**: Local (OrbStack / Docker Compose with PostgreSQL + API service)  
+    🧪 **Testing**: Run `continuous_traffic_runner.py` while executing all 3 migration phases sequentially; confirm zero dropped transactions and complete data consistency.  
     🔹 [Project directory](12-databases-ops/10-zero-downtime-schema-refactoring)
