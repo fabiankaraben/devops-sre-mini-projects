@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rogue-attacker
+  namespace: tenant-untrusted
+  labels:
+    app: rogue-attacker
+    tier: attacker
+    tenant: untrusted
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rogue-attacker
+  template:
+    metadata:
+      labels:
+        app: rogue-attacker
+        tier: attacker
+        tenant: untrusted
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: attacker
+          image: zero-trust-app:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "sleep 86400"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi

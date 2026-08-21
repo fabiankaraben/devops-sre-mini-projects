@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stateful-client-service
+  namespace: statefulset-demo
+  labels:
+    app.kubernetes.io/name: stateful-client-service
+    app.kubernetes.io/part-of: devops-sre-mini-projects
+    app: stateful-app
+spec:
+  type: ClusterIP
+  selector:
+    app: stateful-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

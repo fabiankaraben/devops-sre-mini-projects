@@ -1,0 +1,12 @@
+apiVersion: backup.devops.sre.io/v1alpha1
+kind: ScheduledBackup
+metadata:
+  name: prod-database-backup
+  namespace: default
+spec:
+  schedule: "*/5 * * * *"
+  targetNamespace: default
+  storageBucket: "s3://k8s-backups-vault/prod-database"
+  retentionDays: 30
+  suspend: false
+  backupImage: "alpine:3.21"

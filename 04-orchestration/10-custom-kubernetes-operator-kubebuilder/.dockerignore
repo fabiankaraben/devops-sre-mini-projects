@@ -1,0 +1,9 @@
+# Build context exclusions
+.git
+.gitignore
+*.md
+*.log
+*.tmp
+.DS_Store
+.agent
+config/

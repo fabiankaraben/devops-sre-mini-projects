@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stateless-app
+  namespace: stateless-app-demo
+  labels:
+    app.kubernetes.io/name: stateless-app
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/version: v1.0.0
+    app.kubernetes.io/component: web-api
+    app.kubernetes.io/part-of: devops-sre-mini-projects
+    app: stateless-app
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # maxSurge: 1 allows 1 extra pod during rollout (4 total)
+      maxSurge: 1
+      # maxUnavailable: 0 ensures at least 3 healthy pods are always available
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: stateless-app
+  template:
+    metadata:
+      labels:
+        app: stateless-app
+        app.kubernetes.io/name: stateless-app
+        app.kubernetes.io/version: v1.0.0
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stateless-app
+          image: stateless-app:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: APP_VERSION
+              value: "v1.0.0"
+            - name: PORT
+              value: "8080"
+            - name: ENVIRONMENT
+              value: "production"
+            # Downward API: Injects Pod and Node metadata directly into the application environment
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          # SRE Resource Governance: CPU & Memory Requests and Limits
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          # Kubernetes Health Probes
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              exec:
+                # Sleep briefly before SIGTERM to allow kube-proxy and endpoint slices to update
+                command: ["/bin/sh", "-c", "sleep 3"]
+          # Hardened Security Context
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: enterprise-app
+description: Production-grade parameter-driven Helm 3 chart with JSON schema validation, helpers, and tests
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - kubernetes
+  - helm
+  - production
+  - microservice
+  - sre
+icon: "https://helm.sh/img/helm.svg"
+maintainers:
+  - name: DevOps SRE Team
+    email: sre-team@example.com

@@ -1,0 +1,22 @@
+# Production environment value overrides
+replicaCount: 4
+
+config:
+  appName: "Enterprise-Core-Prod"
+  environment: "production"
+  logLevel: "INFO"
+  featureFlags: "analytics=true,caching=true,metrics=true"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-reloading-service
+  namespace: config-reloading-demo
+  labels:
+    app.kubernetes.io/name: config-reloading-app
+    app.kubernetes.io/component: service
+    app: config-reloading-app
+spec:
+  type: ClusterIP
+  selector:
+    app: config-reloading-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

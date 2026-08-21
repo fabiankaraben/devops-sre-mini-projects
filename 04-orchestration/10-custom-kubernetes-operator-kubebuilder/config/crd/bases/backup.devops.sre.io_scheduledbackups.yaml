@@ -1,0 +1,135 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.15.0
+  name: scheduledbackups.backup.devops.sre.io
+spec:
+  group: backup.devops.sre.io
+  names:
+    kind: ScheduledBackup
+    listKind: ScheduledBackupList
+    plural: scheduledbackups
+    singular: scheduledbackup
+    shortNames:
+      - sb
+      - sbackup
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Schedule
+          type: string
+          jsonPath: .spec.schedule
+        - name: Target-NS
+          type: string
+          jsonPath: .spec.targetNamespace
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: CronJob
+          type: string
+          jsonPath: .status.activeCronJob
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          description: ScheduledBackup is the Schema for the scheduledbackups API
+          type: object
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation of an object.'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this object represents.'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: ScheduledBackupSpec defines the desired state of ScheduledBackup
+              type: object
+              required:
+                - schedule
+                - targetNamespace
+                - storageBucket
+              properties:
+                schedule:
+                  description: Schedule is the cron expression defining when backups should execute (e.g. "*/5 * * * *")
+                  type: string
+                  pattern: '^(\S+\s+){4}\S+$'
+                targetNamespace:
+                  description: TargetNamespace is the namespace to backup
+                  type: string
+                  minLength: 1
+                storageBucket:
+                  description: StorageBucket is the destination storage URI (e.g. "s3://backups-bucket/k8s")
+                  type: string
+                retentionDays:
+                  description: RetentionDays specifies the retention period in days (default 7)
+                  type: integer
+                  format: int32
+                  minimum: 1
+                  default: 7
+                suspend:
+                  description: Suspend tells the controller to suspend subsequent executions (default false)
+                  type: boolean
+                  default: false
+                backupImage:
+                  description: BackupImage is the container image used for the backup job runner
+                  type: string
+                  default: 'alpine:3.21'
+            status:
+              description: ScheduledBackupStatus defines the observed state of ScheduledBackup
+              type: object
+              properties:
+                phase:
+                  description: Phase represents the current high-level status of the backup schedule
+                  type: string
+                  enum:
+                    - Pending
+                    - Active
+                    - Suspended
+                    - Failed
+                activeCronJob:
+                  description: ActiveCronJob is the name of the underlying batch/v1 CronJob
+                  type: string
+                lastBackupTime:
+                  description: LastBackupTime is the timestamp of the last observed backup execution
+                  type: string
+                  format: date-time
+                backupCount:
+                  description: BackupCount tracks the total number of backups created
+                  type: integer
+                  format: int64
+                conditions:
+                  description: Conditions represent the latest available observations of an object's state
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                      - lastTransitionTime
+                      - reason
+                      - message
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string

@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: http-success-rate
+  namespace: argo-rollouts-demo
+  labels:
+    app.kubernetes.io/part-of: argo-rollouts-demo
+spec:
+  metrics:
+    - name: http-health-check
+      interval: 3s
+      count: 3
+      failureLimit: 1
+      provider:
+        job:
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: health-checker
+                    image: alpine:3.21
+                    command: ["/bin/sh", "-c"]
+                    args:
+                      - |
+                        code=$(curl -s -o /dev/null -w "%{http_code}" http://rollout-canary-service.argo-rollouts-demo.svc.cluster.local:80/ || echo "500")
+                        if [ "$code" = "200" ]; then
+                          echo "[OK] Canary probe succeeded: HTTP $code"
+                          exit 0
+                        else
+                          echo "[FAIL] Canary probe failed: HTTP $code"
+                          exit 1
+                        fi
+                restartPolicy: Never
+            backoffLimit: 0

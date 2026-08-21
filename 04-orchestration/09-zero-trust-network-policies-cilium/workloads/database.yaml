@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database
+  namespace: tenant-database
+  labels:
+    app: database
+    tier: database
+    tenant: zero-trust
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+        tier: database
+        tenant: zero-trust
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: database
+          image: zero-trust-app:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/database"]
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: PORT
+              value: "5432"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: tenant-database
+  labels:
+    app: database
+    tier: database
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: database

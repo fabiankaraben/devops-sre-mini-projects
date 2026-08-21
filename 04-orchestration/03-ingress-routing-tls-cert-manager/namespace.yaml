@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-tls-demo
+  labels:
+    app.kubernetes.io/name: ingress-tls-demo
+    app.kubernetes.io/part-of: devops-sre-mini-projects
+    environment: demo

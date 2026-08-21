@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: ingress-tls-demo
+  labels:
+    app.kubernetes.io/name: app-ingress
+    app.kubernetes.io/part-of: devops-sre-mini-projects
+  annotations:
+    # Automated TLS certificate management via cert-manager annotation
+    cert-manager.io/cluster-issuer: selfsigned-cluster-issuer
+    ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  tls:
+    - hosts:
+        - web.local.dev
+        - api.local.dev
+      secretName: ingress-tls-secret
+  rules:
+    - host: web.local.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+    - host: api.local.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80

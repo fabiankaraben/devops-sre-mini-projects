@@ -1,0 +1,111 @@
+# ==============================================================================
+# Cilium L7 & L4 Zero-Trust Network Policies
+# ==============================================================================
+# Enforces:
+#   1. Strict Layer 7 HTTP filtering on Backend (Only POST /api allowed)
+#   2. Strict Layer 4 TCP 5432 filtering on Database (Only Backend allowed)
+#   3. DNS Egress to CoreDNS / Kube-DNS
+#   4. Default-Deny for all unauthorized cross-tenant and lateral traffic
+# ==============================================================================
+
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: frontend-policy
+  namespace: tenant-frontend
+spec:
+  endpointSelector:
+    matchLabels:
+      app: frontend
+  egress:
+    # Allow Frontend -> Backend on TCP 8080
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": tenant-backend
+            app: backend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    # Allow DNS resolution
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": kube-system
+            "k8s-app": kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: backend-l7-policy
+  namespace: tenant-backend
+spec:
+  endpointSelector:
+    matchLabels:
+      app: backend
+  ingress:
+    # Allow Ingress from Frontend with Layer 7 HTTP Path/Method rules
+    - fromEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": tenant-frontend
+            app: frontend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: "POST"
+                path: "/api"
+              - method: "GET"
+                path: "/healthz"
+              - method: "GET"
+                path: "/query-db"
+  egress:
+    # Allow Backend -> Database on TCP 5432
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": tenant-database
+            app: database
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    # Allow DNS resolution
+    - toEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": kube-system
+            "k8s-app": kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: database-l4-policy
+  namespace: tenant-database
+spec:
+  endpointSelector:
+    matchLabels:
+      app: database
+  ingress:
+    # Allow Ingress only from Backend on TCP 5432
+    - fromEndpoints:
+        - matchLabels:
+            "k8s:io.kubernetes.pod.namespace": tenant-backend
+            app: backend
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP

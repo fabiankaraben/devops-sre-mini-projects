@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backup-operator-controller-manager
+  namespace: backup-operator-system
+  labels:
+    control-plane: controller-manager
+    app.kubernetes.io/name: backup-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+    spec:
+      serviceAccountName: backup-operator-controller-manager
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: manager
+          image: backup-operator:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /usr/local/bin/manager
+          args:
+            - --leader-elect=false
+            - --health-probe-bind-address=:8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 2
+            periodSeconds: 3
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault

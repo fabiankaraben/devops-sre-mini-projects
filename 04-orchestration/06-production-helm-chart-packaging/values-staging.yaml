@@ -1,0 +1,16 @@
+# Staging environment value overrides
+replicaCount: 2
+
+config:
+  appName: "Enterprise-Core-Staging"
+  environment: "staging"
+  logLevel: "DEBUG"
+  featureFlags: "analytics=true,caching=false,debug_headers=true"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 150m
+    memory: 128Mi

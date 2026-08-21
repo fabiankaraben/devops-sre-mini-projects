@@ -1,0 +1,9 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-cluster-issuer
+  labels:
+    app.kubernetes.io/name: selfsigned-issuer
+    app.kubernetes.io/part-of: devops-sre-mini-projects
+spec:
+  selfSigned: {}

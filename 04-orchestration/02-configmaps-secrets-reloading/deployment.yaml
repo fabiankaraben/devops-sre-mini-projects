@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-reloading-app
+  namespace: config-reloading-demo
+  labels:
+    app.kubernetes.io/name: config-reloading-app
+    app.kubernetes.io/part-of: devops-sre-mini-projects
+    app: config-reloading-app
+  annotations:
+    # Stakater Reloader integration: Triggers rolling restarts when referenced configs mutate
+    reloader.stakater.com/auto: "true"
+    configmap.reloader.stakater.com/reload: "app-config"
+    secret.reloader.stakater.com/reload: "app-secrets"
+    # GitOps / Helm Checksum Annotation Pattern (SHA256 checksum of config content)
+    checksum/config: "initial-configmap-checksum"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: config-reloading-app
+  template:
+    metadata:
+      labels:
+        app: config-reloading-app
+        app.kubernetes.io/name: config-reloading-app
+      annotations:
+        checksum/config: "initial-configmap-checksum"
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: app
+          image: config-reloading-app:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            # 1. Direct scalar env injection from ConfigMap
+            - name: APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_NAME
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: THEME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: THEME
+            - name: FEATURE_FLAG_ANALYTICS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: FEATURE_FLAG_ANALYTICS
+            # 2. Sensitive env injection from Secret
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: API_KEY
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: DB_PASSWORD
+            # 3. Downward API metadata
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          # Volume Mounts for ConfigMap and Secret files
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+              readOnly: true
+            - name: secrets-volume
+              mountPath: /etc/secrets
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 3"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: config-volume
+          configMap:
+            name: app-config
+            items:
+              - key: settings.json
+                path: settings.json
+        - name: secrets-volume
+          secret:
+            secretName: app-secrets
+            defaultMode: 292 # 0444 in octal (read-only for unprivileged UID 10001)
+            items:
+              - key: jwt-signing.key
+                path: jwt-signing.key

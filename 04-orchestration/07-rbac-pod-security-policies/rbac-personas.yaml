@@ -1,0 +1,170 @@
+# ==============================================================================
+# ServiceAccounts for Distinct Personas
+# ==============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: developer-sa
+  namespace: security-dev
+  labels:
+    persona: developer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cicd-deployer-sa
+  namespace: security-restricted
+  labels:
+    persona: cicd-deployer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auditor-sa
+  namespace: security-dev
+  labels:
+    persona: auditor
+
+# ==============================================================================
+# 1. Developer Persona (Scoped to 'security-dev')
+# ==============================================================================
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer-role
+  namespace: security-dev
+  labels:
+    persona: developer
+rules:
+  # Workload inspection & debugging
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - pods/portforward
+      - services
+      - configmaps
+      - events
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - statefulsets
+      - replicasets
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Explicitly excluded: secrets, roles, rolebindings, namespace deletion
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developer-binding
+  namespace: security-dev
+  labels:
+    persona: developer
+subjects:
+  - kind: ServiceAccount
+    name: developer-sa
+    namespace: security-dev
+roleRef:
+  kind: Role
+  name: developer-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ==============================================================================
+# 2. CI/CD Deployer Persona (Scoped to 'security-restricted')
+# ==============================================================================
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cicd-deployer-role
+  namespace: security-restricted
+  labels:
+    persona: cicd-deployer
+rules:
+  # Deployer can read configs, secrets, and manage application rollout
+  - apiGroups: [""]
+    resources:
+      - pods
+      - services
+      - configmaps
+      - secrets
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cicd-deployer-binding
+  namespace: security-restricted
+  labels:
+    persona: cicd-deployer
+subjects:
+  - kind: ServiceAccount
+    name: cicd-deployer-sa
+    namespace: security-restricted
+roleRef:
+  kind: Role
+  name: cicd-deployer-role
+  apiGroup: rbac.authorization.k8s.io
+
+# ==============================================================================
+# 3. Read-Only Auditor Persona (Cluster-Wide Scope)
+# ==============================================================================
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-auditor-role
+  labels:
+    persona: auditor
+rules:
+  # Cluster metadata & node topology inspection
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - nodes
+      - pods
+      - services
+      - configmaps
+      - endpoints
+      - persistentvolumes
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - statefulsets
+      - daemonsets
+      - replicasets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch"]
+  # Explicitly excluded: secrets, pods/exec, modifying verbs (create, delete, patch)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-auditor-binding
+  labels:
+    persona: auditor
+subjects:
+  - kind: ServiceAccount
+    name: auditor-sa
+    namespace: security-dev
+roleRef:
+  kind: ClusterRole
+  name: cluster-auditor-role
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-dev
+  labels:
+    app.kubernetes.io/managed-by: devsecops-pipeline
+    environment: development
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-restricted
+  labels:
+    app.kubernetes.io/managed-by: devsecops-pipeline
+    environment: production
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-baseline
+  labels:
+    app.kubernetes.io/managed-by: devsecops-pipeline
+    environment: staging
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest

@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ingress-tls-certificate
+  namespace: ingress-tls-demo
+  labels:
+    app.kubernetes.io/name: ingress-tls-certificate
+    app.kubernetes.io/part-of: devops-sre-mini-projects
+spec:
+  secretName: ingress-tls-secret
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  commonName: web.local.dev
+  dnsNames:
+    - web.local.dev
+    - api.local.dev
+    - localhost
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth

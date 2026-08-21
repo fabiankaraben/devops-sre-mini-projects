@@ -1,0 +1,74 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: rollout-canary-app
+  namespace: argo-rollouts-demo
+  labels:
+    app: rollout-canary-app
+spec:
+  replicas: 5
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rollout-canary-app
+  template:
+    metadata:
+      labels:
+        app: rollout-canary-app
+    spec:
+      containers:
+        - name: rollout-app
+          image: rollout-app:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "8080"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+  strategy:
+    canary:
+      canaryService: rollout-canary-service
+      stableService: rollout-active-service
+      analysis:
+        templates:
+          - templateName: http-success-rate
+      steps:
+        - setWeight: 20
+        - pause: { duration: 5s }
+        - setWeight: 40
+        - pause: { duration: 5s }
+        - setWeight: 80
+        - pause: { duration: 5s }

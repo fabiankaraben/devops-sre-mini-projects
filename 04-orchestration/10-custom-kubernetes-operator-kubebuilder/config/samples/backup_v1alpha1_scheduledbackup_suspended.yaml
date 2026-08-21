@@ -1,0 +1,12 @@
+apiVersion: backup.devops.sre.io/v1alpha1
+kind: ScheduledBackup
+metadata:
+  name: staging-backup-paused
+  namespace: default
+spec:
+  schedule: "0 2 * * *"
+  targetNamespace: default
+  storageBucket: "s3://k8s-backups-vault/staging"
+  retentionDays: 7
+  suspend: true
+  backupImage: "alpine:3.21"

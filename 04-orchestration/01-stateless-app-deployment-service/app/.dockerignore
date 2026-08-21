@@ -1,0 +1,8 @@
+# Ignore git files and local artifacts
+.git
+.gitignore
+*.md
+*.log
+*.tmp
+.DS_Store
+.agent
