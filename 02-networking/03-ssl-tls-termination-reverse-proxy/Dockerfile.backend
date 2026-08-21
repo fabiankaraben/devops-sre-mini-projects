@@ -1,0 +1,30 @@
+# ==============================================================================
+# Dockerfile for Internal Python Backend Application
+# ==============================================================================
+FROM python:3.12-alpine
+
+LABEL maintainer="DevOps & SRE Educational Projects"
+LABEL description="Lightweight Python HTTP backend for inspecting forwarded SSL headers"
+
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copy application script
+COPY backend/app.py .
+
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8000
+
+ENV PORT=8000 \
+    PYTHONUNBUFFERED=1
+
+# Healthcheck
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 \
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
+
+CMD ["python3", "app.py"]

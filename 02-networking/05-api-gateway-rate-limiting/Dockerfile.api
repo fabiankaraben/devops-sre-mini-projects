@@ -1,0 +1,28 @@
+# ==============================================================================
+# Dockerfile for Downstream Mock REST API
+# ==============================================================================
+FROM python:3.12-alpine
+
+LABEL maintainer="DevOps & SRE Educational Projects"
+LABEL description="Python Mock REST API backend service"
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -S apigroup && adduser -S apiuser -G apigroup
+
+COPY backend/api.py .
+
+RUN chown -R apiuser:apigroup /app
+
+USER apiuser
+
+EXPOSE 5000
+
+ENV PORT=5000 \
+    PYTHONUNBUFFERED=1
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=3 \
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')" || exit 1
+
+CMD ["python3", "api.py"]

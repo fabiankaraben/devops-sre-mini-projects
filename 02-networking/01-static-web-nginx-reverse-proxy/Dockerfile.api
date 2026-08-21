@@ -1,0 +1,22 @@
+# Lightweight Python Alpine base for Mock Dynamic API backend
+FROM python:3.12-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy Mock API script
+COPY mock_api.py .
+
+# Make script executable
+RUN chmod +x mock_api.py
+
+# Expose API port
+EXPOSE 8000
+
+# Health check to ensure mock API endpoint is answering
+HEALTHCHECK --interval=5s --timeout=3s --retries=3 \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+# Start mock API server binding to all interfaces
+ENTRYPOINT ["python3", "mock_api.py"]
+CMD ["--host", "0.0.0.0", "--port", "8000"]

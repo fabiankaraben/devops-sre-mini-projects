@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nginx Static Web & Reverse Proxy Educational Demonstration - DevOps & SRE Mini-Projects">
+    <title>Nginx Reverse Proxy & Static Cache Hub</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="navbar">
+            <div class="brand">
+                <div class="brand-logo">🌐</div>
+                <div class="brand-text">
+                    <span class="brand-title">DevOps & SRE Mini-Projects</span>
+                    <span class="brand-subtitle">02. Networking & Traffic Routing &bull; Project 01</span>
+                </div>
+            </div>
+            <div class="status-pill-group">
+                <div class="status-pill" id="pill-proxy">
+                    <span class="dot dot-green"></span> Nginx Proxy: <strong id="proxy-status-text">Active</strong>
+                </div>
+                <div class="status-pill" id="pill-backend">
+                    <span class="dot dot-yellow" id="backend-dot"></span> Backend API: <strong id="backend-status-text">Checking...</strong>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-badge">Reverse Proxy &bull; Gzip Compression &bull; Edge Caching</div>
+            <h1 class="hero-title">Static Web Nginx Reverse Proxy</h1>
+            <p class="hero-desc">
+                High-performance edge proxy serving static assets with <strong>gzip compression</strong> and 
+                <strong>aggressive client-side caching</strong>, while forwarding dynamic requests to a Python backend with 
+                <strong>transparent header propagation</strong>.
+            </p>
+
+            <div class="feature-badges">
+                <span class="badge">🚀 Gzip Comp Level 6</span>
+                <span class="badge">⚡ Cache-Control 1 Year</span>
+                <span class="badge">🔄 proxy_pass /api/</span>
+                <span class="badge">🛡️ Header Forwarding</span>
+                <span class="badge">⚠️ Custom 404/50x Pages</span>
+            </div>
+        </section>
+
+        <!-- Main Interactive Dashboard Grid -->
+        <main class="dashboard-grid">
+            <!-- Left Column: Interactive Testing Console -->
+            <section class="card control-card">
+                <div class="card-header">
+                    <div class="card-icon">⚡</div>
+                    <div>
+                        <h2 class="card-title">Interactive Testing Console</h2>
+                        <p class="card-subtitle">Trigger live requests through the Nginx proxy to test caching, gzip, and routing.</p>
+                    </div>
+                </div>
+
+                <div class="button-group-section">
+                    <div class="section-label">Dynamic API Endpoints (Proxied to Upstream)</div>
+                    <div class="button-grid">
+                        <button class="btn btn-primary" id="btn-health" onclick="testEndpoint('/api/health')">
+                            <span class="btn-icon">💚</span> /api/health
+                        </button>
+                        <button class="btn btn-primary" id="btn-info" onclick="testEndpoint('/api/info')">
+                            <span class="btn-icon">🔍</span> /api/info (Headers)
+                        </button>
+                        <button class="btn btn-primary" id="btn-time" onclick="testEndpoint('/api/time')">
+                            <span class="btn-icon">⏱️</span> /api/time
+                        </button>
+                        <button class="btn btn-primary" id="btn-data" onclick="testEndpoint('/api/data')">
+                            <span class="btn-icon">📊</span> /api/data (JSON Gzip)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="button-group-section">
+                    <div class="section-label">Static File Caching & Gzip Verification</div>
+                    <div class="button-grid">
+                        <button class="btn btn-secondary" id="btn-style" onclick="testStaticAsset('/style.css')">
+                            <span class="btn-icon">🎨</span> style.css (Cached 1yr)
+                        </button>
+                        <button class="btn btn-secondary" id="btn-appjs" onclick="testStaticAsset('/app.js')">
+                            <span class="btn-icon">📜</span> app.js (Gzip + Cache)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="button-group-section">
+                    <div class="section-label">Error Interception & Edge Handling</div>
+                    <div class="button-grid">
+                        <button class="btn btn-warning" id="btn-404" onclick="testEndpoint('/non-existent-route-' + Date.now())">
+                            <span class="btn-icon">🚫</span> Test Custom 404
+                        </button>
+                        <button class="btn btn-danger" id="btn-500" onclick="testEndpoint('/api/simulate-error?code=500')">
+                            <span class="btn-icon">💥</span> Simulate 500 Error
+                        </button>
+                    </div>
+                </div>
+
+                <div class="custom-request-box">
+                    <div class="section-label">Custom Route Request</div>
+                    <div class="input-with-button">
+                        <span class="input-prefix">GET</span>
+                        <input type="text" id="custom-path-input" value="/api/health" placeholder="/api/endpoint or /static-path">
+                        <button class="btn btn-accent" onclick="testCustomPath()">Send</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Live Inspector & Response Details -->
+            <section class="card inspector-card">
+                <div class="card-header">
+                    <div class="card-icon">🔬</div>
+                    <div>
+                        <h2 class="card-title">Live Response & Header Inspector</h2>
+                        <p class="card-subtitle">Inspect real-time HTTP status, response headers, and payload.</p>
+                    </div>
+                </div>
+
+                <!-- Response Metadata Bar -->
+                <div class="meta-bar">
+                    <div class="meta-item">
+                        <span class="meta-label">Status Code</span>
+                        <span class="meta-value badge-status" id="res-status">-</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Latency</span>
+                        <span class="meta-value" id="res-time">- ms</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Encoding</span>
+                        <span class="meta-value" id="res-encoding">-</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Cache-Control</span>
+                        <span class="meta-value" id="res-cache">-</span>
+                    </div>
+                </div>
+
+                <!-- Header Viewer Tabs -->
+                <div class="tab-header">
+                    <button class="tab-btn active" id="tab-payload-btn" onclick="switchTab('payload')">Body Payload</button>
+                    <button class="tab-btn" id="tab-headers-btn" onclick="switchTab('headers')">HTTP Headers</button>
+                    <button class="tab-btn" id="tab-proxy-btn" onclick="switchTab('proxy')">Proxy Headers</button>
+                </div>
+
+                <!-- Tab 1: Payload Viewer -->
+                <div class="tab-pane active" id="tab-payload">
+                    <pre class="code-block" id="response-body">Click any button on the left to trigger a request and inspect the response...</pre>
+                </div>
+
+                <!-- Tab 2: Headers Viewer -->
+                <div class="tab-pane" id="tab-headers">
+                    <table class="headers-table">
+                        <thead>
+                            <tr>
+                                <th>Header Name</th>
+                                <th>Header Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="headers-table-body">
+                            <tr><td colspan="2" class="empty-msg">No request executed yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tab 3: Proxy Breakdown -->
+                <div class="tab-pane" id="tab-proxy">
+                    <div class="proxy-explanation">
+                        <div class="proxy-row">
+                            <span class="proxy-key">X-Forwarded-For:</span>
+                            <span class="proxy-val" id="proxy-hdr-xff">-</span>
+                        </div>
+                        <div class="proxy-row">
+                            <span class="proxy-key">X-Real-IP:</span>
+                            <span class="proxy-val" id="proxy-hdr-xreal">-</span>
+                        </div>
+                        <div class="proxy-row">
+                            <span class="proxy-key">X-Forwarded-Proto:</span>
+                            <span class="proxy-val" id="proxy-hdr-proto">-</span>
+                        </div>
+                        <div class="proxy-row">
+                            <span class="proxy-key">Host:</span>
+                            <span class="proxy-val" id="proxy-hdr-host">-</span>
+                        </div>
+                        <div class="proxy-row">
+                            <span class="proxy-key">X-Proxy-By:</span>
+                            <span class="proxy-val" id="proxy-hdr-by">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Educational Concepts Section -->
+        <section class="card educational-section">
+            <div class="card-header">
+                <div class="card-icon">🧠</div>
+                <div>
+                    <h2 class="card-title">How It Works: Core Architecture & SRE Concepts</h2>
+                    <p class="card-subtitle">Key networking and traffic routing principles implemented in this project.</p>
+                </div>
+            </div>
+
+            <div class="concepts-grid">
+                <div class="concept-item">
+                    <div class="concept-title">1. Reverse Proxy vs. Direct Access</div>
+                    <p class="concept-text">
+                        Clients connect exclusively to Nginx on port <code>8080</code> (or <code>80</code>). Nginx terminates the connection, handles buffering, rate limits, and routes <code>/api/*</code> traffic to the internal backend on port <code>8000</code> without exposing it directly to the public internet.
+                    </p>
+                </div>
+
+                <div class="concept-item">
+                    <div class="concept-title">2. Gzip Dynamic Compression</div>
+                    <p class="concept-text">
+                        The proxy inspects the client's <code>Accept-Encoding: gzip</code> header. If present and payload size exceeds <code>gzip_min_length 256</code>, Nginx compresses the response using level 6 compression, reducing network transfer size by up to 70%.
+                    </p>
+                </div>
+
+                <div class="concept-item">
+                    <div class="concept-title">3. Aggressive Asset Caching</div>
+                    <p class="concept-text">
+                        Static assets (CSS, JS, images) receive <code>Cache-Control: public, max-age=31536000, immutable</code>. Browsers store these locally for 1 year, eliminating redundant requests. HTML files use <code>no-cache</code> so users receive updates instantly.
+                    </p>
+                </div>
+
+                <div class="concept-item">
+                    <div class="concept-title">4. Header Preservation (X-Forwarded-*)</div>
+                    <p class="concept-text">
+                        Because Nginx acts as an intermediary, backend logs would see <code>127.0.0.1</code> as the client IP. Directives like <code>proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;</code> preserve the real client IP for authentication and audit logs.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>DevOps & SRE Mini-Projects &bull; Category 02: Networking & Traffic Routing &bull; Static Web Nginx Reverse Proxy</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

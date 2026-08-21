@@ -1,0 +1,19 @@
+# ==============================================================================
+# Dockerfile for HAProxy Layer 4 (TCP) Load Balancer
+# ==============================================================================
+FROM haproxy:alpine
+
+LABEL maintainer="DevOps & SRE Educational Projects"
+LABEL description="HAProxy Layer 4 TCP Load Balancer with round-robin and active health checking"
+
+USER root
+
+# Copy custom HAProxy configuration
+COPY haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
+
+# Expose TCP Load Balancer port (9000) and Stats Dashboard (8404)
+EXPOSE 9000 8404
+
+USER haproxy
+
+CMD ["haproxy", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]

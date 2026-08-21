@@ -1,0 +1,31 @@
+$ORIGIN 10.in-addr.arpa.
+$TTL 300 ; Default Time-to-Live (5 minutes)
+
+; ==============================================================================
+; Start of Authority (SOA) Record for Reverse Zone (10.0.0.0/8 network)
+; ==============================================================================
+@   IN  SOA ns1.internal. hostmaster.internal. (
+            2026082101 ; Serial number (YYYYMMDDNN)
+            7200       ; Refresh: 2 hours
+            3600       ; Retry: 1 hour
+            1209600    ; Expire: 2 weeks
+            300        ; Minimum TTL: 5 minutes
+)
+
+; Name Server
+@   IN  NS  ns1.internal.
+
+; ==============================================================================
+; Reverse DNS Pointer (PTR) Records
+; Maps IP addresses in 10.0.x.x back to FQDN hostnames
+; IP a.b.c.d -> d.c.b.a.in-addr.arpa.
+; ==============================================================================
+1.1.0       IN  PTR gateway.internal.
+10.1.0      IN  PTR app.internal.
+20.1.0      IN  PTR api.internal.
+30.1.0      IN  PTR auth.internal.
+10.2.0      IN  PTR db.internal.
+20.2.0      IN  PTR redis.internal.
+30.2.0      IN  PTR kafka.internal.
+10.3.0      IN  PTR monitoring.internal.
+20.3.0      IN  PTR vault.internal.

@@ -1,0 +1,83 @@
+# ==============================================================================
+# CoreDNS Configuration File (Corefile)
+# ==============================================================================
+# Architecture:
+#  1. Authoritative private DNS for '.internal' domain (A, CNAME, TXT, SRV)
+#  2. Reverse DNS PTR lookup for '10.in-addr.arpa' (10.0.0.0/8 network)
+#  3. Split-horizon / rewrite aliasing from '.corp' to '.internal'
+#  4. Recursive forwarding to upstream public resolvers (1.1.1.1, 8.8.8.8)
+#  5. In-memory caching with 300s TTL for blazing fast sub-millisecond responses
+#  6. Observability: Health endpoint (:8080), Readiness (:8181), Metrics (:9153)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Authoritative Internal Forward Zone (.internal) & Split-Horizon Aliases
+# ------------------------------------------------------------------------------
+internal:53 corp:53 {
+    log {
+        class all
+    }
+    errors
+
+    # Split-Horizon DNS Rewrite:
+    # Rewrite queries incoming for *.corp transparently into *.internal
+    rewrite stop name suffix .corp .internal
+
+    # Authoritative RFC 1035 Zone file
+    file /etc/coredns/zones/db.internal {
+        reload 5s
+    }
+
+    # In-memory caching layer
+    cache 300 {
+        success 512 300 60
+        denial 128 60 10
+        prefetch 2 1m 10%
+    }
+}
+
+# ------------------------------------------------------------------------------
+# 2. Authoritative Reverse Lookup Zone (10.0.0.0/8 private network)
+# ------------------------------------------------------------------------------
+10.in-addr.arpa:53 {
+    log
+    errors
+
+    file /etc/coredns/zones/db.10.in-addr.arpa {
+        reload 5s
+    }
+
+    cache 300
+}
+
+# ------------------------------------------------------------------------------
+# 3. Root Zone (.) - Recursive Upstream Forwarder & Observability
+# ------------------------------------------------------------------------------
+.:53 {
+    log
+    errors
+
+    # Health check endpoints for orchestration & monitoring
+    health :8080
+    ready :8181
+    prometheus :9153
+
+    # Prevent DNS query forwarding loops
+    loop
+
+    # In-memory caching for forwarded external responses
+    cache 300 {
+        success 1024 300 30
+        denial 256 60 5
+        prefetch 1 30s 15%
+    }
+
+    # Forward non-internal queries to upstream recursive resolvers (Cloudflare & Google)
+    forward . 1.1.1.1 1.0.0.1 8.8.8.8 {
+        max_concurrent 1000
+        health_check 5s
+    }
+
+    # Automatically reload configuration if Corefile changes
+    reload 5s
+}

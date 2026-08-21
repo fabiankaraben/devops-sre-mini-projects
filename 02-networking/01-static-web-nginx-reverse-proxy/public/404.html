@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Not Found - Nginx Reverse Proxy</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .error-wrapper {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .error-card {
+            max-width: 600px;
+            text-align: center;
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .error-code {
+            font-size: 5rem;
+            font-weight: 900;
+            font-family: var(--font-mono);
+            line-height: 1;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .error-subtitle {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .error-details {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .concept-note {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            font-size: 0.85rem;
+            color: #a5b4fc;
+            text-align: left;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="navbar">
+            <div class="brand">
+                <div class="brand-logo">🌐</div>
+                <div class="brand-text">
+                    <span class="brand-title">DevOps & SRE Mini-Projects</span>
+                    <span class="brand-subtitle">02. Networking & Traffic Routing</span>
+                </div>
+            </div>
+            <div class="status-pill">
+                <span class="dot dot-yellow"></span> HTTP 404 Intercepted
+            </div>
+        </header>
+
+        <div class="error-wrapper">
+            <div class="card error-card">
+                <div class="error-code">404</div>
+                <div class="error-subtitle">Page or API Resource Not Found</div>
+                <p class="error-details">
+                    The requested URL path does not exist on the static file tree and was not recognized by the reverse proxy router.
+                </p>
+                <div class="concept-note">
+                    <strong>🧠 Nginx Concept: Custom Error Interception</strong><br>
+                    Nginx caught this 404 condition using the <code>error_page 404 /404.html;</code> directive and served this custom internal page instead of a generic default browser error.
+                </div>
+                <a href="/" class="btn btn-primary">
+                    <span class="btn-icon">⬅️</span> Return to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,60 @@
+services:
+  backend-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: haproxy-backend-1
+    restart: unless-stopped
+    environment:
+      - NODE_ID=backend-1
+      - NODE_COLOR=#38bdf8
+    networks:
+      - haproxy-net
+
+  backend-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: haproxy-backend-2
+    restart: unless-stopped
+    environment:
+      - NODE_ID=backend-2
+      - NODE_COLOR=#10b981
+    networks:
+      - haproxy-net
+
+  backend-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: haproxy-backend-3
+    restart: unless-stopped
+    environment:
+      - NODE_ID=backend-3
+      - NODE_COLOR=#f59e0b
+    networks:
+      - haproxy-net
+
+  haproxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.haproxy
+    container_name: haproxy-l4-balancer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "8404:8404"
+    depends_on:
+      backend-1:
+        condition: service_healthy
+      backend-2:
+        condition: service_healthy
+      backend-3:
+        condition: service_healthy
+    networks:
+      - haproxy-net
+
+networks:
+  haproxy-net:
+    name: haproxy-l4-internal-net
+    driver: bridge

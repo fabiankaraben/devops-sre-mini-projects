@@ -1,0 +1,69 @@
+$ORIGIN internal.
+$TTL 300 ; Default Time-to-Live (5 minutes)
+
+; ==============================================================================
+; Start of Authority (SOA) Record
+; ==============================================================================
+@   IN  SOA ns1.internal. hostmaster.internal. (
+            2026082101 ; Serial number (YYYYMMDDNN)
+            7200       ; Refresh: 2 hours
+            3600       ; Retry: 1 hour
+            1209600    ; Expire: 2 weeks
+            300        ; Minimum / Negative caching TTL: 5 minutes
+)
+
+; ==============================================================================
+; Name Server (NS) Records
+; ==============================================================================
+@   IN  NS  ns1.internal.
+@   IN  NS  ns2.internal.
+
+; Name Server Glue Records (A Records for NS)
+ns1 IN  A   10.0.0.2
+ns2 IN  A   10.0.0.3
+
+; ==============================================================================
+; Core Infrastructure & Microservice Endpoints (A Records)
+; ==============================================================================
+gateway     IN  A   10.0.1.1
+app         IN  A   10.0.1.10
+api         IN  A   10.0.1.20
+auth        IN  A   10.0.1.30
+db          IN  A   10.0.2.10
+redis       IN  A   10.0.2.20
+kafka       IN  A   10.0.2.30
+monitoring  IN  A   10.0.3.10
+vault       IN  A   10.0.3.20
+
+; ==============================================================================
+; Environment Subdomains (Split-Horizon / Multi-Tier)
+; ==============================================================================
+api.dev     IN  A   10.0.10.20
+api.prod    IN  A   10.0.20.20
+db.dev      IN  A   10.0.10.10
+db.prod     IN  A   10.0.20.10
+
+; ==============================================================================
+; Service Aliases (CNAME Records)
+; ==============================================================================
+web         IN  CNAME   app.internal.
+backend     IN  CNAME   api.internal.
+cache       IN  CNAME   redis.internal.
+database    IN  CNAME   db.internal.
+grafana     IN  CNAME   monitoring.internal.
+
+; ==============================================================================
+; Service Metadata & Security Verification (TXT Records)
+; ==============================================================================
+@           IN  TXT     "v=spf1 include:_spf.internal -all"
+info        IN  TXT     "environment=internal-datacenter;region=us-east-1;owner=devops-sre"
+app         IN  TXT     "version=v2.4.0;framework=fastapi;status=healthy"
+db          IN  TXT     "engine=postgresql;version=16.2;cluster=primary"
+
+; ==============================================================================
+; Service Discovery Endpoints (SRV Records)
+; Format: _service._proto.name TTL class SRV priority weight port target
+; ==============================================================================
+_http._tcp.app          IN  SRV 10 50 8080 app.internal.
+_http._tcp.api          IN  SRV 10 50 5000 api.internal.
+_metrics._tcp.mon       IN  SRV 10 50 9090 monitoring.internal.

@@ -1,0 +1,22 @@
+services:
+  coredns:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: coredns-internal-server
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "1053:53/udp"
+      - "1053:53/tcp"
+      - "8080:8080"
+      - "8181:8181"
+      - "9153:9153"
+    networks:
+      - coredns-net
+
+networks:
+  coredns-net:
+    name: coredns-internal-net
+    driver: bridge
