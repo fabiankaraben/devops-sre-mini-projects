@@ -1,6 +1,15 @@
 # DevOps & SRE mini-projects
 
-DevOps & SRE mini-projects, each one a new challenge.
+Welcome to **DevOps & SRE mini-projects** — an educational, challenge-driven repository designed to build and sharpen practical skills across the entire DevOps, Cloud Infrastructure, and Site Reliability Engineering (SRE) lifecycle.
+
+This repository serves as a progressive, hands-on learning roadmap and portfolio containing **120 structured mini-projects** organized into **12 technical domains** (10 challenges per domain, ordered progressively from foundational concepts to advanced production-grade architectures). Rather than focusing only on theory, each challenge models real-world engineering scenarios with self-contained companion workload generators, failure simulators, and automated verification procedures.
+
+## What you will find in this repository
+
+- 🎯 **12 Core Engineering Domains**: Spanning Linux system internals, networking, container optimization, Kubernetes orchestration, CI/CD automation, Infrastructure as Code (IaC), cloud serverless architectures, observability, centralized logging, SRE reliability engineering, DevSecOps hardening, and database operational resilience.
+- 📦 **End-to-End Deliverables**: Every challenge specifies both the primary implementation files and the auxiliary components (e.g. traffic injectors, mock APIs, data seeders, and chaos scripts) required to simulate realistic production workloads.
+- 💻 **Zero-Cost & Local-First Infrastructure**: All challenges are designed to run locally using lightweight tooling ([OrbStack](https://orbstack.dev/) containers and Linux VMs, [K3s](https://k3s.io/)/[K3d](https://k3d.io/), and [LocalStack](https://localstack.cloud/)) or within the Free Tiers of AWS, GCP, and Azure without requiring paid cloud resources.
+- 🧪 **Actionable Verification & Testing**: Every mini-project includes concrete testing instructions, terminal commands, and validation criteria to confirm proper behavior, error handling, and reliability.
 
 ![Featured Image](https://fabiankaraben.github.io/mini-projects/imgs/devops-sre.webp)
 
