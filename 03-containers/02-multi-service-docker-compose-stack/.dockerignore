@@ -1,0 +1,28 @@
+# Version control
+.git
+.gitignore
+
+# Documentation
+*.md
+README.md
+
+# Shell and test scripts
+*.sh
+
+# Python cache and environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.agent/
+.gemini/

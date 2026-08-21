@@ -1,0 +1,43 @@
+# ==============================================================================
+# Ultra-Hardened Multi-Stage Google Distroless Dockerfile
+# ==============================================================================
+# Production Security Best Practices Demonstrated:
+#   1. Zero shell binaries (/bin/sh, /bin/bash completely removed).
+#   2. Zero package managers (apt, dpkg, apk eradicated).
+#   3. Zero utility binaries (curl, wget, netcat, gcc missing).
+#   4. Executes strictly as unprivileged nonroot user (UID 65532).
+#   5. Ultra-minimal image footprint (~5MB).
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build & Static Compilation
+# ------------------------------------------------------------------------------
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /build
+
+COPY app/go.mod ./
+COPY app/main.go ./
+
+# Compile statically linked binary with debug symbols stripped
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -extldflags '-static'" \
+    -a -installsuffix cgo \
+    -o /build/server main.go
+
+# ------------------------------------------------------------------------------
+# Stage 2: Distroless Static Minimal Runtime
+# ------------------------------------------------------------------------------
+FROM gcr.io/distroless/static-debian12:nonroot
+
+WORKDIR /
+
+# Copy only the compiled binary from builder stage
+COPY --from=builder /build/server /server
+
+# Distroless nonroot user UID 65532:65532
+USER nonroot:nonroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["/server"]

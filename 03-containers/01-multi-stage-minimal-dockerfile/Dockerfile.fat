@@ -1,0 +1,27 @@
+# ==============================================================================
+# Dockerfile.fat - Unoptimized Single-Stage Baseline Container Build
+# ==============================================================================
+# Anti-Patterns Demonstrated:
+#   1. Single-stage build combining build-time toolchains and runtime execution.
+#   2. Heavyweight base image (Debian full SDK ~850MB+).
+#   3. Leaves development tools, package managers (apt), compilers (gcc), and source code.
+#   4. Executes as privileged default root user (UID 0).
+#   5. Retains debug symbols and build caches in the final image layers.
+# ==============================================================================
+
+FROM golang:1.24-bookworm
+
+# Set working directory inside container
+WORKDIR /app
+
+# Copy all source files into image
+COPY . .
+
+# Build application without stripping debug symbols or disabling CGO
+RUN go build -o server .
+
+# Expose default HTTP port
+EXPOSE 8080
+
+# Run container as default root user (UID 0)
+ENTRYPOINT ["/app/server"]

@@ -1,0 +1,41 @@
+# ==============================================================================
+# .dockerignore - Build Context Optimization Rules
+# ==============================================================================
+# Excludes non-essential files from being sent over the Docker daemon socket,
+# speeding up build time and avoiding cache busts on non-source modifications.
+# ==============================================================================
+
+# Version control
+.git
+.gitignore
+
+# Documentation and project guides
+*.md
+README.md
+
+# Shell and test scripts
+*.sh
+
+# Compiled binaries and local builds
+server
+*.exe
+*.out
+*.test
+
+# IDE and Editor directories
+.idea/
+.vscode/
+.agent/
+.gemini/
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp/

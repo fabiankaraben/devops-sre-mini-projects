@@ -1,0 +1,32 @@
+# Never include secret files in build context
+secrets/
+*.key
+*.pem
+*.env
+.env*
+
+# Version control & docs
+.git
+.gitignore
+*.md
+README.md
+
+# Shell scripts
+*.sh
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.agent/
+.gemini/

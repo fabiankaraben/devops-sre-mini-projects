@@ -1,0 +1,21 @@
+# Build artifacts and binaries
+bin/
+*.exe
+*.test
+
+# Version control & docs
+.git
+.gitignore
+*.md
+README.md
+
+# Shell scripts
+*.sh
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.agent/
+.gemini/

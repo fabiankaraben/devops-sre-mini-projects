@@ -1,0 +1,22 @@
+# ==============================================================================
+# Vulnerable & Bloated Baseline Dockerfile (Debian / Golang)
+# ==============================================================================
+# Security Anti-Patterns Demonstrated:
+#   1. Massive attack surface: includes bash, sh, apt, curl, gcc, coreutils.
+#   2. Runs as root (UID 0).
+#   3. Image size >300MB containing full Debian OS and Go toolchain.
+# ==============================================================================
+FROM golang:1.23-bookworm
+
+WORKDIR /app
+
+COPY app/go.mod ./
+COPY app/main.go ./
+
+# Compile binary directly in runtime container
+RUN go build -o /app/server main.go
+
+EXPOSE 8080
+
+# Executes as root with full interactive shell access
+CMD ["/app/server"]

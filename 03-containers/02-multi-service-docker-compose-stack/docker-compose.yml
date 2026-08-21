@@ -1,0 +1,129 @@
+# ==============================================================================
+# Multi-Service Docker Compose Stack Orchestration
+# ==============================================================================
+# Architecture:
+#   1. Frontend (Nginx Reverse Proxy & UI) on frontend-net (Port 8090)
+#   2. Web API (Python REST microservice) on frontend-net and backend-net
+#   3. Cache (Redis 7) on backend-net
+#   4. Database (PostgreSQL 16) on backend-net with named volume persistence
+#   5. Management UI (Adminer) on backend-net exposed on host port 8098
+# ==============================================================================
+
+name: devops-mini-proj-03-02
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Edge Reverse Proxy & Static Web Frontend
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: compose-stack-frontend
+    ports:
+      - "${PORT_FRONTEND:-8090}:80"
+    networks:
+      - frontend-net
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 2. Application Layer: Python REST Microservice
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: compose-stack-api
+    environment:
+      - PORT=8000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=appdb
+      - DB_USER=postgres
+      - DB_PASSWORD=postgrespassword
+      - REDIS_HOST=cache
+      - REDIS_PORT=6379
+    networks:
+      - frontend-net
+      - backend-net
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 3. Caching Layer: In-Memory Redis Key-Value Store
+  # ----------------------------------------------------------------------------
+  cache:
+    image: redis:7-alpine
+    container_name: compose-stack-cache
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 4. Persistence Layer: PostgreSQL Relational Database
+  # ----------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: compose-stack-db
+    environment:
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 5. Management UI: Adminer Database Console
+  # ----------------------------------------------------------------------------
+  adminer:
+    image: adminer:4
+    container_name: compose-stack-adminer
+    ports:
+      - "${PORT_ADMINER:-8098}:8080"
+    networks:
+      - backend-net
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ------------------------------------------------------------------------------
+# Network Topology Segmentation
+# ------------------------------------------------------------------------------
+networks:
+  frontend-net:
+    driver: bridge
+    name: compose-stack-frontend-net
+  backend-net:
+    driver: bridge
+    name: compose-stack-backend-net
+
+# ------------------------------------------------------------------------------
+# Volume Persistence
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: compose-stack-postgres-data

@@ -1,0 +1,17 @@
+# ==============================================================================
+# Hardened Distroless Dockerfile for Interpreted Python Runtimes
+# ==============================================================================
+# Demonstrates Google Distroless for interpreted runtimes (Python 3).
+# Contains Python runtime but NO shell (/bin/sh) and NO package manager (apt/pip).
+# ==============================================================================
+FROM gcr.io/distroless/python3-debian12:nonroot
+
+WORKDIR /app
+
+COPY --chown=nonroot:nonroot app/server.py .
+
+USER nonroot:nonroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/bin/python3", "server.py"]

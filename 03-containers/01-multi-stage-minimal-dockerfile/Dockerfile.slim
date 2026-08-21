@@ -1,0 +1,72 @@
+# ==============================================================================
+# Dockerfile.slim - Optimized Multi-Stage Minimal Container Build
+# ==============================================================================
+# Best Practices Demonstrated:
+#   1. Multi-Stage Pipeline: Separates compilation environment from runtime.
+#   2. Minimal Base Image: Alpine runtime (~7MB) keeping total image < 25MB.
+#   3. Static Binary Compilation: CGO_ENABLED=0 with stripped symbols (-s -w).
+#   4. Least Privilege Security: Non-root execution with dedicated UID 10001.
+#   5. Minimal Attack Surface: Build tools, package managers, and compilers eliminated.
+#   6. Native Healthcheck: Container health monitoring via HTTP probe.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build & Compilation Environment
+# ------------------------------------------------------------------------------
+FROM golang:1.24-alpine AS builder
+
+# Install build-time certificates and update index
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create dedicated non-root user and group for the runtime container
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S -G appgroup -s /sbin/nologin -H -D appuser
+
+# Set builder working directory
+WORKDIR /src
+
+# Leverage Docker layer cache for Go dependencies
+COPY go.mod ./
+# RUN go mod download (if external dependencies were present)
+
+# Copy application source code
+COPY main.go ./
+
+# Compile static binary with symbol stripping and path trimming
+#   - CGO_ENABLED=0: Statically links all dependencies (no libc dynamic loader needed)
+#   - -s: Omit symbol table and debug information
+#   - -w: Omit DWARF debugging information
+#   - -trimpath: Remove filesystem paths from executable for reproducibility & security
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -extldflags '-static'" \
+    -trimpath \
+    -o /bin/server .
+
+# ------------------------------------------------------------------------------
+# Stage 2: Ultra-Minimal Production Runtime
+# ------------------------------------------------------------------------------
+FROM alpine:3.21
+
+# Import CA certificates and timezone data from builder
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Import non-root user & group entries from builder
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+# Copy statically compiled binary from builder
+COPY --from=builder --chown=10001:10001 /bin/server /bin/server
+
+# Switch to unprivileged user (UID 10001 / appuser)
+USER 10001:10001
+
+# Document exposed application port
+EXPOSE 8080
+
+# Configure container healthcheck probe
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1
+
+# Execute minimal static server
+ENTRYPOINT ["/bin/server"]

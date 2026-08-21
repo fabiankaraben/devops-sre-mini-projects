@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Service Docker Compose Stack | SRE Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-glow"></div>
+    
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">🐳</div>
+                <div>
+                    <h1>Multi-Service Docker Compose Stack</h1>
+                    <p class="subtitle">Distributed Architecture • Custom Bridge Networks • Cache-Aside with Redis • PostgreSQL Persistence</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="http://localhost:8098" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="btn-adminer">
+                    <span>🗄️ Adminer DB UI</span>
+                </a>
+                <button class="btn btn-primary" id="btn-refresh">
+                    <span class="refresh-icon">🔄</span> Refresh State
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Topology & Health Grid -->
+        <section class="section">
+            <div class="section-title">
+                <h2>Service Health & Topology</h2>
+                <span class="badge badge-network">Network Isolated</span>
+            </div>
+            
+            <div class="topology-grid">
+                <!-- Frontend Card -->
+                <div class="card service-card" id="card-frontend">
+                    <div class="card-header">
+                        <span class="service-role">Edge Layer</span>
+                        <span class="status-indicator status-ok" id="status-frontend-dot"></span>
+                    </div>
+                    <div class="service-icon">🌐</div>
+                    <h3 class="service-name">Nginx Frontend</h3>
+                    <p class="service-details">Reverse Proxy & Static Asset Cache</p>
+                    <div class="service-meta">
+                        <div class="meta-row"><span>Port:</span> <code>8090 (Host) / 80</code></div>
+                        <div class="meta-row"><span>Network:</span> <span class="net-tag net-frontend">frontend-net</span></div>
+                        <div class="meta-row"><span>Status:</span> <strong id="status-frontend-text">HEALTHY</strong></div>
+                    </div>
+                </div>
+
+                <!-- API Card -->
+                <div class="card service-card" id="card-api">
+                    <div class="card-header">
+                        <span class="service-role">Application Layer</span>
+                        <span class="status-indicator status-pending" id="status-api-dot"></span>
+                    </div>
+                    <div class="service-icon">🐍</div>
+                    <h3 class="service-name">Python Web API</h3>
+                    <p class="service-details">REST Controller & Cache-Aside Manager</p>
+                    <div class="service-meta">
+                        <div class="meta-row"><span>Internal Port:</span> <code>8000</code></div>
+                        <div class="meta-row"><span>Networks:</span> <span class="net-tag net-frontend">frontend-net</span> <span class="net-tag net-backend">backend-net</span></div>
+                        <div class="meta-row"><span>Latency:</span> <strong id="latency-api">-- ms</strong></div>
+                    </div>
+                </div>
+
+                <!-- Redis Card -->
+                <div class="card service-card" id="card-redis">
+                    <div class="card-header">
+                        <span class="service-role">Caching Layer</span>
+                        <span class="status-indicator status-pending" id="status-redis-dot"></span>
+                    </div>
+                    <div class="service-icon">⚡</div>
+                    <h3 class="service-name">Redis 7 Cache</h3>
+                    <p class="service-details">In-Memory Key-Value Acceleration</p>
+                    <div class="service-meta">
+                        <div class="meta-row"><span>Internal Port:</span> <code>6379</code></div>
+                        <div class="meta-row"><span>Network:</span> <span class="net-tag net-backend">backend-net</span></div>
+                        <div class="meta-row"><span>Latency:</span> <strong id="latency-redis">-- ms</strong></div>
+                    </div>
+                </div>
+
+                <!-- PostgreSQL Card -->
+                <div class="card service-card" id="card-postgres">
+                    <div class="card-header">
+                        <span class="service-role">Persistence Layer</span>
+                        <span class="status-indicator status-pending" id="status-postgres-dot"></span>
+                    </div>
+                    <div class="service-icon">🐘</div>
+                    <h3 class="service-name">PostgreSQL 16</h3>
+                    <p class="service-details">Relational Store with Named Volume</p>
+                    <div class="service-meta">
+                        <div class="meta-row"><span>Internal Port:</span> <code>5432</code></div>
+                        <div class="meta-row"><span>Network:</span> <span class="net-tag net-backend">backend-net</span></div>
+                        <div class="meta-row"><span>Volume:</span> <code>postgres_data</code></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Cache-Aside Live Inspector -->
+        <section class="section">
+            <div class="section-title">
+                <h2>Cache-Aside Query Inspector</h2>
+                <span class="cache-badge" id="cache-status-badge">AWAITING REQUEST</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total-items">0</div>
+                    <div class="stat-label">Database Items</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-cached-keys">0</div>
+                    <div class="stat-label">Active Redis Keys</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-last-latency">0 ms</div>
+                    <div class="stat-label">Last Query Latency</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-cache-source">--</div>
+                    <div class="stat-label">Response Source</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CRUD Workload Manager -->
+        <section class="section">
+            <div class="crud-layout">
+                <!-- Add Item Form -->
+                <div class="card form-card">
+                    <h3>➕ Create Workload Item</h3>
+                    <p class="card-desc">Writing to PostgreSQL automatically invalidates the Redis cached keys.</p>
+                    
+                    <form id="form-add-item">
+                        <div class="form-group">
+                            <label for="item-title">Title</label>
+                            <input type="text" id="item-title" placeholder="e.g. Deploy Canary Release" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="item-desc">Description</label>
+                            <textarea id="item-desc" rows="3" placeholder="Describe the workload task..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="item-priority">Priority</label>
+                            <select id="item-priority">
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM" selected>Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="CRITICAL">Critical</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success" id="btn-submit-item">
+                            <span>Save Item to DB</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Items List -->
+                <div class="card list-card">
+                    <div class="list-header">
+                        <h3>📋 Current Inventory</h3>
+                        <div class="list-actions">
+                            <button class="btn btn-sm btn-outline" id="btn-fetch-cache">Fetch (Test Cache)</button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Priority</th>
+                                    <th>Created At</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-table-body">
+                                <tr>
+                                    <td colspan="5" class="empty-state">Loading items from backend...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>DevOps & SRE Mini-Projects • 03. Containers & Image Optimization</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+# ==============================================================================
+# Hardened & Accelerated Dockerfile using Docker BuildKit
+# ==============================================================================
+# Production Best Practices Demonstrated:
+#   1. --mount=type=secret: Secure build-time secret injection with zero layer leakage.
+#   2. --mount=type=cache: Persistent package manager cache for fast warm rebuilds.
+#   3. Multi-stage build with unprivileged non-root user (UID 10001).
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build & Dependency Resolution
+# ------------------------------------------------------------------------------
+FROM python:3.12-alpine AS builder
+
+WORKDIR /build
+
+COPY app/requirements.txt .
+
+# Execute package installation with:
+#   - Secret mount: In-memory tmpfs mount at /run/secrets/api_key
+#   - Cache mount: Host-persisted pip wheel cache at /root/.cache/pip
+RUN --mount=type=secret,id=api_key \
+    --mount=type=cache,target=/root/.cache/pip \
+    sh -c 'API_KEY=$(cat /run/secrets/api_key); \
+    echo "🔐 Validating build secret from /run/secrets/api_key (Length: ${#API_KEY} chars)..."; \
+    echo "✔ Private registry authenticated successfully."; \
+    pip install --prefix=/install --no-warn-script-location -r requirements.txt'
+
+# ------------------------------------------------------------------------------
+# Stage 2: Hardened Minimal Runtime
+# ------------------------------------------------------------------------------
+FROM python:3.12-alpine AS runtime
+
+# Create unprivileged application user
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S -G appgroup -s /sbin/nologin -H -D appuser
+
+WORKDIR /app
+
+# Copy installed packages from builder stage
+COPY --from=builder /install /usr/local
+
+# Copy application source
+COPY --chown=10001:10001 app/main.py .
+
+# Switch to non-root user
+USER 10001:10001
+
+EXPOSE 8080
+
+ENTRYPOINT ["python3", "main.py"]

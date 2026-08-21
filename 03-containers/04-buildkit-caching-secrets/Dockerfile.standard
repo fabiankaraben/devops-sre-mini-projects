@@ -1,0 +1,29 @@
+# ==============================================================================
+# Insecure & Slow Baseline Dockerfile
+# ==============================================================================
+# Anti-Patterns Demonstrated:
+#   1. ARG API_KEY leaks sensitive credentials into docker history & image metadata.
+#   2. Standard pip install discards cache between builds, forcing re-downloads.
+#   3. Runs as root user (UID 0).
+# ==============================================================================
+FROM python:3.12-alpine
+
+WORKDIR /app
+
+# Insecure build argument: Permanently captured in image layer metadata!
+ARG API_KEY="sk_live_default_insecure_token"
+
+# Simulating private registry authentication using ARG
+RUN echo "Authenticating with private package registry using API_KEY: ${API_KEY}..." && \
+    echo "Authentication successful."
+
+COPY app/requirements.txt .
+
+# Uncached installation: Downloads packages from scratch on cache bust
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app/main.py .
+
+EXPOSE 8080
+
+CMD ["python3", "main.py"]
