@@ -1,0 +1,13 @@
+services:
+  watchdog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: process-watchdog-service
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/workspace
+    # Default command runs the watchdog supervising flaky_service; override to run tests:
+    # command: ["./test_watchdog.sh"]
+    command: ["./watchdog.sh", "start", "--http-check", "http://127.0.0.1:8080/healthz"]

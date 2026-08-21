@@ -1,0 +1,5 @@
+username,primary_group,secondary_groups,shell,sudo_access,status,ssh_public_key
+alice,developers,"docker,adm",/bin/bash,yes,active,"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleAliceDevOpsKey1234567890abcdef alice@company.internal"
+bob,developers,"docker",/bin/bash,no,active,"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleBobBackendDevKey1234567890abcdef bob@company.internal"
+charlie,qa,"",/bin/sh,no,active,"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleCharlieQATesterKey1234567890abcdef charlie@company.internal"
+dave,contractors,"",/bin/bash,no,inactive,"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleDaveFormerContractor1234567890abcdef dave@company.internal"

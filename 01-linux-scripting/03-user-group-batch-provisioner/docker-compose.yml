@@ -1,0 +1,11 @@
+services:
+  provisioner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: user-provisioner-service
+    volumes:
+      - .:/workspace
+    # Default runs dry-run; override to run full live test suite:
+    # command: ["./test_provision_users.sh"]
+    command: ["--manifest", "users_manifest.csv", "--dry-run"]

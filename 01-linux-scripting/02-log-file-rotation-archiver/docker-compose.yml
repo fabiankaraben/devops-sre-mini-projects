@@ -1,0 +1,11 @@
+services:
+  log-archiver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: log-archiver-service
+    volumes:
+      - .:/workspace
+    # Default command displays help; override to run tests or active rotation:
+    # command: ["./test_log_rotate.sh"]
+    command: ["--help"]
