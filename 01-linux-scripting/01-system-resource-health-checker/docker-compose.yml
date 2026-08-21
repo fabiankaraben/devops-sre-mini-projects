@@ -1,0 +1,11 @@
+services:
+  health-checker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: system-health-checker
+    volumes:
+      - .:/workspace
+    # Override command as needed, for example running the full test suite or interactive bash:
+    # command: ["./test_health_check.sh"]
+    command: ["--pretty"]
