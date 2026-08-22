@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Secure, high-performance static website hosted on AWS S3 with CloudFront CDN, Origin Access Control (OAC), and security headers.">
+  <meta name="author" content="DevOps / SRE Team">
+  <title>CloudEdge - Secure S3 & CloudFront Hosting</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navigation Header -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <span class="brand-icon">⚡</span>
+        <span class="brand-name">CloudEdge CDN</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#overview" class="nav-link active" id="nav-overview">Architecture</a>
+        <a href="#headers" class="nav-link" id="nav-headers">Security Headers</a>
+        <a href="#metrics" class="nav-link" id="nav-metrics">CDN Benchmark</a>
+      </nav>
+      <div class="nav-actions">
+        <button id="theme-toggle" class="btn-icon" aria-label="Toggle theme" title="Toggle theme">🌓</button>
+        <span class="badge badge-success">Origin Access Control (OAC) Active</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <div class="hero-badge">AWS S3 + CloudFront CDN + Origin Access Control</div>
+        <h1 class="hero-title">Secure, High-Performance<br><span class="gradient-text">Static Web Hosting</span></h1>
+        <p class="hero-subtitle">
+          Protected by AWS Origin Access Control (OAC), TLS 1.3 encryption, and automated edge security headers. Direct access to the underlying S3 storage is strictly blocked with HTTP 403 Forbidden.
+        </p>
+        <div class="hero-cta">
+          <button id="btn-run-audit" class="btn btn-primary">Run Live Security Audit</button>
+          <button id="btn-simulate-latency" class="btn btn-secondary">Benchmark Edge Latency</button>
+        </div>
+      </section>
+
+      <!-- Architecture Overview Cards -->
+      <section id="overview" class="section-container">
+        <h2 class="section-title">🛡️ Security & Delivery Architecture</h2>
+        <div class="cards-grid">
+          <div class="card">
+            <div class="card-icon">🔒</div>
+            <h3 class="card-title">Private S3 Bucket</h3>
+            <p class="card-text">
+              100% private storage. All 4 public access blocks are enforced. S3 direct URLs return <strong>403 Forbidden</strong> to any non-CloudFront requests.
+            </p>
+            <div class="card-tag">SSE-S3 AES-256</div>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">⚡</div>
+            <h3 class="card-title">Origin Access Control (OAC)</h3>
+            <p class="card-text">
+              Uses AWS Signature Version 4 (SigV4) to authenticate CloudFront requests to S3, superseding legacy OAI with superior KMS support and security.
+            </p>
+            <div class="card-tag">AWS SigV4 Signed</div>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🌐</div>
+            <h3 class="card-title">CloudFront Edge CDN</h3>
+            <p class="card-text">
+              Global Anycast network providing sub-millisecond edge caching, automated Gzip/Brotli compression, and automatic HTTP-to-HTTPS redirection.
+            </p>
+            <div class="card-tag">Global PoP Network</div>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">🛡️</div>
+            <h3 class="card-title">Edge Security Headers</h3>
+            <p class="card-text">
+              CloudFront Functions automatically inject HSTS, CSP, X-Frame-Options, and Referrer-Policy headers into every HTTP response.
+            </p>
+            <div class="card-tag">Sub-ms Function</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Interactive Security Headers Audit Panel -->
+      <section id="headers" class="section-container">
+        <h2 class="section-title">🔍 HTTP Security Headers Verification</h2>
+        <div class="audit-panel">
+          <div class="audit-header">
+            <div>
+              <h3>Active Response Headers</h3>
+              <p class="text-muted">Injected by CloudFront Function on viewer-response</p>
+            </div>
+            <div id="audit-status" class="badge badge-success">All Headers Verified</div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="headers-table" id="headers-table">
+              <thead>
+                <tr>
+                  <th>Header Name</th>
+                  <th>Configured Value</th>
+                  <th>Protected Vulnerability</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="headers-tbody">
+                <!-- Dynamically populated by app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Interactive Latency Benchmark Panel -->
+      <section id="metrics" class="section-container">
+        <h2 class="section-title">📊 Edge CDN vs Origin Benchmark</h2>
+        <div class="benchmark-panel">
+          <div class="benchmark-metrics">
+            <div class="metric-card">
+              <span class="metric-label">CloudFront Edge Latency</span>
+              <span class="metric-value text-accent" id="metric-edge">12 ms</span>
+              <span class="metric-sub">Global PoP Cache Hit</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Direct S3 Origin Latency</span>
+              <span class="metric-value text-muted" id="metric-origin">185 ms</span>
+              <span class="metric-sub">Cross-Region Origin Fetch</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Latency Improvement</span>
+              <span class="metric-value text-success" id="metric-improvement">93.5%</span>
+              <span class="metric-sub">TTFB Reduction</span>
+            </div>
+          </div>
+          <div class="benchmark-logs" id="benchmark-logs">
+            <div class="log-entry log-info">[INFO] CloudFront Edge Node connected. Anycast routing active.</div>
+            <div class="log-entry log-success">[OK] Origin Access Control (OAC) signature verified.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>DevOps & SRE Mini-Projects &bull; AWS Cloud Providers & Serverless &bull; S3 + CloudFront OAC</p>
+    </footer>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

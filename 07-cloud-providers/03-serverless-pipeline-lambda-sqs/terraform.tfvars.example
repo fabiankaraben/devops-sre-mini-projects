@@ -1,0 +1,39 @@
+# ==============================================================================
+# Example Variables for Serverless SQS + Lambda Pipeline
+# ==============================================================================
+
+# Target deployment region
+aws_region = "us-east-1"
+
+# Custom endpoint for LocalStack emulator testing (leave empty for real AWS Cloud)
+# aws_endpoint = "http://127.0.0.1:4566"
+aws_endpoint = ""
+
+# Resource naming prefix
+project_name = "serverless-order-pipeline"
+
+# Environment identifier
+environment = "demo"
+
+# SQS Primary Queue Visibility Timeout (seconds)
+# Best practice: Must be >= 6 times the Lambda execution timeout
+sqs_visibility_timeout_seconds = 30
+
+# Maximum receive count before routing to Dead Letter Queue (DLQ)
+dlq_max_receive_count = 3
+
+# Lambda Batching Configuration
+batch_size           = 10
+batch_window_seconds = 5
+
+# Lambda Function Compute Resources
+lambda_timeout_seconds = 5
+lambda_memory_mb       = 256
+
+# Common Resource Tags
+tags = {
+  Project      = "serverless-order-pipeline"
+  Environment  = "demo"
+  ManagedBy    = "Terraform"
+  Architecture = "EventDriven-SQS-Lambda"
+}

@@ -1,0 +1,37 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyUnapprovedRegionsExceptGlobalServices",
+      "Effect": "Deny",
+      "NotAction": [
+        "iam:*",
+        "route53:*",
+        "route53domains:*",
+        "cloudfront:*",
+        "sts:*",
+        "organizations:*",
+        "support:*",
+        "budgets:*",
+        "globalaccelerator:*",
+        "health:*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": [
+            "us-east-1",
+            "us-east-2",
+            "eu-west-1"
+          ]
+        },
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:aws:iam::*:role/OrganizationAccountAccessRole",
+            "arn:aws:iam::*:role/AWSControlTowerExecution"
+          ]
+        }
+      }
+    }
+  ]
+}

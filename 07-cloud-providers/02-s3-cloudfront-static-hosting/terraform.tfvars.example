@@ -1,0 +1,30 @@
+# ==============================================================================
+# Example Variables for S3 & CloudFront Static Web Hosting
+# ==============================================================================
+
+# AWS Region (CloudFront is global; S3 bucket created in this region)
+aws_region = "us-east-1"
+
+# Custom endpoint for LocalStack testing (leave blank for real AWS Cloud)
+aws_endpoint = ""
+
+# Resource naming prefix
+project_name = "s3-cloudfront-secure-site"
+
+# Environment tag
+environment = "demo"
+
+# CloudFront Price Class
+# Options: PriceClass_100 (US, Canada, Europe), PriceClass_200, PriceClass_All
+price_class = "PriceClass_100"
+
+# Default Root Object
+default_root_object = "index.html"
+
+# Tags
+tags = {
+  Project     = "s3-cloudfront-secure-site"
+  Environment = "demo"
+  ManagedBy   = "Terraform"
+  Security    = "OAC-Protected"
+}

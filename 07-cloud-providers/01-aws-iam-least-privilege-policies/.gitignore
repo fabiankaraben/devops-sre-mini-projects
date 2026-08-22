@@ -1,0 +1,29 @@
+# Terraform runtime and state files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local logs and test artifacts
+*.log
+.tmp_*
+test_report.json
+
+# OS files
+.DS_Store
+Thumbs.db

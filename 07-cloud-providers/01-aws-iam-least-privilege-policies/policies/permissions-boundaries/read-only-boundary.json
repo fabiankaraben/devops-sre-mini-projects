@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowOnlyReadAndDescribeBoundary",
+      "Effect": "Allow",
+      "Action": [
+        "*:Describe*",
+        "*:Get*",
+        "*:List*",
+        "*:View*",
+        "cloudwatch:Get*",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyAllMutatingOperationsBoundary",
+      "Effect": "Deny",
+      "Action": [
+        "*:Create*",
+        "*:Delete*",
+        "*:Put*",
+        "*:Update*",
+        "*:Modify*",
+        "*:Terminate*",
+        "*:Start*",
+        "*:Stop*",
+        "*:Attach*",
+        "*:Detach*",
+        "*:Run*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

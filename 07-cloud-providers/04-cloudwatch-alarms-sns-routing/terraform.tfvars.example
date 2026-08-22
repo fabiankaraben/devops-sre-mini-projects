@@ -1,0 +1,37 @@
+# ==============================================================================
+# Example Variables for CloudWatch Alarms & SNS Incident Routing
+# ==============================================================================
+
+# Target deployment AWS region
+aws_region = "us-east-1"
+
+# Custom endpoint for LocalStack emulator testing (leave empty for real AWS Cloud)
+# aws_endpoint = "http://127.0.0.1:4566"
+aws_endpoint = ""
+
+# Resource naming prefix
+project_name = "cloud-incident-routing"
+
+# Environment identifier
+environment = "demo"
+
+# Alarm Thresholds
+cpu_utilization_threshold        = 80
+error_5xx_rate_threshold         = 10
+disk_space_utilization_threshold = 85
+
+# Webhook Subscription Endpoint (e.g. incident listener / PagerDuty / Slack)
+# webhook_endpoint_url = "https://webhook.site/your-unique-uuid"
+webhook_endpoint_url = ""
+
+# Email Subscription for Critical Alerts
+# notification_email = "devops-oncall@example.com"
+notification_email = ""
+
+# Common Resource Tags
+tags = {
+  Project      = "cloud-incident-routing"
+  Environment  = "demo"
+  ManagedBy    = "Terraform"
+  Architecture = "CloudWatch-CompositeAlarms-SNS"
+}

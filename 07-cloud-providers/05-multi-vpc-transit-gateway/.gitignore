@@ -1,0 +1,20 @@
+# Terraform state and lock files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+.tmp_*
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Local logs and test outputs
+*.log
+test_report.json
+
+# OS files
+.DS_Store
+Thumbs.db

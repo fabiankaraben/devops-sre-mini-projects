@@ -1,0 +1,34 @@
+# ==============================================================================
+# Example Terraform Variables - AWS IAM Least-Privilege & Role Boundaries
+# ==============================================================================
+
+# Target deployment region
+aws_region = "us-east-1"
+
+# Set endpoint for LocalStack emulator testing (leave empty for real AWS Cloud)
+# aws_endpoint = "http://127.0.0.1:4566"
+aws_endpoint = ""
+
+# Resource naming prefix
+project_name = "iam-least-privilege"
+
+# Environment identifier
+environment = "demo"
+
+# Approved geographic regions enforced by organizational compliance
+allowed_regions = [
+  "us-east-1",
+  "us-east-2",
+  "eu-west-1"
+]
+
+# Trusted AWS Account ID (leave blank to auto-detect current caller identity)
+trusted_account_id = ""
+
+# Resource tags
+tags = {
+  Project     = "iam-least-privilege"
+  Environment = "demo"
+  ManagedBy   = "Terraform"
+  Security    = "LeastPrivilege"
+}
