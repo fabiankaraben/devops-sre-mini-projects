@@ -1,0 +1,93 @@
+# ==============================================================================
+# Alertmanager Production Routing & Notification Configuration
+# ==============================================================================
+# Demonstrates:
+#   1. Routing Trees (Matching severity and team labels)
+#   2. Alert Grouping (group_by, group_wait, group_interval)
+#   3. Inhibition Rules (Root failure suppresses dependent alerts)
+#   4. Multi-Channel Webhook & Slack Receivers
+# ==============================================================================
+
+global:
+  resolve_timeout: 1m
+
+# Root routing tree configuration
+route:
+  receiver: 'default-webhook'
+  group_by: ['alertname', 'service', 'severity']
+  group_wait: 3s
+  group_interval: 6s
+  repeat_interval: 30m
+
+  # Sub-routes for granular alert routing
+  routes:
+    # --------------------------------------------------------------------------
+    # 1. Critical Severity Alerts (Slack Critical & Pager on-call)
+    # --------------------------------------------------------------------------
+    - receiver: 'slack-critical'
+      matchers:
+        - severity = critical
+      group_wait: 2s
+      continue: true
+
+    # --------------------------------------------------------------------------
+    # 2. Warning Severity Alerts (Slack Warnings Channel)
+    # --------------------------------------------------------------------------
+    - receiver: 'slack-warnings'
+      matchers:
+        - severity = warning
+      group_wait: 4s
+
+    # --------------------------------------------------------------------------
+    # 3. SRE Platform Escalation Route
+    # --------------------------------------------------------------------------
+    - receiver: 'sre-oncall'
+      matchers:
+        - team = sre
+
+# ------------------------------------------------------------------------------
+# Inhibition Rules (Cascading Failure Suppression)
+# ------------------------------------------------------------------------------
+# When a root outage alert (ServiceDown) is FIRING for a given service,
+# suppress dependent symptomatic alerts (SlowResponseTime, HighHttpErrorRate)
+# to eliminate noise and alert storms for on-call engineers.
+# ------------------------------------------------------------------------------
+inhibit_rules:
+  - source_matchers:
+      - alertname = ServiceDown
+      - severity = critical
+    target_matchers:
+      - alertname =~ "SlowResponseTime|HighHttpErrorRate|HighInFlightRequests"
+    equal: ['service']
+
+# ------------------------------------------------------------------------------
+# Receivers Configuration
+# ------------------------------------------------------------------------------
+receivers:
+  # 1. Default Catch-All Webhook Receiver
+  - name: 'default-webhook'
+    webhook_configs:
+      - url: 'http://webhook-receiver:5001/webhook/default'
+        send_resolved: true
+        max_alerts: 10
+
+  # 2. Slack Critical Channel Receiver
+  - name: 'slack-critical'
+    webhook_configs:
+      - url: 'http://webhook-receiver:5001/webhook/slack-critical'
+        send_resolved: true
+        max_alerts: 10
+
+  # 3. Slack Warnings Channel Receiver
+  - name: 'slack-warnings'
+    webhook_configs:
+      - url: 'http://webhook-receiver:5001/webhook/slack-warnings'
+        send_resolved: true
+        max_alerts: 10
+
+  # 4. SRE Team Escalation Receiver
+  - name: 'sre-oncall'
+    webhook_configs:
+      - url: 'http://webhook-receiver:5001/webhook/sre-oncall'
+        send_resolved: true
+        max_alerts: 10

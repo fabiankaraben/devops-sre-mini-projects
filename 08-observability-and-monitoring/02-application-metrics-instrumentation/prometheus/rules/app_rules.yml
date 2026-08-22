@@ -1,0 +1,89 @@
+# ==============================================================================
+# Prometheus RED and USE Recording & Alerting Rules
+# ==============================================================================
+
+groups:
+  # ----------------------------------------------------------------------------
+  # 1. RED Method Recording Rules (Rate, Errors, Duration)
+  # ----------------------------------------------------------------------------
+  - name: red_method_recording_rules
+    interval: 5s
+    rules:
+      # RED - Rate: Total incoming request rate per second
+      - record: job:http_requests:rate1m
+        expr: sum by (endpoint) (rate(http_requests_total[1m]))
+
+      # RED - Rate: Overall aggregate request throughput
+      - record: job:http_requests_total:rate1m
+        expr: sum(rate(http_requests_total[1m]))
+
+      # RED - Errors: HTTP 5xx error rate as a percentage of total traffic
+      - record: job:http_error_rate:percent
+        expr: >-
+          (sum(rate(http_requests_total{status_code=~"5.."}[1m]))
+          / sum(rate(http_requests_total[1m]))) * 100
+
+      # RED - Duration: 95th Percentile (p95) latency across all endpoints
+      - record: job:http_request_duration_p95:seconds
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[1m])))
+
+      # RED - Duration: 99th Percentile (p99) latency across all endpoints
+      - record: job:http_request_duration_p99:seconds
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[1m])))
+
+  # ----------------------------------------------------------------------------
+  # 2. USE Method Recording Rules (Utilization, Saturation, Errors)
+  # ----------------------------------------------------------------------------
+  - name: use_method_recording_rules
+    interval: 5s
+    rules:
+      # USE - Utilization: Worker pool busy capacity percentage
+      - record: job:app_worker_utilization:percent
+        expr: (app_worker_pool_active_workers / app_worker_pool_max_workers) * 100
+
+      # USE - Saturation: Task queue backlog depth
+      - record: job:app_queue_saturation:depth
+        expr: app_task_queue_depth
+
+      # USE - Errors: Resource error rate per second
+      - record: job:app_resource_errors:rate1m
+        expr: sum by (resource) (rate(app_resource_errors_total[1m]))
+
+  # ----------------------------------------------------------------------------
+  # 3. Operational Alerting Rules (RED & USE Thresholds)
+  # ----------------------------------------------------------------------------
+  - name: application_alerting_rules
+    interval: 5s
+    rules:
+      # Alert: High HTTP 5xx Error Rate (> 10% for 30s)
+      - alert: HighHttpErrorRate
+        expr: job:http_error_rate:percent > 10
+        for: 30s
+        labels:
+          severity: critical
+          methodology: red
+        annotations:
+          summary: "High HTTP 5xx error rate detected: {{ $value | printf \"%.2f\" }}%"
+          description: "Service HTTP error rate has exceeded 10% of total traffic for more than 30 seconds."
+
+      # Alert: Elevated p95 Latency (> 0.5s for 30s)
+      - alert: HighHttpLatencyP95
+        expr: job:http_request_duration_p95:seconds > 0.5
+        for: 30s
+        labels:
+          severity: warning
+          methodology: red
+        annotations:
+          summary: "High p95 response duration: {{ $value | printf \"%.4f\" }}s"
+          description: "95% of requests take more than 500ms to complete over the last 1-minute window."
+
+      # Alert: Worker Pool Saturation (> 90% for 30s)
+      - alert: WorkerPoolSaturated
+        expr: job:app_worker_utilization:percent > 90
+        for: 30s
+        labels:
+          severity: warning
+          methodology: use
+        annotations:
+          summary: "Worker pool utilization is {{ $value | printf \"%.1f\" }}%"
+          description: "Internal background worker pool is near full capacity."

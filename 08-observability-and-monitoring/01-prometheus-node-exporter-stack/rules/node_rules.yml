@@ -1,0 +1,85 @@
+# ==============================================================================
+# Prometheus Recording and Alerting Rules for Node Exporter
+# ==============================================================================
+groups:
+  - name: node_exporter_recording_rules
+    interval: 15s
+    rules:
+      # Precomputed CPU utilization percentage across all cores
+      - record: instance:node_cpu_utilization:percent
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100)
+
+      # Precomputed Memory utilization percentage
+      - record: instance:node_memory_utilization:percent
+        expr: >-
+          100 * (1 - ((node_memory_MemAvailable_bytes or (node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes))
+          / node_memory_MemTotal_bytes))
+
+      # Precomputed Root Filesystem disk utilization percentage
+      - record: instance:node_filesystem_utilization:percent
+        expr: >-
+          100 - (node_filesystem_avail_bytes{mountpoint="/rootfs",fstype!~"rootfs|selinuxfs|autofs|rpc_pipefs|tmpfs"}
+          / node_filesystem_size_bytes{mountpoint="/rootfs",fstype!~"rootfs|selinuxfs|autofs|rpc_pipefs|tmpfs"} * 100)
+
+      # Precomputed Disk Write throughput in MB/s
+      - record: instance:node_disk_write_rate:mbytes_per_second
+        expr: sum by (instance) (rate(node_disk_written_bytes_total[1m])) / (1024 * 1024)
+
+      # Precomputed Disk Read throughput in MB/s
+      - record: instance:node_disk_read_rate:mbytes_per_second
+        expr: sum by (instance) (rate(node_disk_read_bytes_total[1m])) / (1024 * 1024)
+
+      # Precomputed Network Receive throughput in KB/s
+      - record: instance:node_network_receive_rate:kbytes_per_second
+        expr: sum by (instance) (rate(node_network_receive_bytes_total{device!~"lo|docker.*|veth.*|br-.*"}[1m])) / 1024
+
+      # Precomputed Network Transmit throughput in KB/s
+      - record: instance:node_network_transmit_rate:kbytes_per_second
+        expr: sum by (instance) (rate(node_network_transmit_bytes_total{device!~"lo|docker.*|veth.*|br-.*"}[1m])) / 1024
+
+  - name: node_exporter_alerting_rules
+    interval: 15s
+    rules:
+      # Alert when Node Exporter scrape target fails
+      - alert: NodeExporterDown
+        expr: up{job="node_exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: infrastructure
+        annotations:
+          summary: "Node Exporter instance {{ $labels.instance }} is unreachable"
+          description: "Prometheus has failed to scrape metrics from Node Exporter on {{ $labels.instance }} for more than 1 minute."
+
+      # Alert when CPU utilization is critically high
+      - alert: HighCpuUtilization
+        expr: instance:node_cpu_utilization:percent > 85
+        for: 2m
+        labels:
+          severity: warning
+          tier: infrastructure
+        annotations:
+          summary: "High CPU utilization on {{ $labels.instance }}"
+          description: "Host CPU utilization has exceeded 85% for more than 2 minutes (current value: {{ $value | printf \"%.2f\" }}%)."
+
+      # Alert when RAM utilization is critically high
+      - alert: HighMemoryUtilization
+        expr: instance:node_memory_utilization:percent > 90
+        for: 2m
+        labels:
+          severity: warning
+          tier: infrastructure
+        annotations:
+          summary: "High memory utilization on {{ $labels.instance }}"
+          description: "Host memory utilization has exceeded 90% for more than 2 minutes (current value: {{ $value | printf \"%.2f\" }}%)."
+
+      # Alert when filesystem space is low
+      - alert: LowDiskSpace
+        expr: instance:node_filesystem_utilization:percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          tier: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Root filesystem utilization is above 85% (current usage: {{ $value | printf \"%.2f\" }}%)."

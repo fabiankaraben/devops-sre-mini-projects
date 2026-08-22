@@ -1,0 +1,49 @@
+# ==============================================================================
+# Prometheus Synthetic Probing Alert Rules
+# ==============================================================================
+
+groups:
+  - name: blackbox_probe_alerts
+    interval: 2s
+    rules:
+      # ------------------------------------------------------------------------
+      # 1. External Endpoint Reachability Failure (probe_success == 0)
+      # ------------------------------------------------------------------------
+      - alert: EndpointDown
+        expr: probe_success == 0
+        for: 10s
+        labels:
+          severity: critical
+          tier: synthetic_monitoring
+        annotations:
+          summary: "Synthetic probe failed on {{ $labels.instance }}"
+          description: "Blackbox probe for {{ $labels.instance }} (Module: {{ $labels.job }}) reported failure (probe_success == 0)."
+          runbook_url: "https://wiki.internal/runbooks/endpoint-down"
+
+      # ------------------------------------------------------------------------
+      # 2. Slow Endpoint Response Latency
+      # ------------------------------------------------------------------------
+      - alert: EndpointHighLatency
+        expr: probe_duration_seconds > 0.35
+        for: 10s
+        labels:
+          severity: warning
+          tier: synthetic_monitoring
+        annotations:
+          summary: "High probe response latency on {{ $labels.instance }}: {{ $value | printf \"%.3f\" }}s"
+          description: "Synthetic probe on {{ $labels.instance }} took longer than 350ms to complete."
+          runbook_url: "https://wiki.internal/runbooks/endpoint-latency"
+
+      # ------------------------------------------------------------------------
+      # 3. HTTP Content Validation / Body Pattern Mismatch
+      # ------------------------------------------------------------------------
+      - alert: HttpContentMismatch
+        expr: probe_success{job="probe_http_body_match"} == 0
+        for: 10s
+        labels:
+          severity: critical
+          tier: synthetic_monitoring
+        annotations:
+          summary: "Response content validation failed on {{ $labels.instance }}"
+          description: "Endpoint returned unexpected body payload failing regex check."
+          runbook_url: "https://wiki.internal/runbooks/content-mismatch"

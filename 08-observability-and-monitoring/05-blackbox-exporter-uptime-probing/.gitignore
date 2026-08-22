@@ -1,0 +1,15 @@
+# Python virtual environments & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Test output & local logs
+*.log
+test-results/
+.pytest_cache/
+
+# Local temporary state
+.DS_Store

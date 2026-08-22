@@ -1,0 +1,91 @@
+# ==============================================================================
+# Docker Compose - Prometheus Blackbox Exporter Probing Stack
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Monitoring & Evaluation Tier: Prometheus Server
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    image: mini-proj-08-05-prometheus:local
+    container_name: prometheus-server
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=2d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - probing-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      blackbox-exporter:
+        condition: service_healthy
+      mock-targets:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # 2. Synthetic Probe Engine: Prometheus Blackbox Exporter
+  # ----------------------------------------------------------------------------
+  blackbox-exporter:
+    build:
+      context: ./blackbox
+      dockerfile: Dockerfile
+    image: mini-proj-08-05-blackbox:local
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    ports:
+      - "9115:9115"
+    networks:
+      - probing-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9115/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 3. Synthetic Target Endpoints: Mock HTTP & TCP Microservice
+  # ----------------------------------------------------------------------------
+  mock-targets:
+    build:
+      context: ./mock_target_endpoints
+      dockerfile: Dockerfile
+    image: mini-proj-08-05-mock-targets:local
+    container_name: mock-targets
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    networks:
+      - probing-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+networks:
+  probing-net:
+    name: probing-stack-net
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    name: prometheus_blackbox_data

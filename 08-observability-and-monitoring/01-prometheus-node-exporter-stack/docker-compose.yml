@@ -1,0 +1,78 @@
+# ==============================================================================
+# Prometheus & Node Exporter Monitoring Stack
+# ==============================================================================
+# Multi-container Docker Compose definition deploying Prometheus Server and
+# Node Exporter with host metrics extraction, custom TSDB retention,
+# healthchecks, and lifecycle management API enabled.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Prometheus Time-Series Database & Monitoring Server
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prometheus-custom-stack:v2.54.1
+    container_name: prometheus-server
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=5GB'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      node-exporter:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # Node Exporter: Host Hardware and OS Metrics Collector
+  # ----------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9100/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+networks:
+  monitoring-net:
+    name: monitoring-stack-net
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    name: prometheus_tsdb_data

@@ -1,0 +1,23 @@
+# ==============================================================================
+# Grafana Datasources as Code Provisioning
+# ==============================================================================
+# Automatically configures the Prometheus time-series database datasource
+# upon container startup without requiring manual UI configuration.
+# ==============================================================================
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    uid: prometheus
+    url: http://prometheus:9090
+    isDefault: true
+    version: 1
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 5s
+      manageAlerts: true

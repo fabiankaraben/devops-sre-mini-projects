@@ -1,0 +1,74 @@
+# ==============================================================================
+# Prometheus Alerting Rules Definition
+# ==============================================================================
+
+groups:
+  - name: application_alert_rules
+    interval: 2s
+    rules:
+      # ------------------------------------------------------------------------
+      # 1. Service Availability Alert (Root Failure)
+      # ------------------------------------------------------------------------
+      - alert: ServiceDown
+        expr: up{job="instrumented_app"} == 0
+        for: 10s
+        labels:
+          severity: critical
+          tier: platform
+          team: sre
+          service: checkout-api
+        annotations:
+          summary: "Microservice {{ $labels.instance }} is DOWN"
+          description: "Target microservice {{ $labels.job }} on instance {{ $labels.instance }} has been unreachable for > 10s."
+          runbook_url: "https://wiki.internal/runbooks/service-outage"
+
+      # ------------------------------------------------------------------------
+      # 2. High HTTP 5xx Error Rate Alert
+      # ------------------------------------------------------------------------
+      - alert: HighHttpErrorRate
+        expr: >-
+          (sum(rate(http_requests_total{job="instrumented_app",status_code=~"5.."}[1m]))
+          / sum(rate(http_requests_total{job="instrumented_app"}[1m]))) * 100 > 15
+        for: 10s
+        labels:
+          severity: critical
+          tier: application
+          team: backend
+          service: checkout-api
+        annotations:
+          summary: "High HTTP 5xx error rate on {{ $labels.service }}: {{ $value | printf \"%.2f\" }}%"
+          description: "Over 15% of requests to {{ $labels.service }} are failing with 5xx server errors over the last minute."
+          runbook_url: "https://wiki.internal/runbooks/http-error-rate"
+
+      # ------------------------------------------------------------------------
+      # 3. Slow Response Time (p95 Latency) Alert
+      # ------------------------------------------------------------------------
+      - alert: SlowResponseTime
+        expr: >-
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="instrumented_app"}[1m]))) > 0.5
+        for: 10s
+        labels:
+          severity: warning
+          tier: application
+          team: backend
+          service: checkout-api
+        annotations:
+          summary: "Elevated p95 latency on {{ $labels.service }}: {{ $value | printf \"%.3f\" }}s"
+          description: "95th percentile latency is exceeding 500ms on {{ $labels.service }}."
+          runbook_url: "https://wiki.internal/runbooks/high-latency"
+
+      # ------------------------------------------------------------------------
+      # 4. In-Flight Request Concurrency Alert
+      # ------------------------------------------------------------------------
+      - alert: HighInFlightRequests
+        expr: sum(http_requests_in_flight{job="instrumented_app"}) > 15
+        for: 10s
+        labels:
+          severity: warning
+          tier: platform
+          team: sre
+          service: checkout-api
+        annotations:
+          summary: "High in-flight request concurrency on {{ $labels.service }}"
+          description: "Active concurrent requests have exceeded threshold of 15."
+          runbook_url: "https://wiki.internal/runbooks/concurrency-spike"

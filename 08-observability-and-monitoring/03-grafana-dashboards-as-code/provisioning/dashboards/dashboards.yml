@@ -1,0 +1,39 @@
+# ==============================================================================
+# Grafana Dashboards as Code Provisioning Provider
+# ==============================================================================
+# Declares providers that scan local JSON dashboard models on disk and
+# automatically registers them into categorized Grafana UI folders.
+# ==============================================================================
+
+apiVersion: 1
+
+providers:
+  # ----------------------------------------------------------------------------
+  # 1. Infrastructure Monitoring Dashboards (Node Exporter, Host Hardware)
+  # ----------------------------------------------------------------------------
+  - name: 'Infrastructure Dashboards'
+    orgId: 1
+    folder: 'Infrastructure'
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json/infra
+      foldersFromFilesStructure: false
+
+  # ----------------------------------------------------------------------------
+  # 2. Application Telemetry Dashboards (RED & USE Microservices)
+  # ----------------------------------------------------------------------------
+  - name: 'Application Dashboards'
+    orgId: 1
+    folder: 'Microservices'
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json/apps
+      foldersFromFilesStructure: false

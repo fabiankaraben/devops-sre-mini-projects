@@ -1,0 +1,67 @@
+# ==============================================================================
+# Prometheus Blackbox Exporter Configuration
+# ==============================================================================
+# Declares probe modules for external synthetic monitoring across
+# HTTP/HTTPS, TCP sockets, and DNS resolution.
+# ==============================================================================
+
+modules:
+  # ----------------------------------------------------------------------------
+  # 1. Standard HTTP GET Probe (Expects 2xx Status Code)
+  # ----------------------------------------------------------------------------
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [] # Defaults to 2xx
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      method: GET
+      no_follow_redirects: false
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+      tls_config:
+        insecure_skip_verify: false
+
+  # ----------------------------------------------------------------------------
+  # 2. HTTP POST Probe (Payload & JSON Header Validation)
+  # ----------------------------------------------------------------------------
+  http_post_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: []
+      method: POST
+      headers:
+        Content-Type: application/json
+      body: '{"probe_type": "synthetic_healthcheck", "client": "prometheus_blackbox"}'
+
+  # ----------------------------------------------------------------------------
+  # 3. HTTP Content Validation Probe (Response Body Regex Matching)
+  # ----------------------------------------------------------------------------
+  http_custom_match:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200]
+      method: GET
+      fail_if_body_not_matches_regexp:
+        - '.*"status":\s*"UP".*'
+
+  # ----------------------------------------------------------------------------
+  # 4. Raw TCP Socket Probe (Port Reachability & Connection Timing)
+  # ----------------------------------------------------------------------------
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+
+  # ----------------------------------------------------------------------------
+  # 5. DNS Resolution Probe
+  # ----------------------------------------------------------------------------
+  dns_query:
+    prober: dns
+    timeout: 5s
+    dns:
+      transport_protocol: "udp"
+      preferred_ip_protocol: "ip4"
+      query_name: "prometheus.io"
+      query_type: "A"

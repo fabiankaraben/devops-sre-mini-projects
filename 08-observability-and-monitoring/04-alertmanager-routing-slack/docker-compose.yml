@@ -1,0 +1,120 @@
+# ==============================================================================
+# Docker Compose - Prometheus Alertmanager Routing & Slack Stack
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Monitoring & Evaluation Tier: Prometheus Server
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    image: mini-proj-08-04-prometheus:local
+    container_name: prometheus-server
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=2d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - alerting-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      alertmanager:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # 2. Alert Routing & Notification Tier: Alertmanager
+  # ----------------------------------------------------------------------------
+  alertmanager:
+    build:
+      context: ./alertmanager
+      dockerfile: Dockerfile
+    image: mini-proj-08-04-alertmanager:local
+    container_name: alertmanager-server
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.route-prefix=/'
+    ports:
+      - "9093:9093"
+    volumes:
+      - alertmanager_data:/alertmanager
+    networks:
+      - alerting-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9093/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    depends_on:
+      webhook-receiver:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # 3. Notification Endpoint: Mock Webhook & Slack Sandbox Receiver
+  # ----------------------------------------------------------------------------
+  webhook-receiver:
+    build:
+      context: ./webhook_receiver
+      dockerfile: Dockerfile
+    image: mini-proj-08-04-webhook-receiver:local
+    container_name: webhook-receiver
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    networks:
+      - alerting-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 4. Target Application Microservice: Checkout API
+  # ----------------------------------------------------------------------------
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: mini-proj-08-04-app:local
+    container_name: checkout-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    networks:
+      - alerting-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+networks:
+  alerting-net:
+    name: alerting-stack-net
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    name: prometheus_alerting_data
+  alertmanager_data:
+    name: alertmanager_storage_data

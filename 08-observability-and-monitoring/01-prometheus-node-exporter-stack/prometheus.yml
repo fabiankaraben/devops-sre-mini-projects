@@ -1,0 +1,62 @@
+# ==============================================================================
+# Prometheus Core Configuration
+# ==============================================================================
+# Global configuration options defining default scrape and evaluation intervals,
+# timeouts, and external identification labels.
+# ==============================================================================
+
+global:
+  scrape_interval: 15s      # How frequently Prometheus scrapes targets by default
+  evaluation_interval: 15s  # How frequently Prometheus evaluates recording and alert rules
+  scrape_timeout: 10s       # Timeout per scrape request before timing out
+
+  external_labels:
+    environment: 'local-development'
+    monitor: 'devops-sre-monitoring'
+    cluster: 'standalone-host'
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+# Alertmanager configuration (placeholder / prepared for downstream alerting integration)
+alerting:
+  alertmanagers: []
+
+# Scrape configurations containing endpoints to pull metrics from
+scrape_configs:
+  # ----------------------------------------------------------------------------
+  # 1. Prometheus Self-Monitoring
+  # ----------------------------------------------------------------------------
+  # Collects runtime performance metrics from the Prometheus server itself
+  # (TSDB ingestion rate, memory usage, scrape durations, and compaction metrics).
+  # ----------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    scheme: 'http'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus-core'
+          tier: 'observability'
+
+  # ----------------------------------------------------------------------------
+  # 2. Node Exporter Host & OS Metrics
+  # ----------------------------------------------------------------------------
+  # Scrapes Linux / Host system metrics exported by the Prometheus Node Exporter
+  # (CPU, Memory, Disk I/O, Network Throughput, and Filesystem Utilization).
+  # Configured with a higher-frequency scrape interval (5s) for real-time observability.
+  # ----------------------------------------------------------------------------
+  - job_name: 'node_exporter'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    metrics_path: '/metrics'
+    scheme: 'http'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'host-node'
+          environment: 'local-development'
+          role: 'infrastructure-metrics'
+          tier: 'infrastructure'

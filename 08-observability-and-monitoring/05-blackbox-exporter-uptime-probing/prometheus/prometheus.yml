@@ -1,0 +1,155 @@
+# ==============================================================================
+# Prometheus Configuration with Blackbox Relabeling Probes
+# ==============================================================================
+
+global:
+  scrape_interval: 2s
+  evaluation_interval: 2s
+  scrape_timeout: 2s
+
+  external_labels:
+    environment: 'synthetic-monitoring-demo'
+    region: 'us-east-1'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # ----------------------------------------------------------------------------
+  # 1. Prometheus & Exporter Internal Metrics
+  # ----------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'blackbox_exporter'
+    static_configs:
+      - targets: ['blackbox-exporter:9115']
+
+  # ----------------------------------------------------------------------------
+  # 2. HTTP GET 2xx Probe - Healthy Target
+  # ----------------------------------------------------------------------------
+  - job_name: 'probe_http_healthy'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - 'http://mock-targets:8080/api/healthy'
+        labels:
+          environment: 'production'
+          tier: 'synthetic_http'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ----------------------------------------------------------------------------
+  # 3. HTTP GET 2xx Probe - Slow Target (Latency Probing)
+  # ----------------------------------------------------------------------------
+  - job_name: 'probe_http_slow'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - 'http://mock-targets:8080/api/slow'
+        labels:
+          environment: 'production'
+          tier: 'synthetic_http'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ----------------------------------------------------------------------------
+  # 4. HTTP GET 2xx Probe - Failing Endpoints (500 Server Error & 404 Not Found)
+  # ----------------------------------------------------------------------------
+  - job_name: 'probe_http_failing'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - 'http://mock-targets:8080/api/failing-500'
+          - 'http://mock-targets:8080/api/not-found-404'
+        labels:
+          environment: 'production'
+          tier: 'synthetic_http'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ----------------------------------------------------------------------------
+  # 5. HTTP Response Body Regex Validation Probe
+  # ----------------------------------------------------------------------------
+  - job_name: 'probe_http_body_match'
+    metrics_path: /probe
+    params:
+      module: [http_custom_match]
+    static_configs:
+      - targets:
+          - 'http://mock-targets:8080/api/healthy'
+          - 'http://mock-targets:8080/api/unhealthy-body'
+        labels:
+          environment: 'production'
+          tier: 'synthetic_content_validation'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ----------------------------------------------------------------------------
+  # 6. HTTP POST Probe with Payload
+  # ----------------------------------------------------------------------------
+  - job_name: 'probe_http_post'
+    metrics_path: /probe
+    params:
+      module: [http_post_2xx]
+    static_configs:
+      - targets:
+          - 'http://mock-targets:8080/api/post-endpoint'
+        labels:
+          environment: 'production'
+          tier: 'synthetic_http_post'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ----------------------------------------------------------------------------
+  # 7. Raw TCP Socket Reachability Probe
+  # ----------------------------------------------------------------------------
+  - job_name: 'probe_tcp_socket'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - 'mock-targets:9000'
+        labels:
+          environment: 'production'
+          tier: 'synthetic_tcp'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

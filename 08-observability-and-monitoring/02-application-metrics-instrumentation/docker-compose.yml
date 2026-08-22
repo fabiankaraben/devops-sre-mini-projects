@@ -1,0 +1,69 @@
+# ==============================================================================
+# Docker Compose - RED & USE Metrics Instrumentation Stack
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Application Layer: Instrumented FastAPI Microservice
+  # ----------------------------------------------------------------------------
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: mini-proj-08-02-app:local
+    container_name: instrumented-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MAX_WORKERS=10
+    networks:
+      - instrumentation-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 2. Monitoring Layer: Prometheus Server
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    image: mini-proj-08-02-prometheus:local
+    container_name: prometheus-app-monitor
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - instrumentation-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      app:
+        condition: service_healthy
+
+networks:
+  instrumentation-net:
+    name: instrumentation-stack-net
+    driver: bridge
+
+volumes:
+  prometheus_data:
+    name: prometheus_app_tsdb_data

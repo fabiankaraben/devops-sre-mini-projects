@@ -1,0 +1,34 @@
+# ==============================================================================
+# Prometheus Configuration for Grafana Dashboards as Code
+# ==============================================================================
+
+global:
+  scrape_interval: 3s
+  evaluation_interval: 3s
+  scrape_timeout: 3s
+
+  external_labels:
+    environment: 'local-development'
+    cluster: 'grafana-provisioning-demo'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node_exporter'
+    scrape_interval: 3s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'host-node'
+          tier: 'infrastructure'
+
+  - job_name: 'instrumented_app'
+    scrape_interval: 2s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['app:8000']
+        labels:
+          app: 'demo-api'
+          tier: 'application'
