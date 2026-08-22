@@ -1,0 +1,20 @@
+# ==============================================================================
+# Fail2ban Local Configuration (jail.local)
+# ==============================================================================
+# Generated and Managed by Ansible. Manual edits will be overwritten.
+# ==============================================================================
+
+[DEFAULT]
+bantime  = {{ hardening_fail2ban_bantime }}
+findtime = {{ hardening_fail2ban_findtime }}
+maxretry = {{ hardening_fail2ban_maxretry }}
+backend  = auto
+ignoreip = 127.0.0.1/8 ::1
+
+[sshd]
+enabled  = true
+port     = {{ hardening_ssh_port }}
+mode     = aggressive
+logpath  = /var/log/auth.log
+maxretry = {{ hardening_fail2ban_maxretry }}
+bantime  = {{ hardening_fail2ban_bantime }}

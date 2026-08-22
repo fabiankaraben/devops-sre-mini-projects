@@ -1,0 +1,41 @@
+---
+# ==============================================================================
+# Firewall Hardening with UFW (CIS Benchmark 3.5)
+# ==============================================================================
+
+- name: Install UFW package
+  ansible.builtin.package:
+    name: ufw
+    state: present
+  when: hardening_ufw_enabled | bool
+
+- name: Configure UFW default incoming policy
+  community.general.ufw:
+    direction: incoming
+    default: "{{ hardening_ufw_default_incoming_policy }}"
+  when: hardening_ufw_enabled | bool
+  failed_when: false
+
+- name: Configure UFW default outgoing policy
+  community.general.ufw:
+    direction: outgoing
+    default: "{{ hardening_ufw_default_outgoing_policy }}"
+  when: hardening_ufw_enabled | bool
+  failed_when: false
+
+- name: Configure UFW port rules
+  community.general.ufw:
+    rule: "{{ item.rule | default('allow') }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ hardening_ufw_allowed_ports }}"
+  when: hardening_ufw_enabled | bool
+  failed_when: false
+  notify: reload ufw
+
+- name: Enable UFW firewall service
+  community.general.ufw:
+    state: enabled
+  when: hardening_ufw_enabled | bool
+  failed_when: false

@@ -1,0 +1,14 @@
+---
+# ==============================================================================
+# Master Hardening Playbook - Baseline Linux CIS Benchmark Compliance
+# ==============================================================================
+# Applies modular security controls across targeted Linux server groups.
+# ==============================================================================
+
+- name: Apply Baseline Operating System Hardening
+  hosts: hardened_servers
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: hardening

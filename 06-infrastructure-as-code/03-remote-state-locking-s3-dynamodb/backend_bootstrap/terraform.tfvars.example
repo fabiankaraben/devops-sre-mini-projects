@@ -1,0 +1,13 @@
+# ==============================================================================
+# Sample Variable Overrides for Backend Bootstrap
+# ==============================================================================
+
+aws_region          = "us-east-1"
+aws_endpoint        = "http://127.0.0.1:4566" # Set to "" for real AWS Cloud
+state_bucket_prefix = "devops-tfstate"
+dynamodb_table_name = "devops-tflocks"
+environment         = "shared"
+extra_tags = {
+  Owner       = "PlatformEngineering"
+  CostCenter  = "Core-Infrastructure"
+}

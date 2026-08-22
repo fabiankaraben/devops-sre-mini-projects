@@ -1,0 +1,26 @@
+---
+# ==============================================================================
+# Handlers for Hardening Role
+# ==============================================================================
+# Executed only when corresponding configuration files are modified.
+# ==============================================================================
+
+- name: restart sshd
+  ansible.builtin.service:
+    name: "{{ 'ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd' }}"
+    state: reloaded
+  failed_when: false
+
+- name: reload ufw
+  ansible.builtin.command: ufw reload
+  failed_when: false
+
+- name: restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+  failed_when: false
+
+- name: apply sysctl
+  ansible.builtin.command: sysctl --system
+  failed_when: false

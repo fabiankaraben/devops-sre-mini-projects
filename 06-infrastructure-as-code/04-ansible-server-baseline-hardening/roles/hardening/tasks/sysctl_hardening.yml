@@ -1,0 +1,14 @@
+---
+# ==============================================================================
+# Linux Kernel Security Parameter Hardening (CIS Benchmark 3.1 & 3.2)
+# ==============================================================================
+
+- name: Deploy kernel sysctl security configuration
+  ansible.builtin.template:
+    src: 99-security.conf.j2
+    dest: /etc/sysctl.d/99-security.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: hardening_sysctl_enabled | bool
+  notify: apply sysctl

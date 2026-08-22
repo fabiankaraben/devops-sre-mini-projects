@@ -1,0 +1,24 @@
+# Local .terraform and .tofu directories
+**/.terraform/*
+**/.tofu/*
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+
+# Workspaces state isolation directories
+terraform.tfstate.d/
+
+# Variable overrides & plans
+*.tfvars.override
+*.tfvars.override.json
+*-plan.tfplan
+*.tfplan
+
+# CLI and tool caches
+.tflint.d/
+.terraform.lock.hcl
+.tofu.lock.hcl
+.cache/
+*.log

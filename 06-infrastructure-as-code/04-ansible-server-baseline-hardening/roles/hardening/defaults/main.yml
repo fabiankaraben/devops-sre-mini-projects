@@ -1,0 +1,62 @@
+---
+# ==============================================================================
+# Default Variables for Hardening Role
+# ==============================================================================
+
+# System Updates & Automatic Patching
+hardening_unattended_upgrades_enabled: true
+hardening_auto_reboot: false
+hardening_auto_reboot_time: "03:00"
+
+# SSH Hardening Parameters (CIS Linux Benchmark 5.2)
+hardening_ssh_port: 22
+hardening_permit_root_login: "no"
+hardening_password_authentication: "no"
+hardening_max_auth_tries: 3
+hardening_client_alive_interval: 300
+hardening_client_alive_count_max: 2
+hardening_x11_forwarding: "no"
+hardening_allow_agent_forwarding: "no"
+hardening_allow_tcp_forwarding: "no"
+hardening_ciphers: "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+hardening_macs: "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
+hardening_kex_algorithms: "curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256"
+
+# Firewall (UFW) Parameters (CIS Linux Benchmark 3.5)
+hardening_ufw_enabled: true
+hardening_ufw_default_incoming_policy: "deny"
+hardening_ufw_default_outgoing_policy: "allow"
+hardening_ufw_default_routed_policy: "deny"
+hardening_ufw_allowed_ports:
+  - port: "{{ hardening_ssh_port }}"
+    proto: "tcp"
+    rule: "limit"
+    comment: "Rate-limited SSH"
+
+# Fail2ban Intrusion Prevention
+hardening_fail2ban_enabled: true
+hardening_fail2ban_bantime: 3600 # 1 hour ban duration
+hardening_fail2ban_findtime: 600 # 10 minute window
+hardening_fail2ban_maxretry: 3   # 3 attempts before ban
+
+# Sysctl Kernel Security Hardening (CIS Linux Benchmark 3.1 & 3.2)
+hardening_sysctl_enabled: true
+hardening_sysctl_settings:
+  - { name: "net.ipv4.conf.all.accept_source_route", value: "0" }
+  - { name: "net.ipv4.conf.default.accept_source_route", value: "0" }
+  - { name: "net.ipv4.conf.all.accept_redirects", value: "0" }
+  - { name: "net.ipv4.conf.default.accept_redirects", value: "0" }
+  - { name: "net.ipv4.conf.all.secure_redirects", value: "0" }
+  - { name: "net.ipv4.conf.default.secure_redirects", value: "0" }
+  - { name: "net.ipv4.conf.all.send_redirects", value: "0" }
+  - { name: "net.ipv4.conf.default.send_redirects", value: "0" }
+  - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+  - { name: "net.ipv4.conf.default.rp_filter", value: "1" }
+  - { name: "net.ipv4.conf.all.log_martians", value: "1" }
+  - { name: "net.ipv4.conf.default.log_martians", value: "1" }
+  - { name: "net.ipv4.icmp_echo_ignore_broadcasts", value: "1" }
+  - { name: "net.ipv4.icmp_ignore_bogus_error_responses", value: "1" }
+  - { name: "net.ipv4.tcp_syncookies", value: "1" }
+  - { name: "fs.protected_hardlinks", value: "1" }
+  - { name: "fs.protected_symlinks", value: "1" }
+  - { name: "fs.suid_dumpable", value: "0" }

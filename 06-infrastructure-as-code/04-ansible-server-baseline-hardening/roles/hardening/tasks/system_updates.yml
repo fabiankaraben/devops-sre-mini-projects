@@ -1,0 +1,44 @@
+---
+# ==============================================================================
+# Automated Security Updates & Patching Configuration
+# ==============================================================================
+
+- name: Ensure APT cache is updated
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install automated security updates packages
+  ansible.builtin.package:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Configure unattended-upgrades settings
+  ansible.builtin.template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - hardening_unattended_upgrades_enabled | bool
+
+- name: Enable automatic daily package updates and security upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::Download-Upgradeable-Packages "1";
+      APT::Periodic::AutocleanInterval "7";
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - hardening_unattended_upgrades_enabled | bool

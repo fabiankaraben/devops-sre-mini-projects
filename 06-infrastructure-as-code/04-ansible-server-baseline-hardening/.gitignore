@@ -1,0 +1,18 @@
+# Ansible local files
+*.retry
+.ansible/
+inventory.ini
+!inventory.ini.example
+
+# SSH keys generated during testing
+.ssh_test_key
+.ssh_test_key.pub
+*.pem
+*.key
+
+# Temporary files and logs
+*.log
+.tmp_*
+.cache/
+__pycache__/
+*.pyc

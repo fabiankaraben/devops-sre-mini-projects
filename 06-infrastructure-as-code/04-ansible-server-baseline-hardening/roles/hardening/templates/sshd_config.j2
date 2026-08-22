@@ -1,0 +1,52 @@
+# ==============================================================================
+# Hardened OpenSSH Server Configuration (CIS Benchmark 5.2 Compliant)
+# ==============================================================================
+# Generated and Managed by Ansible. Manual edits will be overwritten.
+# ==============================================================================
+
+# Network & Port
+Port {{ hardening_ssh_port }}
+AddressFamily any
+ListenAddress 0.0.0.0
+ListenAddress ::
+
+# Host Keys
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Cryptography & Ciphers (CIS 5.2.14, 5.2.15, 5.2.16)
+KexAlgorithms {{ hardening_kex_algorithms }}
+Ciphers {{ hardening_ciphers }}
+MACs {{ hardening_macs }}
+
+# Authentication Security (CIS 5.2.4, 5.2.5, 5.2.6, 5.2.8, 5.2.10)
+PermitRootLogin {{ hardening_permit_root_login }}
+PasswordAuthentication {{ hardening_password_authentication }}
+PermitEmptyPasswords no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys .ssh/authorized_keys2
+MaxAuthTries {{ hardening_max_auth_tries }}
+MaxSessions 4
+LoginGraceTime 60
+
+# Session & Forwarding Restrictions (CIS 5.2.7, 5.2.17)
+X11Forwarding {{ hardening_x11_forwarding }}
+AllowAgentForwarding {{ hardening_allow_agent_forwarding }}
+AllowTcpForwarding {{ hardening_allow_tcp_forwarding }}
+PermitUserEnvironment no
+
+# Timeouts & Keep-Alives (CIS 5.2.13, 5.2.19)
+ClientAliveInterval {{ hardening_client_alive_interval }}
+ClientAliveCountMax {{ hardening_client_alive_count_max }}
+
+# Logging & Environment
+LogLevel VERBOSE
+SyslogFacility AUTH
+UsePAM yes
+PrintMotd no
+PrintLastLog yes
+AcceptEnv LANG LC_*
+
+# Subsystems
+Subsystem sftp /usr/lib/openssh/sftp-server

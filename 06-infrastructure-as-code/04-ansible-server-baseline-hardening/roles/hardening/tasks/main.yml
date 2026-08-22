@@ -1,0 +1,38 @@
+---
+# ==============================================================================
+# Main Task Coordinator for Hardening Role
+# ==============================================================================
+
+- name: Include Automated Security Updates Tasks
+  ansible.builtin.import_tasks: system_updates.yml
+  tags:
+    - system_updates
+    - security
+
+- name: Include SSH Daemon Hardening Tasks
+  ansible.builtin.import_tasks: ssh_hardening.yml
+  tags:
+    - ssh
+    - ssh_hardening
+    - security
+
+- name: Include UFW Firewall Hardening Tasks
+  ansible.builtin.import_tasks: firewall_ufw.yml
+  tags:
+    - ufw
+    - firewall
+    - security
+
+- name: Include Fail2ban Intrusion Prevention Tasks
+  ansible.builtin.import_tasks: fail2ban.yml
+  tags:
+    - fail2ban
+    - intrusion_prevention
+    - security
+
+- name: Include Sysctl Kernel Hardening Tasks
+  ansible.builtin.import_tasks: sysctl_hardening.yml
+  tags:
+    - sysctl
+    - kernel
+    - security

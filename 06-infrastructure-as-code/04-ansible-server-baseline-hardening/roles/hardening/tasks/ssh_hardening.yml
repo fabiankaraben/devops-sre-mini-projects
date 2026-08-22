@@ -1,0 +1,27 @@
+---
+# ==============================================================================
+# SSH Daemon Security Hardening (CIS Benchmark 5.2)
+# ==============================================================================
+
+- name: Ensure OpenSSH server package is installed
+  ansible.builtin.package:
+    name:
+      - openssh-server
+    state: present
+
+- name: Deploy hardened sshd_config configuration
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: restart sshd
+
+- name: Ensure OpenSSH service is enabled and started
+  ansible.builtin.service:
+    name: "{{ 'ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd' }}"
+    state: started
+    enabled: yes
+  failed_when: false

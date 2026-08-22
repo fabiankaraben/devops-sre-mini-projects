@@ -1,0 +1,15 @@
+# ==============================================================================
+# terraform.tfvars.example - Sample Variable Overrides
+# ==============================================================================
+# Copy this file to `terraform.tfvars` to customize your deployment parameters:
+#   cp terraform.tfvars.example terraform.tfvars
+# ==============================================================================
+
+container_name     = "custom-nginx-demo"
+external_port      = 8090
+internal_port      = 80
+network_name       = "custom-docker-net"
+volume_name        = "custom-nginx-vol"
+nginx_image_name   = "nginx:1.27-alpine"
+environment        = "staging"
+enable_custom_page = true

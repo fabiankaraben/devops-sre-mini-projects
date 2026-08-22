@@ -1,0 +1,28 @@
+---
+# ==============================================================================
+# Fail2ban Intrusion Prevention Configuration
+# ==============================================================================
+
+- name: Install Fail2ban package
+  ansible.builtin.package:
+    name: fail2ban
+    state: present
+  when: hardening_fail2ban_enabled | bool
+
+- name: Deploy Fail2ban jail.local configuration
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  when: hardening_fail2ban_enabled | bool
+  notify: restart fail2ban
+
+- name: Ensure Fail2ban service is enabled and running
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: yes
+  when: hardening_fail2ban_enabled | bool
+  failed_when: false

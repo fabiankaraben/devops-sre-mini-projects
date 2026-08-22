@@ -1,0 +1,26 @@
+# ==============================================================================
+# Sample Backend Configuration for S3 Remote State & DynamoDB Locking
+# ==============================================================================
+# Usage:
+#   terraform init -backend-config=backend.hcl
+# ==============================================================================
+
+# For Local Emulator (Docker on Port 4566):
+bucket                      = "devops-tfstate-xxxxxx" # Replace with actual bucket name from backend_bootstrap output
+key                         = "demo-workload/terraform.tfstate"
+region                      = "us-east-1"
+dynamodb_table              = "devops-tflocks"
+dynamodb_endpoint           = "http://127.0.0.1:4566"
+encrypt                     = true
+endpoint                    = "http://127.0.0.1:4566"
+skip_credentials_validation = true
+skip_metadata_api_check     = true
+skip_requesting_account_id  = true
+use_path_style              = true
+
+# For Real AWS Cloud:
+# bucket         = "your-company-terraform-state-bucket"
+# key            = "workloads/production/terraform.tfstate"
+# region         = "us-east-1"
+# dynamodb_table = "terraform-state-locks"
+# encrypt        = true

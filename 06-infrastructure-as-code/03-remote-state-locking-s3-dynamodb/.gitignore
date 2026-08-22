@@ -1,0 +1,33 @@
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files (Local state only; remote state is stored in S3)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars and backend.hcl generated files, except samples
+*.tfvars
+!terraform.tfvars.example
+backend-*.hcl
+!backend.hcl.example
+
+# Ignore override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ignore plan files
+*.tfplan
+tfplan
+.tmp_*
+*.log

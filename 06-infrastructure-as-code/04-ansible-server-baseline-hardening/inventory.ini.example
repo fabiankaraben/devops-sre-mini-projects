@@ -1,0 +1,18 @@
+# ==============================================================================
+# Sample Inventory Configuration for Server Hardening
+# ==============================================================================
+# Usage:
+#   ansible-playbook -i inventory.ini site.yml
+# ==============================================================================
+
+[hardened_servers]
+# Local Test Container (Port 2222 via SSH):
+target-node-01 ansible_host=127.0.0.1 ansible_port=2222 ansible_user=ubuntu ansible_ssh_private_key_file=.ssh_test_key ansible_python_interpreter=/usr/bin/python3
+
+# Cloud / Remote Servers Example:
+# prod-web-01   ansible_host=203.0.113.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+# prod-app-01   ansible_host=203.0.113.11 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[hardened_servers:vars]
+ansible_become=yes
+ansible_become_method=sudo
