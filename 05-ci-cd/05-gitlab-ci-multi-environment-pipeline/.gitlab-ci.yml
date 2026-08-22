@@ -1,0 +1,108 @@
+# ==============================================================================
+# GitLab CI/CD Multi-Environment Delivery Pipeline
+# Stages: Build -> Test -> Deploy Staging (Auto) -> Deploy Production (Manual Gate)
+# ==============================================================================
+
+stages:
+  - build
+  - test
+  - deploy-staging
+  - deploy-production
+
+variables:
+  PNPM_HOME: "${CI_PROJECT_DIR}/.pnpm-store"
+  APP_DIR: "05-ci-cd/05-gitlab-ci-multi-environment-pipeline"
+  STAGING_PORT: "8091"
+  PROD_PORT: "8092"
+
+default:
+  image: node:20-alpine
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@9 --activate
+    - cd ${APP_DIR}
+
+cache:
+  key:
+    files:
+      - 05-ci-cd/05-gitlab-ci-multi-environment-pipeline/pnpm-lock.yaml
+  paths:
+    - .pnpm-store/
+    - 05-ci-cd/05-gitlab-ci-multi-environment-pipeline/node_modules/
+
+# ------------------------------------------------------------------------------
+# Stage 1: Build & Artifact Archival
+# ------------------------------------------------------------------------------
+build-app:
+  stage: build
+  script:
+    - pnpm install --frozen-lockfile
+    - pnpm lint
+    - pnpm build
+  artifacts:
+    name: "dist-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - 05-ci-cd/05-gitlab-ci-multi-environment-pipeline/dist/
+      - 05-ci-cd/05-gitlab-ci-multi-environment-pipeline/package.json
+    expire_in: 1 week
+
+# ------------------------------------------------------------------------------
+# Stage 2: Automated Unit & Integration Testing
+# ------------------------------------------------------------------------------
+test-unit:
+  stage: test
+  dependencies:
+    - build-app
+  script:
+    - pnpm test:coverage
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    when: always
+    reports:
+      junit: 05-ci-cd/05-gitlab-ci-multi-environment-pipeline/junit.xml
+    paths:
+      - 05-ci-cd/05-gitlab-ci-multi-environment-pipeline/coverage/
+    expire_in: 7 days
+
+# ------------------------------------------------------------------------------
+# Stage 3: Continuous Deployment to Staging (Automatic on default branch)
+# ------------------------------------------------------------------------------
+deploy-staging:
+  stage: deploy-staging
+  dependencies:
+    - build-app
+  environment:
+    name: staging
+    url: http://127.0.0.1:${STAGING_PORT}
+    on_stop: stop-staging
+  script:
+    - ./deploy_mock.sh staging ${STAGING_PORT}
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+stop-staging:
+  stage: deploy-staging
+  environment:
+    name: staging
+    action: stop
+  script:
+    - docker rm -f app-staging || true
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# ------------------------------------------------------------------------------
+# Stage 4: Production Deployment (Manual Approval Gated)
+# ------------------------------------------------------------------------------
+deploy-production:
+  stage: deploy-production
+  dependencies:
+    - build-app
+  environment:
+    name: production
+    url: http://127.0.0.1:${PROD_PORT}
+  script:
+    - ./deploy_mock.sh production ${PROD_PORT}
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

@@ -1,0 +1,42 @@
+[
+  {
+    "Description": "AWS Access Key ID",
+    "StartLine": 5,
+    "EndLine": 5,
+    "StartColumn": 19,
+    "EndColumn": 39,
+    "Match": "AKIAIOSFODNN7EXAMPLE",
+    "Secret": "AKIAIOSFODNN7EXAMPLE",
+    "File": "test_fixtures/secrets/dummy_api_keys.env",
+    "SymlinkFile": "",
+    "Commit": "0000000000000000000000000000000000000000",
+    "Entropy": 3.418296,
+    "Author": "dev",
+    "Email": "dev@example.com",
+    "Date": "2026-08-21T00:00:00Z",
+    "Message": "dummy commit",
+    "Tags": [],
+    "RuleID": "aws-access-key-id",
+    "Fingerprint": "dummy_api_keys.env:aws-access-key-id:5"
+  },
+  {
+    "Description": "GitHub Personal Access Token",
+    "StartLine": 9,
+    "EndLine": 9,
+    "StartColumn": 14,
+    "EndColumn": 54,
+    "Match": "ghp_0123456789abcdefghijklmnopqrstuvwxyz",
+    "Secret": "ghp_0123456789abcdefghijklmnopqrstuvwxyz",
+    "File": "test_fixtures/secrets/dummy_api_keys.env",
+    "SymlinkFile": "",
+    "Commit": "0000000000000000000000000000000000000000",
+    "Entropy": 3.821928,
+    "Author": "dev",
+    "Email": "dev@example.com",
+    "Date": "2026-08-21T00:00:00Z",
+    "Message": "dummy commit",
+    "Tags": [],
+    "RuleID": "github-pat",
+    "Fingerprint": "dummy_api_keys.env:github-pat:9"
+  }
+]

@@ -1,0 +1,172 @@
+name: DevSecOps Multi-Stage Security Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # ============================================================================
+  # Stage 1: Secret Scanning (Gitleaks)
+  # ============================================================================
+  secret-scan:
+    name: 🔑 Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
+      - name: Run Gitleaks Detector
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_SUMMARY: true
+
+      - name: Run Standalone Gitleaks Export
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" zricethezav/gitleaks:latest \
+            detect --source="/repo" --report-format="json" --report-path="/repo/reports/gitleaks_report.json" --no-git || true
+
+      - name: Upload Gitleaks Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: reports/gitleaks_report.json
+          retention-days: 7
+
+  # ============================================================================
+  # Stage 2: Static Application Security Testing - SAST (Semgrep)
+  # ============================================================================
+  sast-scan:
+    name: 🔎 SAST Code Analysis (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
+      - name: Run Semgrep Security Rules
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" semgrep/semgrep \
+            semgrep scan --config="p/security-audit" --config="p/python" \
+            --json --output="/src/reports/semgrep_report.json" || true
+
+      - name: Upload Semgrep Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: reports/semgrep_report.json
+          retention-days: 7
+
+  # ============================================================================
+  # Stage 3: Software Composition Analysis (SCA) & Container Image Scan (Trivy)
+  # ============================================================================
+  sca-and-container-scan:
+    name: 📦 SCA & Container Scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
+      - name: Run Trivy Filesystem Dependency Scan
+        uses: aquasecurity/trivy-action@0.24.0
+        continue-on-error: true
+        with:
+          scan-type: 'fs'
+          scan-ref: '05-ci-cd/04-multi-stage-security-scanning-pipeline/test_fixtures/app'
+          format: 'json'
+          output: 'reports/trivy_fs_report.json'
+
+      - name: Build Test Container Image
+        run: |
+          docker build -t test-app:local \
+            05-ci-cd/04-multi-stage-security-scanning-pipeline/test_fixtures/app
+
+      - name: Run Trivy Container Image Scan
+        uses: aquasecurity/trivy-action@0.24.0
+        continue-on-error: true
+        with:
+          image-ref: 'test-app:local'
+          format: 'json'
+          output: 'reports/trivy_image_report.json'
+
+      - name: Upload Trivy Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            reports/trivy_fs_report.json
+            reports/trivy_image_report.json
+          retention-days: 7
+
+  # ============================================================================
+  # Stage 4: Aggregate Reports, Generate SARIF & Enforce Quality Gate
+  # ============================================================================
+  security-gate-and-report:
+    name: ⚖️ Security Quality Gate & SARIF Aggregator
+    runs-on: ubuntu-latest
+    needs: [secret-scan, sast-scan, sca-and-container-scan]
+    if: always()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Create Aggregation Directory
+        run: mkdir -p reports
+
+      - name: Download All Scanner Reports
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded_reports
+          merge-multiple: true
+
+      - name: Move Reports into Place
+        run: |
+          mkdir -p reports
+          cp downloaded_reports/*.json reports/ 2>/dev/null || true
+          ls -la reports/
+
+      - name: Run Report Aggregator & Policy Gate
+        run: |
+          python3 05-ci-cd/04-multi-stage-security-scanning-pipeline/security_report_parser.py \
+            --gitleaks reports/gitleaks_report.json \
+            --semgrep reports/semgrep_report.json \
+            --trivy-fs reports/trivy_fs_report.json \
+            --trivy-image reports/trivy_image_report.json \
+            --markdown-output "$GITHUB_STEP_SUMMARY" \
+            --sarif-output reports/security_unified.sarif \
+            --max-critical 0 \
+            --max-high 2 \
+            --max-secrets 0 \
+            --fail-on-breach
+
+      - name: Upload Unified SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: reports/security_unified.sarif
+          category: multi-stage-security-pipeline

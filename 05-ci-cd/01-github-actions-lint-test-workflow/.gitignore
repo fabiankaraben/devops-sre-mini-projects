@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+
+# Test coverage & reports
+coverage/
+.nyc_output/
+
+# Environment and logs
+*.log
+.DS_Store

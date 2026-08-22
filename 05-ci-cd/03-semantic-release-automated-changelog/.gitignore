@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+
+# Test coverage & reports
+coverage/
+.nyc_output/
+
+# Temporary simulation sandboxes
+.tmp_sandbox/
+
+# Environment and logs
+*.log
+.DS_Store

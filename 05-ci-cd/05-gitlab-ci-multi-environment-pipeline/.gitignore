@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+
+# Test coverage & reports
+coverage/
+.nyc_output/
+
+# Deployment artifacts & logs
+deployment_report_*.json
+*.log
+.DS_Store

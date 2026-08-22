@@ -1,0 +1,54 @@
+{
+  "version": "1.70.0",
+  "results": [
+    {
+      "check_id": "python.lang.security.audit.formatted-sql-query.formatted-sql-query",
+      "path": "test_fixtures/app/app.py",
+      "start": { "line": 39, "col": 5, "offset": 1050 },
+      "end": { "line": 39, "col": 82, "offset": 1127 },
+      "extra": {
+        "message": "User data flowing into formatted SQL query string detected. This can lead to SQL injection.",
+        "metadata": {
+          "cwe": ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"],
+          "owasp": ["A03:2021 - Injection"],
+          "confidence": "HIGH"
+        },
+        "severity": "ERROR",
+        "lines": "    query = f\"SELECT id, username, role FROM users WHERE username = '{username}'\""
+      }
+    },
+    {
+      "check_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+      "path": "test_fixtures/app/app.py",
+      "start": { "line": 52, "col": 12, "offset": 1490 },
+      "end": { "line": 52, "col": 92, "offset": 1570 },
+      "extra": {
+        "message": "Found 'subprocess' function '$FUNC' with 'shell=True'. This is dangerous if user data flows into the command.",
+        "metadata": {
+          "cwe": ["CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"],
+          "owasp": ["A03:2021 - Injection"],
+          "confidence": "HIGH"
+        },
+        "severity": "ERROR",
+        "lines": "    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)"
+      }
+    },
+    {
+      "check_id": "python.lang.security.insecure-hash-md5.insecure-hash-md5",
+      "path": "test_fixtures/app/app.py",
+      "start": { "line": 63, "col": 14, "offset": 1850 },
+      "end": { "line": 63, "col": 59, "offset": 1895 },
+      "extra": {
+        "message": "Detected MD5 hash algorithm, which is considered insecure. Use SHA256 or bcrypt instead.",
+        "metadata": {
+          "cwe": ["CWE-328: Use of Weak Hash"],
+          "owasp": ["A02:2021 - Cryptographic Failures"],
+          "confidence": "MEDIUM"
+        },
+        "severity": "WARNING",
+        "lines": "    hashed = hashlib.md5(raw_password.encode(\"utf-8\")).hexdigest()"
+      }
+    }
+  ],
+  "errors": []
+}

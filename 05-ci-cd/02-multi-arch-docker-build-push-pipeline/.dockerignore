@@ -1,0 +1,9 @@
+.git
+.github
+*.md
+*.sh
+.DS_Store
+.nyc_output
+coverage
+dist
+node_modules

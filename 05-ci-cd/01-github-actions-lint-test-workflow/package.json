@@ -1,0 +1,35 @@
+{
+  "name": "sre-metrics-utility",
+  "version": "1.0.0",
+  "description": "Production-grade SRE and DevOps metrics calculator demonstrating GitHub Actions matrix testing",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist coverage .nyc_output node_modules"
+  },
+  "keywords": [
+    "devops",
+    "sre",
+    "sli",
+    "slo",
+    "metrics",
+    "github-actions",
+    "ci-cd"
+  ],
+  "author": "DevOps SRE Mini Projects",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitest/coverage-v8": "^1.3.1",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.3.1"
+  }
+}

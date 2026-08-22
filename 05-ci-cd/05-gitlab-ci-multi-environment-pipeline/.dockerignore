@@ -1,0 +1,7 @@
+.git
+node_modules
+coverage
+.nyc_output
+*.md
+*.sh
+.DS_Store

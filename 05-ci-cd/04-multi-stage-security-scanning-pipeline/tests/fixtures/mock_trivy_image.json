@@ -1,0 +1,36 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "vulnerable-test-app:latest",
+  "ArtifactType": "container_image",
+  "Results": [
+    {
+      "Target": "vulnerable-test-app:latest (debian 10.13)",
+      "Class": "os-pkgs",
+      "Type": "debian",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2023-4911",
+          "PkgName": "libc6",
+          "InstalledVersion": "2.28-10+deb10u2",
+          "FixedVersion": "2.28-10+deb10u3",
+          "Status": "fixed",
+          "Severity": "CRITICAL",
+          "Title": "glibc: Buffer overflow in dynamic loader via GLIBC_TUNABLES",
+          "Description": "A buffer overflow was discovered in the GNU C Library's dynamic loader ld.so.",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2023-4911"
+        },
+        {
+          "VulnerabilityID": "CVE-2023-0286",
+          "PkgName": "openssl",
+          "InstalledVersion": "1.1.1n-0+deb10u3",
+          "FixedVersion": "1.1.1n-0+deb10u4",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "Title": "openssl: X.400 address type confusion in GENERAL_NAME_cmp",
+          "Description": "There is a type confusion vulnerability relating to X.400 address processing.",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2023-0286"
+        }
+      ]
+    }
+  ]
+}

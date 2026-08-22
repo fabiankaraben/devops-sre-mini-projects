@@ -1,0 +1,7 @@
+# Outdated dependencies with known CVEs for SCA demonstration
+flask==0.12.2
+requests==2.19.1
+urllib3==1.24.1
+jinja2==2.10.1
+pyyaml==3.12
+werkzeug==0.14.1

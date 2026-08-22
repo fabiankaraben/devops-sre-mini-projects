@@ -1,0 +1,42 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "test_fixtures/app",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "test_fixtures/app/requirements.txt",
+      "Class": "lang-pkgs",
+      "Type": "pip",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2018-18074",
+          "PkgName": "requests",
+          "InstalledVersion": "2.19.1",
+          "FixedVersion": "2.20.0",
+          "Status": "fixed",
+          "Layer": {},
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2018-18074",
+          "Title": "requests: Redirect to 301/302 sends Authorization header to third-party host",
+          "Description": "The Requests package before 2.20.0 for Python sends HTTP Authorization headers to an untrusted destination when redirected.",
+          "Severity": "HIGH",
+          "CweIDs": ["CWE-200"]
+        },
+        {
+          "VulnerabilityID": "CVE-2019-11324",
+          "PkgName": "urllib3",
+          "InstalledVersion": "1.24.1",
+          "FixedVersion": "1.24.2",
+          "Status": "fixed",
+          "Layer": {},
+          "SeveritySource": "nvd",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2019-11324",
+          "Title": "urllib3: TLS certificate validation bypass via specially crafted cert",
+          "Description": "The urllib3 package before 1.24.2 handles cert verification improperly when using ssl_match_hostname.",
+          "Severity": "CRITICAL",
+          "CweIDs": ["CWE-295"]
+        }
+      ]
+    }
+  ]
+}

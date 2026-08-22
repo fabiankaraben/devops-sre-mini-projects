@@ -1,0 +1,44 @@
+{
+  "name": "semantic-release-engine",
+  "version": "1.0.0",
+  "description": "Production-grade automated semantic versioning and changelog generator based on Conventional Commits",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run",
+    "clean": "rm -rf dist coverage .nyc_output node_modules .tmp_sandbox"
+  },
+  "keywords": [
+    "devops",
+    "sre",
+    "semantic-release",
+    "semver",
+    "conventional-commits",
+    "changelog",
+    "ci-cd"
+  ],
+  "author": "DevOps SRE Mini Projects",
+  "license": "MIT",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
+    "@semantic-release/release-notes-generator": "^14.0.1",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitest/coverage-v8": "^1.3.1",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "eslint": "^8.56.0",
+    "semantic-release": "^24.2.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.3.1"
+  }
+}
