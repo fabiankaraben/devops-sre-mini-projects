@@ -1,0 +1,59 @@
+# ==============================================================================
+# promtail-config.yaml - Promtail Log Shipper & Pipeline Extraction Stages
+# ==============================================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait: 500ms
+    batchsize: 1048576
+
+scrape_configs:
+  # 1. Scrape Multi-Application Log Files
+  - job_name: app_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: app_logs
+          environment: production
+          __path__: /var/log/apps/*.log
+
+    # 2. Pipeline Extraction Stages
+    pipeline_stages:
+      # Stage A: Parse JSON formatted logs
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            app: app
+            service: service
+            endpoint: endpoint
+            status_code: status_code
+            trace_id: trace_id
+            duration_ms: duration_ms
+            message: message
+
+      # Stage B: Promote extracted fields to dynamic Loki stream labels
+      - labels:
+          level:
+          app:
+          endpoint:
+          status_code:
+
+      # Stage C: Synchronize entry timestamp with application event time
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+
+      # Stage D: Drop empty lines or invalid samples
+      - match:
+          selector: '{job="app_logs"} |= "HEALTHCHECK_PING"'
+          action: drop

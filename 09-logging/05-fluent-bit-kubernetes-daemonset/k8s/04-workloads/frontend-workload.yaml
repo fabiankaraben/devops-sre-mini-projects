@@ -1,0 +1,46 @@
+# ==============================================================================
+# frontend-workload.yaml - Sample Frontend Web Microservice
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-app
+  namespace: frontend-ns
+  labels:
+    app: frontend
+    env: production
+    tier: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        env: production
+        tier: web
+      annotations:
+        logging.k8s.io/scraped: "true"
+    spec:
+      containers:
+        - name: web-server
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "[START] Frontend Web Gateway starting...";
+              seq=1;
+              while true; do
+                echo "{\"seq\": $seq, \"timestamp\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\", \"level\": \"INFO\", \"app\": \"frontend\", \"endpoint\": \"/api/v1/home\", \"status_code\": 200, \"message\": \"HTTP request served successfully\"}";
+                seq=$((seq+1));
+                sleep 2;
+              done
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 20m
+              memory: 32Mi

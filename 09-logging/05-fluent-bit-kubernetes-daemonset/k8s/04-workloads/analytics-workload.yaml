@@ -1,0 +1,46 @@
+# ==============================================================================
+# analytics-workload.yaml - Sample Analytics Data Pipeline Worker
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-worker
+  namespace: analytics-ns
+  labels:
+    app: analytics-worker
+    env: production
+    tier: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-worker
+  template:
+    metadata:
+      labels:
+        app: analytics-worker
+        env: production
+        tier: worker
+      annotations:
+        logging.k8s.io/scraped: "true"
+    spec:
+      containers:
+        - name: batch-processor
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "[START] Analytics batch worker running...";
+              seq=1;
+              while true; do
+                echo "{\"seq\": $seq, \"timestamp\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\", \"level\": \"INFO\", \"app\": \"analytics-worker\", \"batch_id\": \"batch_$seq\", \"processed_events\": 500, \"duration_ms\": 120, \"message\": \"Aggregated user event batch successfully\"}";
+                seq=$((seq+1));
+                sleep 2;
+              done
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 20m
+              memory: 32Mi

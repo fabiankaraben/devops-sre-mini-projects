@@ -1,0 +1,50 @@
+# ==============================================================================
+# backend-workload.yaml - Sample Backend Payment Microservice
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: backend-ns
+  labels:
+    app: payment-service
+    env: production
+    tier: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+        env: production
+        tier: api
+      annotations:
+        logging.k8s.io/scraped: "true"
+    spec:
+      containers:
+        - name: payment-api
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "[START] Payment Service initialized...";
+              seq=1;
+              while true; do
+                if [ $((seq % 4)) -eq 0 ]; then
+                  echo "{\"seq\": $seq, \"timestamp\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\", \"level\": \"ERROR\", \"app\": \"payment-service\", \"transaction_id\": \"tx_$seq\", \"error_code\": \"ERR_GATEWAY_TIMEOUT\", \"message\": \"Payment gateway timeout on credit card charge\"}";
+                else
+                  echo "{\"seq\": $seq, \"timestamp\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\", \"level\": \"INFO\", \"app\": \"payment-service\", \"transaction_id\": \"tx_$seq\", \"amount\": 49.99, \"message\": \"Payment authorized and settlement complete\"}";
+                fi
+                seq=$((seq+1));
+                sleep 2;
+              done
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 20m
+              memory: 32Mi

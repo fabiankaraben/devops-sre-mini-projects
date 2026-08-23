@@ -1,0 +1,11 @@
+{
+  "log-driver": "fluentd",
+  "log-opts": {
+    "fluentd-address": "127.0.0.1:24224",
+    "fluentd-async": "true",
+    "fluentd-buffer-limit": "1048576",
+    "fluentd-retry-wait": "1000",
+    "fluentd-max-retries": "10",
+    "tag": "docker.{{.Name}}"
+  }
+}

@@ -1,0 +1,57 @@
+# ==============================================================================
+# Docker Compose: Mini-Project 09-03 Docker Logging Drivers and Fluentd
+# ==============================================================================
+
+services:
+  # 1. Centralized Fluentd Log Collector Daemon
+  fluentd:
+    build:
+      context: .
+      dockerfile: fluentd/Dockerfile
+    image: mini-proj-09-03-fluentd:local
+    container_name: fluentd-collector
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+      - "24220:24220"
+    volumes:
+      - fluentd_log_data:/fluentd/log
+    networks:
+      - fluentd-logging-net
+    logging:
+      # Fluentd collector itself uses local json-file to prevent circular loops
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  # 2. High-Volume Log Producer Container (routes stdout directly to Fluentd)
+  log-producer:
+    build:
+      context: .
+      dockerfile: generator/Dockerfile
+    image: mini-proj-09-03-producer:local
+    container_name: fluentd-log-producer
+    depends_on:
+      - fluentd
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        fluentd-async: "true"
+        fluentd-buffer-limit: "8388608"
+        tag: "docker.log-producer"
+    networks:
+      - fluentd-logging-net
+    command: ["--count", "10000"]
+    restart: "no"
+
+volumes:
+  fluentd_log_data:
+    name: fluentd_log_data
+
+networks:
+  fluentd-logging-net:
+    name: fluentd-logging-net
+    driver: bridge

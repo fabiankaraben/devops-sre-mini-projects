@@ -1,0 +1,15 @@
+# ==============================================================================
+# Grafana Dashboard Provisioning Provider
+# ==============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: "loki-overview-dashboard"
+    orgId: 1
+    folder: "Centralized Logging"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

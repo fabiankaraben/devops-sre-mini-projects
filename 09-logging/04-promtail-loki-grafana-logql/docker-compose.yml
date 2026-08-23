@@ -1,0 +1,85 @@
+# ==============================================================================
+# Docker Compose: Mini-Project 09-04 Promtail, Loki, and Grafana LogQL Pipeline
+# ==============================================================================
+
+services:
+  # 1. Grafana Loki Log Aggregator
+  loki:
+    build:
+      context: ./loki
+      dockerfile: Dockerfile
+    image: mini-proj-09-04-loki:local
+    container_name: loki-stack-loki
+    ports:
+      - "3100:3100"
+      - "9096:9096"
+    volumes:
+      - loki_data:/loki
+    networks:
+      - loki-stack-net
+    restart: unless-stopped
+
+  # 2. Promtail Log Scraper & Pipeline Transformer
+  promtail:
+    build:
+      context: ./promtail
+      dockerfile: Dockerfile
+    image: mini-proj-09-04-promtail:local
+    container_name: loki-stack-promtail
+    volumes:
+      - shared_app_logs:/var/log/apps:ro
+    depends_on:
+      - loki
+    networks:
+      - loki-stack-net
+    restart: unless-stopped
+
+  # 3. Grafana Visualization UI with Provisioned Loki Datasource & Dashboard
+  grafana:
+    build:
+      context: ./grafana
+      dockerfile: Dockerfile
+    image: mini-proj-09-04-grafana:local
+    container_name: loki-stack-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/loki_overview.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      - loki-stack-net
+    restart: unless-stopped
+
+  # 4. Multi-Service Synthetic Log Producer (api, auth, billing)
+  log-producer:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: mini-proj-09-04-producer:local
+    container_name: loki-stack-app
+    volumes:
+      - shared_app_logs:/var/log/apps
+    depends_on:
+      - promtail
+    networks:
+      - loki-stack-net
+    restart: unless-stopped
+
+volumes:
+  loki_data:
+    name: loki_data
+  grafana_data:
+    name: grafana_data
+  shared_app_logs:
+    name: shared_app_logs
+
+networks:
+  loki-stack-net:
+    name: loki-stack-net
+    driver: bridge

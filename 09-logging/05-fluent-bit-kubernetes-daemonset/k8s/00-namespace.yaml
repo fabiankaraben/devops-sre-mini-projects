@@ -1,0 +1,34 @@
+# ==============================================================================
+# 00-namespace.yaml - Namespace Declarations
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logging
+  labels:
+    tier: infrastructure
+    purpose: centralized-logging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frontend-ns
+  labels:
+    tier: presentation
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend-ns
+  labels:
+    tier: application
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: analytics-ns
+  labels:
+    tier: data-pipeline
+    environment: production

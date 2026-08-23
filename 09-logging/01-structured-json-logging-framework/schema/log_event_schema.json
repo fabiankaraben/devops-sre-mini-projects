@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EnterpriseStructuredLogEvent",
+  "description": "Standardized schema for structured JSON application and access log events across microservices.",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "level",
+    "logger",
+    "message",
+    "service",
+    "environment",
+    "trace_id",
+    "caller",
+    "context"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp with millisecond precision (e.g. 2026-08-22T22:30:00.123Z).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "level": {
+      "type": "string",
+      "description": "Standardized logging level indicating severity.",
+      "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    },
+    "logger": {
+      "type": "string",
+      "description": "Hierarchical name of the emitting logger component (e.g. app.service, app.middleware.access).",
+      "minLength": 1
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable description of the logged event."
+    },
+    "service": {
+      "type": "string",
+      "description": "Identifier of the application service emitting the log.",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string",
+      "description": "Deployment environment where the log originated (e.g. production, staging, development).",
+      "minLength": 1
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Distributed trace / correlation identifier for request-scoped event aggregation.",
+      "minLength": 1
+    },
+    "span_id": {
+      "type": "string",
+      "description": "Identifier for the specific operation or service boundary within the distributed trace."
+    },
+    "caller": {
+      "type": "object",
+      "description": "Source code location where the log event was triggered.",
+      "required": ["file", "line", "func"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Basename or relative path of the source code file.",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "description": "Source code line number.",
+          "minimum": 1
+        },
+        "func": {
+          "type": "string",
+          "description": "Name of the executing function or method.",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "context": {
+      "type": "object",
+      "description": "Domain-specific contextual metadata and business key-value pairs.",
+      "additionalProperties": true
+    },
+    "http": {
+      "type": "object",
+      "description": "HTTP request/response telemetry attached by access logging middleware.",
+      "required": ["method", "path", "status_code", "duration_ms"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "description": "HTTP method verb.",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+        },
+        "path": {
+          "type": "string",
+          "description": "Request URL path without query string.",
+          "minLength": 1
+        },
+        "status_code": {
+          "type": "integer",
+          "description": "HTTP response status code.",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "duration_ms": {
+          "type": "number",
+          "description": "End-to-end request processing latency in milliseconds.",
+          "minimum": 0
+        },
+        "client_ip": {
+          "type": "string",
+          "description": "IP address of the connecting client."
+        },
+        "user_agent": {
+          "type": "string",
+          "description": "User-Agent header sent by client."
+        }
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "description": "Structured exception or error details when an error or failure occurs.",
+      "required": ["type", "message", "stacktrace"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Class or category name of the exception.",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "description": "Detailed error message or exception string representation."
+        },
+        "stacktrace": {
+          "description": "Execution call stack frames or formatted traceback string.",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "code": {
+          "description": "Machine-readable error code.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "integer" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

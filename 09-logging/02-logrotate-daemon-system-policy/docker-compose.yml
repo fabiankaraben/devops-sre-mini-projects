@@ -1,0 +1,30 @@
+# ==============================================================================
+# Docker Compose: Mini-Project 09-02 Logrotate Daemon System Policy
+# ==============================================================================
+
+services:
+  logrotate-env:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mini-proj-09-02-logrotate:local
+    container_name: logrotate-system-daemon
+    environment:
+      - LOG_DIR=/var/log/custom-app
+      - PID_FILE=/var/run/custom-app.pid
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          cpus: "0.2"
+          memory: 64M
+    networks:
+      - logrotate-stack-net
+    restart: unless-stopped
+
+networks:
+  logrotate-stack-net:
+    name: logrotate-stack-net
+    driver: bridge
