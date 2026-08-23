@@ -1,0 +1,15 @@
+# ==============================================================================
+# Payment Processing Backend Service Container
+# ==============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY payment_service.py .
+
+EXPOSE 8081
+
+ENTRYPOINT ["python3", "payment_service.py"]

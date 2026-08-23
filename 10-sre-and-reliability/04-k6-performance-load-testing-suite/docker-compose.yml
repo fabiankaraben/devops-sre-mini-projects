@@ -1,0 +1,83 @@
+services:
+  target-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: sre-target-api:latest
+    container_name: target-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - sre-k6-net
+
+  influxdb:
+    image: influxdb:1.8
+    container_name: k6-influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+      - INFLUXDB_HTTP_AUTH_ENABLED=false
+    volumes:
+      - influxdb_k6_data:/var/lib/influxdb
+    healthcheck:
+      test: ["CMD", "influx", "-execute", "SHOW DATABASES"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - sre-k6-net
+
+  grafana:
+    build:
+      context: .
+      dockerfile: Dockerfile.grafana
+    image: k6-grafana-sre:latest
+    container_name: k6-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      - sre-k6-net
+
+  k6-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.k6
+    image: sre-k6-runner:latest
+    container_name: k6-runner
+    profiles:
+      - tools
+    networks:
+      - sre-k6-net
+
+volumes:
+  influxdb_k6_data:
+    name: influxdb_k6_data
+
+networks:
+  sre-k6-net:
+    driver: bridge
+    name: sre-k6-net

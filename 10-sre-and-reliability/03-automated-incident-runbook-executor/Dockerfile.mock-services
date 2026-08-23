@@ -1,0 +1,15 @@
+# ==============================================================================
+# Mock Target Microservices Container Image
+# ==============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY mock_services.py .
+
+EXPOSE 9000
+
+ENTRYPOINT ["python3", "mock_services.py", "--port", "9000"]

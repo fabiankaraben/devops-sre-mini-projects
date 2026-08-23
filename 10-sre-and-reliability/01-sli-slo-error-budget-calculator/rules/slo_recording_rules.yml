@@ -1,0 +1,86 @@
+# ==============================================================================
+# Prometheus Recording & Alerting Rules for SRE SLOs & Error Budgets
+# ==============================================================================
+
+groups:
+  - name: slo_recording_rules
+    interval: 15s
+    rules:
+      # 1. Total Request Rate Recording Rules
+      - record: job:http_requests:rate5m
+        expr: sum by (service) (rate(http_requests_total[5m]))
+
+      - record: job:http_requests:rate1h
+        expr: sum by (service) (rate(http_requests_total[1h]))
+
+      - record: job:http_requests:rate24h
+        expr: sum by (service) (rate(http_requests_total[24h]))
+
+      - record: job:http_requests:rate30d
+        expr: sum by (service) (rate(http_requests_total[30d]))
+
+      # 2. Good Requests (Non-5xx) Recording Rules
+      - record: job:http_requests_good:rate5m
+        expr: sum by (service) (rate(http_requests_total{status!~"5.."}[5m]))
+
+      - record: job:http_requests_good:rate1h
+        expr: sum by (service) (rate(http_requests_total{status!~"5.."}[1h]))
+
+      - record: job:http_requests_good:rate24h
+        expr: sum by (service) (rate(http_requests_total{status!~"5.."}[24h]))
+
+      - record: job:http_requests_good:rate30d
+        expr: sum by (service) (rate(http_requests_total{status!~"5.."}[30d]))
+
+      # 3. SLI Availability Ratio Precomputed Ratios
+      - record: job:sli_availability:ratio_rate5m
+        expr: job:http_requests_good:rate5m / job:http_requests:rate5m
+
+      - record: job:sli_availability:ratio_rate1h
+        expr: job:http_requests_good:rate1h / job:http_requests:rate1h
+
+      - record: job:sli_availability:ratio_rate24h
+        expr: job:http_requests_good:rate24h / job:http_requests:rate24h
+
+      - record: job:sli_availability:ratio_rate30d
+        expr: job:http_requests_good:rate30d / job:http_requests:rate30d
+
+      # 4. Latency SLI (Requests under 200ms)
+      - record: job:sli_latency:ratio_rate5m
+        expr: sum by (service) (rate(http_request_duration_seconds_bucket{le="0.2"}[5m])) / sum by (service) (rate(http_request_duration_seconds_count[5m]))
+
+      # 5. Burn Rate Calculation against 99.9% Target (Allowed Error Rate = 0.001)
+      - record: job:slo_error_budget_burn_rate:rate1h
+        expr: (1 - (job:http_requests_good:rate1h / job:http_requests:rate1h)) / 0.001
+
+  - name: slo_alerting_rules
+    rules:
+      - alert: FastErrorBudgetBurnRateCritical
+        expr: job:slo_error_budget_burn_rate:rate1h >= 14.4
+        for: 2m
+        labels:
+          severity: critical
+          tier: tier-1
+        annotations:
+          summary: "Catastrophic error budget burn rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is burning error budget at {{ $value | printf \"%.1f\" }}x (>= 14.4x). 100% of 30-day budget will exhaust in under 2 days."
+
+      - alert: SlowErrorBudgetBurnRateWarning
+        expr: job:slo_error_budget_burn_rate:rate1h >= 6.0
+        for: 15m
+        labels:
+          severity: warning
+          tier: tier-1
+        annotations:
+          summary: "Elevated error budget burn rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is burning error budget at {{ $value | printf \"%.1f\" }}x (>= 6.0x). 100% of 30-day budget will exhaust in under 5 days."
+
+      - alert: SLOAvailabilityBreached
+        expr: job:sli_availability:ratio_rate30d < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          tier: tier-1
+        annotations:
+          summary: "SLO availability target breached for {{ $labels.service }}"
+          description: "Service {{ $labels.service }} 30-day rolling availability ({{ $value | printf \"%.4f\" }}) is below the 99.9% SLO target."

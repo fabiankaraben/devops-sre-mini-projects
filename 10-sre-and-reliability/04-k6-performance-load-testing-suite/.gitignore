@@ -1,0 +1,19 @@
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# InfluxDB & Grafana data
+data/
+*.log
+*.summary.json
+test_results/
+
+# OS specific
+.DS_Store
+Thumbs.db

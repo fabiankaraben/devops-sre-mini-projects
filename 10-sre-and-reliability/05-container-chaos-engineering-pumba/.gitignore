@@ -1,0 +1,18 @@
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Experiment reports & logs
+*.log
+chaos_report.md
+chaos_report.json
+
+# OS specific
+.DS_Store
+Thumbs.db

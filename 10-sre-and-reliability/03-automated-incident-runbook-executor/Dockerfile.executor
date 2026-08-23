@@ -1,0 +1,30 @@
+# ==============================================================================
+# SRE Automated Runbook Executor Daemon Container Image
+# ==============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install curl and bash for runbook execution
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    bash \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy daemon, config, and modular runbooks
+COPY runbook_executor.py .
+COPY runbook_config.yaml .
+COPY runbooks ./runbooks
+
+RUN chmod +x runbooks/*.sh
+
+EXPOSE 8080
+
+ENTRYPOINT ["python3", "runbook_executor.py"]

@@ -1,0 +1,68 @@
+# ==============================================================================
+# SRE Service Level Objective (SLO) Configuration
+# ==============================================================================
+# Defines the SLIs, SLO targets, rolling windows, PromQL queries, and alerting
+# metadata for monitored services.
+# ==============================================================================
+
+version: "1.0"
+team: "Core SRE & Platform Reliability"
+default_window: "30d"
+
+services:
+  - id: "checkout_service_availability"
+    name: "Checkout Service Availability"
+    service: "checkout-service"
+    tier: "tier-1-critical"
+    type: "availability"
+    description: "Percentage of non-5xx HTTP responses for checkout transactions"
+    target: 99.9
+    window: "30d"
+    good_query: 'sum(rate(http_requests_total{service="checkout-service",status!~"5.."}[{window}]))'
+    total_query: 'sum(rate(http_requests_total{service="checkout-service"}[{window}]))'
+    burn_rate_thresholds:
+      critical: 14.4  # Consumes 2% budget in 1h (100% in 2 days)
+      warning: 6.0    # Consumes 5% budget in 6h (100% in 5 days)
+
+  - id: "payment_gateway_availability"
+    name: "Payment Gateway Availability"
+    service: "payment-gateway"
+    tier: "tier-1-critical"
+    type: "availability"
+    description: "Percentage of successful payment API calls (status 2xx/4xx vs 5xx)"
+    target: 99.95
+    window: "30d"
+    good_query: 'sum(rate(http_requests_total{service="payment-gateway",status!~"5.."}[{window}]))'
+    total_query: 'sum(rate(http_requests_total{service="payment-gateway"}[{window}]))'
+    burn_rate_thresholds:
+      critical: 14.4
+      warning: 6.0
+
+  - id: "product_catalog_latency"
+    name: "Product Catalog Latency"
+    service: "catalog-service"
+    tier: "tier-2-standard"
+    type: "latency"
+    description: "Percentage of catalog requests served in <= 200ms (p95 threshold)"
+    target: 95.0
+    window: "30d"
+    latency_threshold_seconds: 0.2
+    good_query: 'sum(rate(http_request_duration_seconds_bucket{service="catalog-service",le="0.2"}[{window}]))'
+    total_query: 'sum(rate(http_request_duration_seconds_count{service="catalog-service"}[{window}]))'
+    burn_rate_thresholds:
+      critical: 10.0
+      warning: 4.0
+
+  - id: "auth_service_availability"
+    name: "Auth Service Availability"
+    service: "auth-service"
+    tier: "tier-1-critical"
+    type: "availability"
+    description: "Percentage of successful user authentication attempts"
+    target: 99.5
+    window: "7d"
+    good_query: 'sum(rate(http_requests_total{service="auth-service",status!~"5.."}[{window}]))'
+    total_query: 'sum(rate(http_requests_total{service="auth-service"}[{window}]))'
+    burn_rate_thresholds:
+      critical: 14.4
+      warning: 6.0

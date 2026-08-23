@@ -1,0 +1,18 @@
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Audit & report logs
+*.log
+execution_audit.json
+.pytest_cache/
+
+# OS specific
+.DS_Store
+Thumbs.db

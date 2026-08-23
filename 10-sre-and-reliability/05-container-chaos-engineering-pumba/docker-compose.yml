@@ -1,0 +1,77 @@
+services:
+  payment-service-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    image: sre-payment-service:latest
+    container_name: payment-service-1
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - REPLICA_NAME=payment-service-1
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8081/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - sre-chaos-net
+
+  payment-service-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    image: sre-payment-service:latest
+    container_name: payment-service-2
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - REPLICA_NAME=payment-service-2
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8082/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - sre-chaos-net
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    image: sre-api-gateway:latest
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - BACKENDS=http://payment-service-1:8081,http://payment-service-2:8082
+      - REQUEST_TIMEOUT_SEC=0.350
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    depends_on:
+      payment-service-1:
+        condition: service_healthy
+      payment-service-2:
+        condition: service_healthy
+    networks:
+      - sre-chaos-net
+
+networks:
+  sre-chaos-net:
+    driver: bridge
+    name: sre-chaos-net

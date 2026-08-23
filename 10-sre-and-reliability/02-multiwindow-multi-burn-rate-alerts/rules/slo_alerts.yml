@@ -1,0 +1,195 @@
+# ==============================================================================
+# Google SRE Multiwindow Multi-Burn-Rate Recording & Alerting Rules
+# ==============================================================================
+# Implements Google SRE Workbook Chapter 5 Multi-Burn-Rate alerting matrices
+# for a 30-day (720 hour) SLO window with 99.9% Availability Target (Allowed Error Rate: 0.001).
+# ==============================================================================
+
+groups:
+  # ----------------------------------------------------------------------------
+  # Group 1: Rolling Request Rates & Error Rates Recording Rules
+  # ----------------------------------------------------------------------------
+  - name: sre_slo_burn_rate_recordings
+    interval: 5s
+    rules:
+      # 1. Total Request Rate per Service
+      - record: job:http_requests:rate5m
+        expr: sum by (service) (rate(http_requests_total[5m]))
+
+      - record: job:http_requests:rate30m
+        expr: sum by (service) (rate(http_requests_total[30m]))
+
+      - record: job:http_requests:rate1h
+        expr: sum by (service) (rate(http_requests_total[1h]))
+
+      - record: job:http_requests:rate2h
+        expr: sum by (service) (rate(http_requests_total[2h]))
+
+      - record: job:http_requests:rate6h
+        expr: sum by (service) (rate(http_requests_total[6h]))
+
+      - record: job:http_requests:rate24h
+        expr: sum by (service) (rate(http_requests_total[24h]))
+
+      - record: job:http_requests:rate3d
+        expr: sum by (service) (rate(http_requests_total[3d]))
+
+      # 2. 5xx Error Request Rate per Service
+      - record: job:http_requests_errors:rate5m
+        expr: sum by (service) (rate(http_requests_total{status=~"5.."}[5m]))
+
+      - record: job:http_requests_errors:rate30m
+        expr: sum by (service) (rate(http_requests_total{status=~"5.."}[30m]))
+
+      - record: job:http_requests_errors:rate1h
+        expr: sum by (service) (rate(http_requests_total{status=~"5.."}[1h]))
+
+      - record: job:http_requests_errors:rate2h
+        expr: sum by (service) (rate(http_requests_total{status=~"5.."}[2h]))
+
+      - record: job:http_requests_errors:rate6h
+        expr: sum by (service) (rate(http_requests_total{status=~"5.."}[6h]))
+
+      - record: job:http_requests_errors:rate24h
+        expr: sum by (service) (rate(http_requests_total{status=~"5.."}[24h]))
+
+      - record: job:http_requests_errors:rate3d
+        expr: sum by (service) (rate(http_requests_total{status=~"5.."}[3d]))
+
+      # 3. Error Ratios (Observed Error Rate = Errors / Total)
+      - record: job:sli_error_ratio:rate5m
+        expr: job:http_requests_errors:rate5m / job:http_requests:rate5m
+
+      - record: job:sli_error_ratio:rate30m
+        expr: job:http_requests_errors:rate30m / job:http_requests:rate30m
+
+      - record: job:sli_error_ratio:rate1h
+        expr: job:http_requests_errors:rate1h / job:http_requests:rate1h
+
+      - record: job:sli_error_ratio:rate2h
+        expr: job:sli_error_ratio:rate2h / job:http_requests:rate2h
+
+      - record: job:sli_error_ratio:rate6h
+        expr: job:http_requests_errors:rate6h / job:http_requests:rate6h
+
+      - record: job:sli_error_ratio:rate24h
+        expr: job:http_requests_errors:rate24h / job:http_requests:rate24h
+
+      - record: job:sli_error_ratio:rate3d
+        expr: job:http_requests_errors:rate3d / job:http_requests:rate3d
+
+      # 4. Burn Rate Multipliers against 99.9% SLO (Target Error Rate = 0.001)
+      - record: job:slo_burn_rate:rate5m
+        expr: job:sli_error_ratio:rate5m / 0.001
+
+      - record: job:slo_burn_rate:rate30m
+        expr: job:sli_error_ratio:rate30m / 0.001
+
+      - record: job:slo_burn_rate:rate1h
+        expr: job:sli_error_ratio:rate1h / 0.001
+
+      - record: job:slo_burn_rate:rate2h
+        expr: (job:http_requests_errors:rate2h / job:http_requests:rate2h) / 0.001
+
+      - record: job:slo_burn_rate:rate6h
+        expr: job:sli_error_ratio:rate6h / 0.001
+
+      - record: job:slo_burn_rate:rate24h
+        expr: job:sli_error_ratio:rate24h / 0.001
+
+      - record: job:slo_burn_rate:rate3d
+        expr: job:sli_error_ratio:rate3d / 0.001
+
+  # ----------------------------------------------------------------------------
+  # Group 2: Multiwindow Multi-Burn-Rate Alerting Rules
+  # ----------------------------------------------------------------------------
+  - name: sre_multiwindow_multi_burn_rate_alerts
+    interval: 5s
+    rules:
+      # ========================================================================
+      # 1. Critical Page Alert (14.4x Burn Rate)
+      # Consumes 2% error budget in 1 hour; 100% budget in 50 hours (2.1 days).
+      # Evaluates Long Window (1h) AND Short Window (5m).
+      # ========================================================================
+      - alert: ErrorBudgetBurnRatePage14_4x
+        expr: |
+          (
+            job:slo_burn_rate:rate1h > 14.4
+            and
+            job:slo_burn_rate:rate5m > 14.4
+          )
+        for: 30s
+        labels:
+          severity: page
+          urgency: critical
+          tier: tier-1
+        annotations:
+          summary: "Catastrophic 14.4x Error Budget Burn Rate on {{ $labels.service }}"
+          description: "Service '{{ $labels.service }}' is burning its error budget at >14.4x over both 1h (long) and 5m (short) windows. Consuming 2% of 30-day budget per hour. 100% budget will deplete in under 2 days."
+          runbook_url: "https://runbooks.internal/sre/error-budget-14x"
+
+      # ========================================================================
+      # 2. High Page Alert (6.0x Burn Rate)
+      # Consumes 5% error budget in 6 hours; 100% budget in 120 hours (5 days).
+      # Evaluates Long Window (6h) AND Short Window (30m).
+      # ========================================================================
+      - alert: ErrorBudgetBurnRatePage6_0x
+        expr: |
+          (
+            job:slo_burn_rate:rate6h > 6.0
+            and
+            job:slo_burn_rate:rate30m > 6.0
+          )
+        for: 1m
+        labels:
+          severity: page
+          urgency: high
+          tier: tier-1
+        annotations:
+          summary: "Elevated 6.0x Error Budget Burn Rate on {{ $labels.service }}"
+          description: "Service '{{ $labels.service }}' is burning error budget at >6.0x over both 6h (long) and 30m (short) windows. Consuming 5% of 30-day budget in 6 hours."
+          runbook_url: "https://runbooks.internal/sre/error-budget-6x"
+
+      # ========================================================================
+      # 3. Warning Ticket Alert (3.0x Burn Rate)
+      # Consumes 10% error budget in 24 hours; 100% budget in 240 hours (10 days).
+      # Evaluates Long Window (24h) AND Short Window (2h).
+      # ========================================================================
+      - alert: ErrorBudgetBurnRateTicket3_0x
+        expr: |
+          (
+            job:slo_burn_rate:rate24h > 3.0
+            and
+            job:slo_burn_rate:rate2h > 3.0
+          )
+        for: 2m
+        labels:
+          severity: ticket
+          urgency: medium
+          tier: tier-1
+        annotations:
+          summary: "Moderate 3.0x Error Budget Burn Rate on {{ $labels.service }}"
+          description: "Service '{{ $labels.service }}' is burning error budget at >3.0x over both 24h (long) and 2h (short) windows. Dispatches ticket to on-duty team."
+          runbook_url: "https://runbooks.internal/sre/error-budget-3x"
+
+      # ========================================================================
+      # 4. Notice Ticket Alert (1.0x Burn Rate)
+      # Consumes 10% error budget in 3 days; 100% budget in 30 days.
+      # Evaluates Long Window (3d) AND Short Window (6h).
+      # ========================================================================
+      - alert: ErrorBudgetBurnRateTicket1_0x
+        expr: |
+          (
+            job:slo_burn_rate:rate3d > 1.0
+            and
+            job:slo_burn_rate:rate6h > 1.0
+          )
+        for: 5m
+        labels:
+          severity: ticket
+          urgency: low
+          tier: tier-1
+        annotations:
+          summary: "Slow 1.0x Error Budget Drain on {{ $labels.service }}"
+          description: "Service '{{ $labels.service }}' is burning error budget at >1.0x over both 3d (long) and 6h (short) windows. Sustained budget consumption."
+          runbook_url: "https://runbooks.internal/sre/error-budget-1x"

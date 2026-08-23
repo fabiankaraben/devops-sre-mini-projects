@@ -1,0 +1,3 @@
+# Core dependencies for Multiwindow Multi-Burn-Rate Alerts
+pyyaml>=6.0.1
+requests>=2.31.0

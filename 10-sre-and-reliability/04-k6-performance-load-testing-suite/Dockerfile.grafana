@@ -1,0 +1,13 @@
+# ==============================================================================
+# Custom Grafana Container with Provisioned k6 Dashboards & InfluxDB Source
+# ==============================================================================
+FROM grafana/grafana:10.4.0
+
+USER root
+
+COPY grafana/datasources /etc/grafana/provisioning/datasources
+COPY grafana/dashboards /etc/grafana/provisioning/dashboards
+
+RUN chown -R grafana:root /etc/grafana/provisioning
+
+USER grafana

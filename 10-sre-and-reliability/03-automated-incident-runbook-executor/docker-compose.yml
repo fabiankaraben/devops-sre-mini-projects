@@ -1,0 +1,51 @@
+services:
+  mock-services:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock-services
+    image: sre-mock-services:latest
+    container_name: mock-services
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9000/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - sre-runbook-net
+
+  runbook-executor:
+    build:
+      context: .
+      dockerfile: Dockerfile.executor
+    image: sre-runbook-executor:latest
+    container_name: runbook-executor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - CONFIG_PATH=runbook_config.yaml
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    depends_on:
+      mock-services:
+        condition: service_healthy
+    networks:
+      - sre-runbook-net
+
+networks:
+  sre-runbook-net:
+    driver: bridge
+    name: sre-runbook-net

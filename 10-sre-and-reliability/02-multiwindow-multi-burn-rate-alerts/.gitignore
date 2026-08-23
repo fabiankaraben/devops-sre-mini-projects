@@ -1,0 +1,19 @@
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Test & report outputs
+alert_report.md
+alert_report.json
+*.log
+.pytest_cache/
+
+# OS specific
+.DS_Store
+Thumbs.db

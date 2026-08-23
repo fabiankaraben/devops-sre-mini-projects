@@ -1,0 +1,19 @@
+# ==============================================================================
+# Google SRE Burn Rate Traffic Simulator Container Image
+# ==============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY burn_rate_simulator.py .
+COPY verify_alerts.py .
+
+EXPOSE 8080
+
+ENTRYPOINT ["python3", "burn_rate_simulator.py"]

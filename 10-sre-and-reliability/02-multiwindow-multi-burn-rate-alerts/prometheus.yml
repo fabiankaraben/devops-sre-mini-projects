@@ -1,0 +1,40 @@
+# ==============================================================================
+# Prometheus Configuration for Multiwindow Multi-Burn-Rate Alerting
+# ==============================================================================
+
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  scrape_timeout: 4s
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+            - "localhost:9093"
+
+# Load Multi-Burn-Rate recording and alerting rules
+rule_files:
+  - "rules/slo_alerts.yml"
+
+scrape_configs:
+  - job_name: "burn-rate-simulator"
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+          - "burn-rate-simulator:8080"
+          - "localhost:8080"
+        labels:
+          environment: "sre-lab"
+          tier: "tier-1"
+
+  - job_name: "prometheus-server"
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+          - "localhost:9090"
+        labels:
+          environment: "sre-lab"
+          tier: "infrastructure"

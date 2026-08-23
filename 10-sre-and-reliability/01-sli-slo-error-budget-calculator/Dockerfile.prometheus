@@ -1,0 +1,17 @@
+# ==============================================================================
+# Prometheus Server Container Image for SRE Monitoring
+# ==============================================================================
+FROM prom/prometheus:v2.54.1
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Prometheus server configured for SRE SLI/SLO & Error Budget calculation"
+
+# Copy Prometheus configuration and recording/alerting rules
+COPY prometheus.yml /etc/prometheus/prometheus.yml
+COPY rules /etc/prometheus/rules
+
+WORKDIR /prometheus
+
+VOLUME [ "/prometheus" ]
+
+EXPOSE 9090

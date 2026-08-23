@@ -1,0 +1,79 @@
+# ==============================================================================
+# SRE Automated Incident Runbook Configuration
+# ==============================================================================
+# Defines declarative alert-to-runbook remediation mappings, security secrets,
+# cooldown guards, and auto-resolution parameters.
+# ==============================================================================
+
+version: "1.0"
+daemon_name: "sre-incident-runbook-executor"
+webhook_secret: "sre-remediation-secret-token-12345"
+default_timeout_seconds: 30
+default_cooldown_seconds: 15
+auto_resolve_incidents: true
+target_host: "http://mock-services:9000"
+
+rules:
+  # ----------------------------------------------------------------------------
+  # Rule 1: Remediate Hung Worker Deadlock
+  # ----------------------------------------------------------------------------
+  - id: "remediate_hung_worker"
+    name: "Hung Worker Deadlock Self-Healing"
+    description: "Restarts hung worker process when thread deadlock or 100% CPU lock is detected"
+    match:
+      alertname: "HungWorkerDetected"
+      service: "worker-service"
+      event_type: "trigger"
+    runbook: "runbooks/restart_service.sh"
+    args: ["worker-service"]
+    timeout_seconds: 20
+    cooldown_seconds: 15
+    auto_resolve: true
+
+  # ----------------------------------------------------------------------------
+  # Rule 2: Remediate Redis Cache Memory Pressure (OOM)
+  # ----------------------------------------------------------------------------
+  - id: "remediate_redis_oom"
+    name: "Redis Memory Pressure Eviction"
+    description: "Flushes stale cache keys when memory utilization exceeds 90%"
+    match:
+      alertname: "RedisMemoryCritical"
+      service: "redis-cache"
+      event_type: "trigger"
+    runbook: "runbooks/flush_cache.sh"
+    args: ["redis-cache"]
+    timeout_seconds: 20
+    cooldown_seconds: 15
+    auto_resolve: true
+
+  # ----------------------------------------------------------------------------
+  # Rule 3: Remediate Queue Backlog Overflow
+  # ----------------------------------------------------------------------------
+  - id: "remediate_queue_backlog"
+    name: "Queue Backlog Dynamic Autoscaling"
+    description: "Scales consumer pool replicas when queue pending messages exceed threshold"
+    match:
+      alertname: "QueueBacklogHigh"
+      service: "order-queue"
+      event_type: "trigger"
+    runbook: "runbooks/scale_deployment.sh"
+    args: ["order-queue", "6"]
+    timeout_seconds: 25
+    cooldown_seconds: 15
+    auto_resolve: true
+
+  # ----------------------------------------------------------------------------
+  # Rule 4: Remediate Dead-Letter Queue Backlog
+  # ----------------------------------------------------------------------------
+  - id: "remediate_dlq_spike"
+    name: "Dead-Letter Queue Automated Replay & Drain"
+    description: "Reprocesses dead-letter messages when DLQ error threshold is breached"
+    match:
+      alertname: "DeadLetterQueueSpike"
+      service: "order-queue"
+      event_type: "trigger"
+    runbook: "runbooks/drain_queue.sh"
+    args: ["order-queue"]
+    timeout_seconds: 20
+    cooldown_seconds: 15
+    auto_resolve: true

@@ -1,0 +1,13 @@
+# ==============================================================================
+# Alertmanager Container Image for SRE Alert Routing
+# ==============================================================================
+FROM prom/alertmanager:v0.27.0
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Alertmanager configured with severity-based page and ticket routing"
+
+COPY alertmanager.yml /etc/alertmanager/alertmanager.yml
+
+WORKDIR /alertmanager
+VOLUME [ "/alertmanager" ]
+EXPOSE 9093

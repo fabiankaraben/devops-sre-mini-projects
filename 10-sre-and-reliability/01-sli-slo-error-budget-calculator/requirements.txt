@@ -1,0 +1,3 @@
+# Core dependencies for SLI, SLO and Error Budget Calculator
+pyyaml>=6.0.1
+requests>=2.31.0

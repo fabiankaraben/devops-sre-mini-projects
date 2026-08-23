@@ -1,0 +1,41 @@
+# ==============================================================================
+# Alertmanager Configuration for SRE Multi-Burn-Rate Alerts
+# ==============================================================================
+
+global:
+  resolve_timeout: 1m
+
+route:
+  group_by: ['alertname', 'service', 'severity']
+  group_wait: 5s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: "default-receiver"
+
+  routes:
+    # 1. Critical and High severity pages route to 24/7 On-Call Pager
+    - match:
+        severity: page
+      receiver: "on-call-pager-receiver"
+      group_wait: 2s
+      repeat_interval: 15m
+
+    # 2. Ticket alerts route to Ticketing Queue
+    - match:
+        severity: ticket
+      receiver: "ticketing-queue-receiver"
+      group_wait: 10s
+      repeat_interval: 4h
+
+receivers:
+  - name: "default-receiver"
+
+  - name: "on-call-pager-receiver"
+    webhook_configs:
+      - url: "http://burn-rate-simulator:8080/alerts/webhook"
+        send_resolved: true
+
+  - name: "ticketing-queue-receiver"
+    webhook_configs:
+      - url: "http://burn-rate-simulator:8080/alerts/webhook"
+        send_resolved: true

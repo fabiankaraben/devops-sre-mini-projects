@@ -1,0 +1,3 @@
+# Dependencies for Chaos Testing microservices and load runner
+requests>=2.31.0
+pyyaml>=6.0.1

@@ -1,0 +1,2 @@
+# Dependencies for Target REST API microservice and test utilities
+requests>=2.31.0
