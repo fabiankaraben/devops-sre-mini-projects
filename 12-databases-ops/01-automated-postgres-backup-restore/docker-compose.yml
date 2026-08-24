@@ -1,0 +1,53 @@
+services:
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: postgres-primary
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-production_db}
+    ports:
+      - "${POSTGRES_PRIMARY_PORT:-5432}:5432"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+    networks:
+      - postgres-ops-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-production_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 2s
+
+  postgres-validation:
+    image: postgres:16-alpine
+    container_name: postgres-validation
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_VALIDATION_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_VALIDATION_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_VALIDATION_DB:-validation_db}
+    ports:
+      - "${POSTGRES_VALIDATION_PORT:-5433}:5432"
+    volumes:
+      - postgres_validation_data:/var/lib/postgresql/data
+    networks:
+      - postgres-ops-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_VALIDATION_USER:-postgres} -d ${POSTGRES_VALIDATION_DB:-validation_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 2s
+
+volumes:
+  postgres_primary_data:
+    name: postgres_primary_data
+  postgres_validation_data:
+    name: postgres_validation_data
+
+networks:
+  postgres-ops-net:
+    name: postgres-ops-net
+    driver: bridge

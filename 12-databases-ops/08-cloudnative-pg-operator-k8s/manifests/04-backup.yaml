@@ -1,0 +1,9 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: pg-ha-cluster-backup
+  namespace: default
+spec:
+  cluster:
+    name: pg-ha-cluster
+  target: prefer-standby

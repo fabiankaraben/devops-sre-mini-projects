@@ -1,0 +1,104 @@
+services:
+  mysql-pitr-db:
+    image: mariadb:10.11
+    container_name: mysql-pitr-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ecommerce_db}
+      MYSQL_USER: ${MYSQL_USER:-ecommerce_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ecommerce_pass}
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${MYSQL_DATABASE:-ecommerce_db}
+      MARIADB_USER: ${MYSQL_USER:-ecommerce_user}
+      MARIADB_PASSWORD: ${MYSQL_PASSWORD:-ecommerce_pass}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /etc/mysql/conf.d /docker-entrypoint-initdb.d
+        cat << 'EOF' > /etc/mysql/conf.d/pitr.cnf
+        [mariadb]
+        server_id = 1
+        log_bin = /var/lib/mysql/mysql-bin
+        binlog_format = ROW
+        binlog_row_image = FULL
+        expire_logs_days = 7
+        max_binlog_size = 100M
+        sync_binlog = 1
+        innodb_flush_log_at_trx_commit = 1
+        max_connections = 150
+        character_set_server = utf8mb4
+        collation_server = utf8mb4_unicode_ci
+        EOF
+        chmod 644 /etc/mysql/conf.d/pitr.cnf
+
+        cat << 'EOF' > /docker-entrypoint-initdb.d/01-init.sql
+        CREATE DATABASE IF NOT EXISTS ecommerce_db;
+        USE ecommerce_db;
+
+        CREATE TABLE IF NOT EXISTS customers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            email VARCHAR(150) NOT NULL UNIQUE,
+            balance DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        CREATE TABLE IF NOT EXISTS orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            customer_id INT NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            action VARCHAR(100) NOT NULL,
+            details TEXT,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        INSERT INTO customers (name, email, balance, created_at) VALUES
+        ('Alice Johnson', 'alice@example.com', 1500.00, '2026-08-20 10:00:00'),
+        ('Bob Smith', 'bob@example.com', 2400.50, '2026-08-20 10:05:00'),
+        ('Charlie Brown', 'charlie@example.com', 850.00, '2026-08-20 10:10:00'),
+        ('Diana Prince', 'diana@example.com', 5000.00, '2026-08-20 10:15:00'),
+        ('Evan Wright', 'evan@example.com', 120.75, '2026-08-20 10:20:00');
+
+        INSERT INTO orders (customer_id, amount, status, created_at) VALUES
+        (1, 150.00, 'COMPLETED', '2026-08-20 10:30:00'),
+        (2, 450.50, 'COMPLETED', '2026-08-20 10:35:00'),
+        (3, 89.99, 'COMPLETED', '2026-08-20 10:40:00'),
+        (4, 1200.00, 'COMPLETED', '2026-08-20 10:45:00'),
+        (5, 45.00, 'COMPLETED', '2026-08-20 10:50:00');
+
+        INSERT INTO audit_log (action, details, created_at) VALUES
+        ('BASELINE_SEED', 'Initialized 5 baseline customers and 5 baseline orders.', '2026-08-20 10:55:00');
+        EOF
+        chmod 644 /docker-entrypoint-initdb.d/01-init.sql
+
+        exec docker-entrypoint.sh mariadbd
+    volumes:
+      - mysql_pitr_data:/var/lib/mysql
+    networks:
+      - mysql-pitr-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  mysql_pitr_data:
+    name: mysql_pitr_data
+
+networks:
+  mysql-pitr-net:
+    name: mysql-pitr-net
+    driver: bridge

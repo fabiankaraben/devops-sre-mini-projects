@@ -1,0 +1,3 @@
+"postgres" "postgres"
+"pgbouncer_admin" "admin_password"
+"benchmark_user" "benchmark_password"

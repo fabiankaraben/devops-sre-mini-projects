@@ -1,0 +1,143 @@
+services:
+  postgres-analyzer-db:
+    image: postgres:16-alpine
+    container_name: postgres-analyzer-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-analyzer_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /etc/postgresql /docker-entrypoint-initdb.d
+        cat << 'EOF' > /etc/postgresql/postgresql.conf
+        listen_addresses = '*'
+        max_connections = 100
+        shared_buffers = 128MB
+        work_mem = 64kB
+
+        logging_collector = on
+        log_destination = 'stderr'
+        log_directory = 'log'
+        log_filename = 'postgresql.log'
+        log_file_mode = 0644
+        log_truncate_on_rotation = off
+
+        log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+        log_min_duration_statement = 20
+        log_checkpoints = on
+        log_connections = on
+        log_disconnections = on
+        log_lock_waits = on
+        log_temp_files = 0
+        log_autovacuum_min_duration = 0
+
+        shared_preload_libraries = 'pg_stat_statements'
+        pg_stat_statements.track = 'all'
+        EOF
+
+        cat << 'EOF' > /docker-entrypoint-initdb.d/01-init.sql
+        CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+        CREATE TABLE IF NOT EXISTS customers (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            email VARCHAR(150) NOT NULL UNIQUE,
+            tier VARCHAR(50) NOT NULL DEFAULT 'STANDARD',
+            country VARCHAR(100) NOT NULL,
+            balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS products (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(150) NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            price NUMERIC(10, 2) NOT NULL,
+            stock INT NOT NULL DEFAULT 100,
+            description TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS orders (
+            id SERIAL PRIMARY KEY,
+            customer_id INT NOT NULL,
+            total_amount NUMERIC(12, 2) NOT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+            notes TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS order_items (
+            id SERIAL PRIMARY KEY,
+            order_id INT NOT NULL,
+            product_id INT NOT NULL,
+            quantity INT NOT NULL DEFAULT 1,
+            unit_price NUMERIC(10, 2) NOT NULL
+        );
+
+        INSERT INTO customers (name, email, tier, country, balance, created_at)
+        SELECT
+            'Customer_' || i,
+            'user_' || i || '@ecommerce-demo.org',
+            (ARRAY['STANDARD', 'GOLD', 'PLATINUM', 'VIP'])[(i % 4) + 1],
+            (ARRAY['United States', 'Germany', 'Argentina', 'Japan', 'Brazil', 'Canada'])[(i % 6) + 1],
+            ROUND((random() * 5000 + 50)::numeric, 2),
+            NOW() - (i || ' minutes')::interval
+        FROM generate_series(1, 5000) AS s(i);
+
+        INSERT INTO products (name, category, price, stock, description)
+        SELECT
+            'Product_' || i,
+            (ARRAY['Electronics', 'Books', 'Home & Kitchen', 'Apparel', 'Automotive'])[(i % 5) + 1],
+            ROUND((random() * 500 + 9.99)::numeric, 2),
+            (i % 200) + 10,
+            'High performance item description for product #' || i || ' featuring durable components.'
+        FROM generate_series(1, 1000) AS s(i);
+
+        INSERT INTO orders (customer_id, total_amount, status, notes, created_at)
+        SELECT
+            (i % 5000) + 1,
+            ROUND((random() * 1200 + 15)::numeric, 2),
+            (ARRAY['COMPLETED', 'PENDING', 'PROCESSING', 'CANCELLED', 'REFUNDED'])[(i % 5) + 1],
+            'Special delivery instructions: ' || (ARRAY['Express courier service requested with promo code DISCOUNT2026', 'Leave package at front porch', 'Standard freight shipping', 'Priority VIP member dispatch'])[(i % 4) + 1],
+            NOW() - ((i % 10000) || ' minutes')::interval
+        FROM generate_series(1, 25000) AS s(i);
+
+        INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+        SELECT
+            (i % 25000) + 1,
+            (i % 1000) + 1,
+            (i % 5) + 1,
+            ROUND((random() * 250 + 5)::numeric, 2)
+        FROM generate_series(1, 50000) AS s(i);
+
+        ANALYZE customers;
+        ANALYZE products;
+        ANALYZE orders;
+        ANALYZE order_items;
+        EOF
+
+        exec docker-entrypoint.sh postgres -c config_file=/etc/postgresql/postgresql.conf
+    volumes:
+      - postgres_analyzer_data:/var/lib/postgresql/data
+    networks:
+      - pgbadger-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-analyzer_db}"]
+      interval: 2s
+      timeout: 2s
+      retries: 25
+      start_period: 3s
+
+volumes:
+  postgres_analyzer_data:
+    name: postgres_analyzer_data
+
+networks:
+  pgbadger-net:
+    name: pgbadger-net
+    driver: bridge

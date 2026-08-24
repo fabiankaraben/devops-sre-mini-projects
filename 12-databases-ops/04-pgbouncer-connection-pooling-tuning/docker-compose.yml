@@ -1,0 +1,123 @@
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: postgres-pool-db
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+            echo "▶ Initializing benchmark PostgreSQL cluster..."
+            su-exec postgres initdb -D /var/lib/postgresql/data -E UTF8 -A trust
+
+            echo "host all all 0.0.0.0/0 scram-sha-256" >> /var/lib/postgresql/data/pg_hba.conf
+            echo "host all all 0.0.0.0/0 trust" >> /var/lib/postgresql/data/pg_hba.conf
+
+            su-exec postgres pg_ctl -D /var/lib/postgresql/data -w start
+
+            psql -U postgres -d postgres -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+            psql -U postgres -d postgres -c "CREATE DATABASE benchmark_db;"
+            psql -U postgres -d benchmark_db -c "
+                CREATE ROLE benchmark_user WITH LOGIN ENCRYPTED PASSWORD 'benchmark_password';
+                CREATE ROLE pgbouncer_admin WITH LOGIN ENCRYPTED PASSWORD 'admin_password';
+                GRANT ALL PRIVILEGES ON DATABASE benchmark_db TO postgres;
+                GRANT ALL PRIVILEGES ON DATABASE benchmark_db TO benchmark_user;
+
+                CREATE TABLE IF NOT EXISTS accounts (
+                    id BIGSERIAL PRIMARY KEY,
+                    account_number VARCHAR(50) NOT NULL UNIQUE,
+                    balance NUMERIC(14, 2) NOT NULL DEFAULT 1000.00,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id BIGSERIAL PRIMARY KEY,
+                    account_id BIGINT NOT NULL REFERENCES accounts(id),
+                    amount NUMERIC(12, 2) NOT NULL,
+                    transaction_type VARCHAR(20) NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_accounts_num ON accounts(account_number);
+                CREATE INDEX IF NOT EXISTS idx_tx_account ON transactions(account_id);
+
+                GRANT ALL ON ALL TABLES IN SCHEMA public TO benchmark_user;
+                GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO benchmark_user;
+
+                INSERT INTO accounts (account_number, balance)
+                SELECT 'ACC-' || LPAD(i::text, 6, '0'), 1000.00
+                FROM generate_series(1, 1000) AS i
+                ON CONFLICT (account_number) DO NOTHING;
+            "
+            su-exec postgres pg_ctl -D /var/lib/postgresql/data -m fast -w stop
+            echo "✔ Benchmark database initialized successfully."
+        fi
+
+        echo "▶ Starting PostgreSQL server with max_connections=50..."
+        exec su-exec postgres postgres \
+            -c max_connections=50 \
+            -c shared_buffers=128MB \
+            -c password_encryption=scram-sha-256
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-benchmark_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_pool_data:/var/lib/postgresql/data
+    networks:
+      - pgbouncer-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-benchmark_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer-pooler
+    restart: unless-stopped
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres-db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: ${POSTGRES_DB:-benchmark_db}
+      POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-1000}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+      MIN_POOL_SIZE: ${PGBOUNCER_MIN_POOL_SIZE:-5}
+      RESERVE_POOL_SIZE: ${PGBOUNCER_RESERVE_POOL_SIZE:-5}
+      RESERVE_POOL_TIMEOUT: 5
+      MAX_DB_CONNECTIONS: 50
+      ADMIN_USERS: postgres,pgbouncer_admin
+      STATS_USERS: postgres,pgbouncer_admin,pgbouncer_monitor
+      AUTH_TYPE: scram-sha-256
+      SERVER_IDLE_TIMEOUT: 600
+      CLIENT_IDLE_TIMEOUT: 0
+      QUERY_WAIT_TIMEOUT: 120
+    ports:
+      - "${PGBOUNCER_PORT:-6432}:5432"
+    networks:
+      - pgbouncer-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres -d benchmark_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+
+volumes:
+  postgres_pool_data:
+    name: postgres_pool_data
+
+networks:
+  pgbouncer-net:
+    name: pgbouncer-net
+    driver: bridge

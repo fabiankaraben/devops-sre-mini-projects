@@ -1,0 +1,27 @@
+# Environment variables
+.env
+
+# Backup storage directory
+backups/
+*.sql.gz
+*.sql
+*.dump
+*.sha256
+*.meta.json
+
+# Reports and logs
+*.log
+validation_report.json
+disaster_recovery_report.json
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+
+# OS artifacts
+.DS_Store
+Thumbs.db

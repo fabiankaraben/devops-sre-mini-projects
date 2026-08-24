@@ -1,0 +1,172 @@
+services:
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: postgres-primary
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /var/lib/postgresql/wal_archive
+        chmod 0700 /var/lib/postgresql/wal_archive
+        chown -R postgres:postgres /var/lib/postgresql/wal_archive
+
+        if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+            echo "▶ Initializing primary PostgreSQL cluster..."
+            su-exec postgres initdb -D /var/lib/postgresql/data -E UTF8 -A trust
+
+            echo "" >> /var/lib/postgresql/data/pg_hba.conf
+            echo "# Streaming Replication Configuration" >> /var/lib/postgresql/data/pg_hba.conf
+            echo "host replication replicator 0.0.0.0/0 scram-sha-256" >> /var/lib/postgresql/data/pg_hba.conf
+            echo "host replication all 0.0.0.0/0 scram-sha-256" >> /var/lib/postgresql/data/pg_hba.conf
+            echo "host all all 0.0.0.0/0 scram-sha-256" >> /var/lib/postgresql/data/pg_hba.conf
+
+            su-exec postgres pg_ctl -D /var/lib/postgresql/data -w start
+
+            psql -U postgres -d postgres -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+            psql -U postgres -d postgres -c "CREATE DATABASE production_db;"
+            psql -U postgres -d production_db -c "
+                CREATE ROLE replicator WITH REPLICATION LOGIN ENCRYPTED PASSWORD 'replicator_password';
+                SELECT pg_create_physical_replication_slot('standby_slot_1');
+                CREATE TABLE IF NOT EXISTS financial_transactions (
+                    id BIGSERIAL PRIMARY KEY,
+                    transaction_uuid UUID NOT NULL UNIQUE,
+                    account_id VARCHAR(50) NOT NULL,
+                    symbol VARCHAR(20) NOT NULL,
+                    trade_type VARCHAR(10) NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
+                    shares INT NOT NULL CHECK (shares > 0),
+                    price_per_share NUMERIC(12, 4) NOT NULL CHECK (price_per_share >= 0),
+                    total_amount NUMERIC(16, 4) NOT NULL,
+                    execution_status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+                    metadata JSONB NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                CREATE TABLE IF NOT EXISTS system_telemetry (
+                    id BIGSERIAL PRIMARY KEY,
+                    node_id VARCHAR(50) NOT NULL,
+                    metric_name VARCHAR(100) NOT NULL,
+                    metric_value DOUBLE PRECISION NOT NULL,
+                    tags JSONB NOT NULL,
+                    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_tx_account ON financial_transactions(account_id);
+                CREATE INDEX IF NOT EXISTS idx_tx_symbol ON financial_transactions(symbol);
+                CREATE INDEX IF NOT EXISTS idx_tx_created ON financial_transactions(created_at);
+                CREATE INDEX IF NOT EXISTS idx_telemetry_node_metric ON system_telemetry(node_id, metric_name);
+                CREATE INDEX IF NOT EXISTS idx_telemetry_recorded ON system_telemetry(recorded_at);
+            "
+            su-exec postgres pg_ctl -D /var/lib/postgresql/data -m fast -w stop
+            echo "✔ Primary cluster initialized successfully."
+        fi
+
+        echo "▶ Starting primary PostgreSQL server..."
+        exec su-exec postgres postgres \
+            -c wal_level=replica \
+            -c max_wal_senders=10 \
+            -c max_replication_slots=10 \
+            -c wal_keep_size=128MB \
+            -c wal_log_hints=on \
+            -c archive_mode=on \
+            -c "archive_command=test ! -f /var/lib/postgresql/wal_archive/%f && cp %p /var/lib/postgresql/wal_archive/%f" \
+            -c hot_standby=on \
+            -c hot_standby_feedback=on
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-production_db}
+    ports:
+      - "${POSTGRES_PRIMARY_PORT:-5432}:5432"
+    volumes:
+      - primary_data:/var/lib/postgresql/data
+      - wal_archive_data:/var/lib/postgresql/wal_archive
+    networks:
+      - postgres-rep-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-production_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: postgres-replica
+    restart: unless-stopped
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /var/lib/postgresql/wal_archive
+        chmod 0700 /var/lib/postgresql/wal_archive
+        chown -R postgres:postgres /var/lib/postgresql/wal_archive
+
+        if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+            echo "▶ Waiting for primary node (postgres-primary:5432)..."
+            until pg_isready -h postgres-primary -p 5432 -U postgres -q; do
+                sleep 1
+            done
+
+            echo "▶ Cloning primary database with pg_basebackup..."
+            rm -rf /var/lib/postgresql/data/* /var/lib/postgresql/data/.* 2>/dev/null || true
+
+            export PGPASSWORD="replicator_password"
+            pg_basebackup -h postgres-primary \
+                          -p 5432 \
+                          -U replicator \
+                          -D /var/lib/postgresql/data \
+                          -Fp \
+                          -Xs \
+                          -R \
+                          -S standby_slot_1 \
+                          -v
+
+            cat << 'AUTOCONF' >> /var/lib/postgresql/data/postgresql.auto.conf
+        primary_conninfo = 'host=postgres-primary port=5432 user=replicator password=replicator_password application_name=postgres_replica_1'
+        primary_slot_name = 'standby_slot_1'
+        hot_standby = on
+        hot_standby_feedback = on
+        restore_command = 'test -f /var/lib/postgresql/wal_archive/%f && cp /var/lib/postgresql/wal_archive/%f %p'
+        AUTOCONF
+
+            chmod 0700 /var/lib/postgresql/data
+            chown -R postgres:postgres /var/lib/postgresql/data
+            echo "✔ Standby replica cloned and configured."
+        fi
+
+        echo "▶ Starting PostgreSQL standby server..."
+        exec su-exec postgres postgres
+    environment:
+      POSTGRES_PRIMARY_HOST: postgres-primary
+      POSTGRES_PRIMARY_PORT: 5432
+      REPLICATION_USER: ${REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replicator_password}
+      REPLICATION_SLOT: ${REPLICATION_SLOT:-standby_slot_1}
+    ports:
+      - "${POSTGRES_REPLICA_PORT:-5433}:5432"
+    volumes:
+      - replica_data:/var/lib/postgresql/data
+      - wal_archive_data:/var/lib/postgresql/wal_archive
+    networks:
+      - postgres-rep-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+volumes:
+  primary_data:
+    name: postgres_primary_cluster_data
+  replica_data:
+    name: postgres_replica_cluster_data
+  wal_archive_data:
+    name: postgres_wal_archive_data
+
+networks:
+  postgres-rep-net:
+    name: postgres-rep-net
+    driver: bridge

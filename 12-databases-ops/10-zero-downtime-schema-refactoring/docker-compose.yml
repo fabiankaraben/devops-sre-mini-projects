@@ -1,0 +1,89 @@
+services:
+  postgres-refactoring-db:
+    image: postgres:16-alpine
+    container_name: postgres-refactoring-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /docker-entrypoint-initdb.d
+        cat << 'EOF' > /docker-entrypoint-initdb.d/01-init.sql
+        CREATE DATABASE users_db;
+
+        \connect users_db;
+
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            full_name VARCHAR(100) NOT NULL,
+            email VARCHAR(150) NOT NULL UNIQUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        INSERT INTO users (full_name, email) VALUES
+        ('Jane Alice Doe', 'jane.doe@example.com'),
+        ('Michael Robert Clark', 'michael.clark@example.com'),
+        ('Sophia Marie Rodriguez', 'sophia.rodriguez@example.com'),
+        ('David Alexander Wright', 'david.wright@example.com'),
+        ('Elena Victoria Gomez', 'elena.gomez@example.com'),
+        ('Lucas Gabriel Santos', 'lucas.santos@example.com'),
+        ('Olivia Grace Taylor', 'olivia.taylor@example.com'),
+        ('Benjamin Thomas Hall', 'benjamin.hall@example.com'),
+        ('Charlotte Emma Davis', 'charlotte.davis@example.com'),
+        ('William Henry Miller', 'william.miller@example.com');
+        EOF
+
+        exec docker-entrypoint.sh postgres
+    volumes:
+      - postgres_refactoring_data:/var/lib/postgresql/data
+    networks:
+      - refactoring-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d users_db"]
+      interval: 2s
+      timeout: 2s
+      retries: 25
+      start_period: 3s
+
+  web-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zero-downtime-web-api:latest
+    container_name: zero-downtime-web-api
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres-refactoring-db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: users_db
+      INITIAL_APP_VERSION: v1
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres-refactoring-db:
+        condition: service_healthy
+    networks:
+      - refactoring-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\" || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  postgres_refactoring_data:
+    name: postgres_refactoring_data
+
+networks:
+  refactoring-net:
+    name: refactoring-net
+    driver: bridge

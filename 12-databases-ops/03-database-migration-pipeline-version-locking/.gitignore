@@ -1,0 +1,20 @@
+# Environment variables
+.env
+
+# Migration test fixtures & reports
+*.log
+migration_report.json
+dirty_state_report.json
+test_artifacts/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+
+# OS artifacts
+.DS_Store
+Thumbs.db

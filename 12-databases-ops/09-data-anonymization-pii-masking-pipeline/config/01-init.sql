@@ -1,0 +1,109 @@
+-- ==============================================================================
+-- 01-init.sql - Production Database Schema & Sensitive PII Seed Data
+-- ==============================================================================
+
+-- Create separate databases for Production (Source) and Staging (Target)
+CREATE DATABASE production_db;
+CREATE DATABASE staging_db;
+
+\connect production_db;
+
+-- 1. Customers Table (Sensitive Personal Identifiable Information)
+CREATE TABLE IF NOT EXISTS customers (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    phone_number VARCHAR(50) NOT NULL,
+    ssn VARCHAR(20) NOT NULL,
+    billing_address TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Credit Cards Table (PCI-DSS Sensitive Payment Card Data)
+CREATE TABLE IF NOT EXISTS credit_cards (
+    id SERIAL PRIMARY KEY,
+    customer_id INT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    card_number VARCHAR(30) NOT NULL,
+    card_holder VARCHAR(100) NOT NULL,
+    expiration VARCHAR(10) NOT NULL,
+    cvv_hash VARCHAR(64) NOT NULL
+);
+
+-- 3. Orders Table (Referential Integrity with customers)
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    total_amount NUMERIC(10, 2) NOT NULL,
+    shipping_address TEXT NOT NULL,
+    customer_notes TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'COMPLETED',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Order Items Table
+CREATE TABLE IF NOT EXISTS order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_name VARCHAR(150) NOT NULL,
+    quantity INT NOT NULL,
+    unit_price NUMERIC(10, 2) NOT NULL
+);
+
+-- 5. Audit Trail Table (Natural Key link on customer_email)
+CREATE TABLE IF NOT EXISTS audit_trail (
+    id SERIAL PRIMARY KEY,
+    customer_email VARCHAR(150) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ------------------------------------------------------------------------------
+-- Seed Realistic Sensitive Production Records
+-- ------------------------------------------------------------------------------
+
+INSERT INTO customers (id, full_name, email, phone_number, ssn, billing_address, created_at) VALUES
+(1, 'Jane Alice Doe', 'jane.doe@gmail.com', '+1-555-839-2910', '123-45-6789', '742 Evergreen Terrace, Springfield, OR 97477', '2026-08-10 09:00:00+00'),
+(2, 'Michael Robert Clark', 'michael.clark@corporate-bank.com', '+1-555-192-8374', '234-56-7890', '120 Broadway Ave, New York, NY 10005', '2026-08-10 09:15:00+00'),
+(3, 'Sophia Marie Rodriguez', 'sophia.rodriguez@techfirm.io', '+1-555-482-9102', '345-67-8901', '450 Silicon Valley Blvd, San Jose, CA 95113', '2026-08-10 09:30:00+00'),
+(4, 'David Alexander Wright', 'david.wright@global-finance.net', '+1-555-738-1920', '456-78-9012', '88 Michigan Ave, Chicago, IL 60603', '2026-08-10 09:45:00+00'),
+(5, 'Elena Victoria Gomez', 'elena.gomez@health-systems.org', '+1-555-920-1847', '567-89-0123', '320 Ocean Drive, Miami, FL 33139', '2026-08-10 10:00:00+00');
+
+INSERT INTO credit_cards (customer_id, card_number, card_holder, expiration, cvv_hash) VALUES
+(1, '4532-7890-1234-5678', 'Jane A Doe', '09/28', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'),
+(2, '5424-1801-2345-6789', 'Michael R Clark', '11/29', 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'),
+(3, '3782-8224-6310-0051', 'Sophia M Rodriguez', '04/27', '4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce'),
+(4, '6011-0009-9821-4321', 'David A Wright', '12/30', '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a'),
+(5, '4111-2222-3333-4444', 'Elena V Gomez', '01/29', 'ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d');
+
+INSERT INTO orders (id, customer_id, total_amount, shipping_address, customer_notes, status, created_at) VALUES
+(1, 1, 249.99, '742 Evergreen Terrace, Springfield, OR 97477', 'Urgent medical supplies: please call +1-555-839-2910 upon arrival or email jane.doe@gmail.com', 'COMPLETED', '2026-08-11 10:00:00+00'),
+(2, 1, 89.50, '742 Evergreen Terrace, Springfield, OR 97477', 'Leave package at rear door for Jane Doe', 'COMPLETED', '2026-08-12 11:30:00+00'),
+(3, 2, 1200.00, '120 Broadway Ave, New York, NY 10005', 'Corporate purchase for Michael Clark. Invoiced to 120 Broadway Ave.', 'COMPLETED', '2026-08-13 14:15:00+00'),
+(4, 3, 450.00, '450 Silicon Valley Blvd, San Jose, CA 95113', 'Notify Sophia at sophia.rodriguez@techfirm.io when out for delivery', 'COMPLETED', '2026-08-14 09:20:00+00'),
+(5, 4, 320.75, '88 Michigan Ave, Chicago, IL 60603', 'Deliver to David Wright suite 400', 'COMPLETED', '2026-08-15 16:45:00+00'),
+(6, 5, 150.00, '320 Ocean Drive, Miami, FL 33139', 'Contact Elena Gomez at +1-555-920-1847', 'COMPLETED', '2026-08-16 12:10:00+00');
+
+INSERT INTO order_items (order_id, product_name, quantity, unit_price) VALUES
+(1, 'Ergonomic Chair Pro', 1, 249.99),
+(2, 'Wireless Keyboard & Mouse', 1, 89.50),
+(3, 'UltraWide 4K Monitor 34-inch', 2, 600.00),
+(4, 'Noise Cancelling Headphones', 1, 450.00),
+(5, 'Standing Desk Converter', 1, 320.75),
+(6, 'USB-C Thunderbolt Dock', 1, 150.00);
+
+INSERT INTO audit_trail (customer_email, action, ip_address, created_at) VALUES
+('jane.doe@gmail.com', 'USER_LOGIN', '198.51.100.24', '2026-08-11 09:55:00+00'),
+('jane.doe@gmail.com', 'ORDER_PLACED', '198.51.100.24', '2026-08-11 10:00:00+00'),
+('michael.clark@corporate-bank.com', 'USER_LOGIN', '203.0.113.88', '2026-08-13 14:10:00+00'),
+('michael.clark@corporate-bank.com', 'ORDER_PLACED', '203.0.113.88', '2026-08-13 14:15:00+00'),
+('sophia.rodriguez@techfirm.io', 'USER_LOGIN', '192.0.2.45', '2026-08-14 09:15:00+00'),
+('david.wright@global-finance.net', 'USER_LOGIN', '198.51.100.112', '2026-08-15 16:40:00+00'),
+('elena.gomez@health-systems.org', 'USER_LOGIN', '203.0.113.5', '2026-08-16 12:05:00+00');
+
+-- Reset sequences
+SELECT setval('customers_id_seq', (SELECT MAX(id) FROM customers));
+SELECT setval('credit_cards_id_seq', (SELECT MAX(id) FROM credit_cards));
+SELECT setval('orders_id_seq', (SELECT MAX(id) FROM orders));
+SELECT setval('order_items_id_seq', (SELECT MAX(id) FROM order_items));
+SELECT setval('audit_trail_id_seq', (SELECT MAX(id) FROM audit_trail));
