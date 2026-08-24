@@ -1,0 +1,36 @@
+services:
+  vault:
+    image: hashicorp/vault:1.15.5
+    container_name: vault-server
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      VAULT_API_ADDR: "http://127.0.0.1:8200"
+      VAULT_LOCAL_CONFIG: '{"ui":true,"disable_mlock":true,"storage":{"inmem":{}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"default_lease_ttl":"1h","max_lease_ttl":"24h"}'
+    cap_add:
+      - IPC_LOCK
+    command: ["server"]
+    networks:
+      - vault-net
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: vault-postgres-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "vaultadmin"
+      POSTGRES_PASSWORD: "VaultAdminSecretPass2026!"
+      POSTGRES_DB: "payment_db"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vaultadmin -d payment_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    networks:
+      - vault-net
+
+networks:
+  vault-net:
+    driver: bridge

@@ -1,0 +1,58 @@
+# ==============================================================================
+# .pre-commit-config.yaml - Pre-Commit Git Secrets Detection & Hygiene Suite
+# ==============================================================================
+# Configures automated multi-engine secrets scanning and repository hygiene
+# checks executed prior to each git commit.
+# ==============================================================================
+
+repos:
+  # ----------------------------------------------------------------------------
+  # 1. Multi-Engine Secrets Scanners & Repository Hygiene (Local System Hooks)
+  # ----------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: Detect Hardcoded Secrets (Gitleaks)
+        description: Scans staged commits for API keys, AWS tokens, and private keys using custom rules.
+        entry: gitleaks protect --verbose --redact --staged --config=.gitleaks.toml
+        language: system
+        pass_filenames: false
+
+      - id: detect-secrets
+        name: Detect Secrets Baseline Compliance (detect-secrets)
+        description: Verifies no new high-entropy secrets or credentials are added beyond the baseline.
+        entry: detect-secrets-hook --baseline .secrets.baseline
+        language: system
+        files: .*
+        exclude: package-lock\.json|pnpm-lock\.yaml|\.gitleaks\.toml|\.secrets\.baseline
+
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        entry: trailing-whitespace-fixer
+        language: system
+        types: [text]
+
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        entry: end-of-file-fixer
+        language: system
+        types: [text]
+
+      - id: check-yaml
+        name: Check YAML Syntax
+        entry: check-yaml
+        language: system
+        types: [yaml]
+        args: ['--allow-multiple-documents']
+
+      - id: check-json
+        name: Check JSON Syntax
+        entry: check-json
+        language: system
+        types: [json]
+
+      - id: check-added-large-files
+        name: Prevent Large File Commits
+        entry: check-added-large-files
+        language: system
+        args: ['--maxkb=1024']

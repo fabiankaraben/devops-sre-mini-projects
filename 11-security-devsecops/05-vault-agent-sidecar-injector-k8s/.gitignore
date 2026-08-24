@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Vault runtime data & tokens
+data/
+vault_data/
+*.token
+.vault-token
+vault_init_keys.json
+vault_agent_token
+approle_creds.json
+
+# In-memory secrets & logs
+secrets/
+*.log
+.DS_Store
+Thumbs.db

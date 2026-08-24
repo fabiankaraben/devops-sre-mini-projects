@@ -1,0 +1,22 @@
+# Production Configuration Template
+app:
+  name: "secure-payment-service"
+  environment: "production"
+  port: 8080
+  workers: 4
+
+database:
+  host: "postgres.internal.net"
+  port: 5432
+  name: "production_db"
+  ssl_mode: "require"
+  # Environment variable identifiers for runtime injection
+  db_user_env_key: "DATABASE_USER"
+  db_auth_env_key: "DATABASE_CREDENTIALS"
+
+security:
+  cors_allowed_origins:
+    - "https://app.example.com"
+    - "https://admin.example.com"
+  session_timeout_seconds: 3600
+  rate_limit_per_minute: 120

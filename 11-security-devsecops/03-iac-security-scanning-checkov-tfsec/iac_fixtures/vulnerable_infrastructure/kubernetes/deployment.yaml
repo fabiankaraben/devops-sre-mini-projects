@@ -1,0 +1,39 @@
+# ==============================================================================
+# deployment.yaml - Insecure Kubernetes Deployment Manifest (Anti-Patterns)
+# ==============================================================================
+# Intentional Kubernetes security misconfigurations for Checkov auditing:
+# 1. CKV_K8S_16: Privileged container execution enabled
+# 2. CKV_K8S_23, CKV_K8S_40: Container runs as root (runAsNonRoot: false)
+# 3. CKV_K8S_10, CKV_K8S_11: Missing CPU & Memory resource limits (DoS risk)
+# 4. CKV_K8S_22: Root filesystem is writable (readOnlyRootFilesystem: false)
+# 5. CKV_K8S_43: Container image uses unpinned 'latest' tag
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-api-service
+  namespace: default
+  labels:
+    app: insecure-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: insecure-api
+  template:
+    metadata:
+      labels:
+        app: insecure-api
+    spec:
+      containers:
+        - name: api-server
+          image: nginx:latest # Violation: Unpinned latest tag
+          ports:
+            - containerPort: 80
+          securityContext:
+            privileged: true # Violation: Privileged container escape risk
+            allowPrivilegeEscalation: true # Violation: Privilege escalation allowed
+            readOnlyRootFilesystem: false # Violation: Writable root filesystem
+            runAsNonRoot: false # Violation: Runs as root UID 0
+          # Violation: Missing resources block (CPU/memory requests & limits)

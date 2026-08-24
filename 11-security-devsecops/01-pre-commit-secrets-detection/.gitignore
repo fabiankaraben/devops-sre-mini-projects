@@ -1,0 +1,25 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Pre-commit & Tooling caches
+.cache/
+.pre-commit-cache/
+
+# Local test sandboxes (created during automated test suite execution)
+.test_sandbox/
+sandbox_repo/
+test_repo/
+
+# Generated scan reports & logs
+*.log
+secrets_report.json
+secrets_report.sarif
+audit_output.txt
+
+# OS metadata
+.DS_Store
+Thumbs.db

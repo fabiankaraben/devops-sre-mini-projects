@@ -1,0 +1,51 @@
+# ==============================================================================
+# Dockerfile.hardened - Compliant Multi-Stage Hardened Dockerfile
+# ==============================================================================
+# Applies CIS Docker Benchmark & Container Best Practices:
+# 1. Pinned minimal Alpine base image
+# 2. Multi-stage build to separate build tools from runtime
+# 3. Non-root user execution (UID 10001 / GID 10001)
+# 4. Explicit native HEALTHCHECK defined
+# 5. Local COPY with strict permissions instead of ADD
+# ==============================================================================
+
+# Stage 1: Build & Packaging
+FROM python:3.11.8-alpine3.19 AS builder
+
+WORKDIR /build
+
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache gcc musl-dev libffi-dev
+
+COPY requirements.txt /build/requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# Stage 2: Hardened Runtime
+FROM python:3.11.8-alpine3.19
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    APP_ENV=production \
+    PORT=8080 \
+    PATH="/install/bin:$PATH" \
+    PYTHONPATH="/install/lib/python3.11/site-packages"
+
+RUN apk update && apk upgrade --no-cache && \
+    addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S -G appgroup -s /sbin/nologin -h /app appuser && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+COPY --from=builder --chown=10001:10001 /install /install
+COPY --chown=10001:10001 app.py /app/app.py
+
+USER 10001:10001
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)" || exit 1
+
+ENTRYPOINT ["python"]
+CMD ["app.py"]

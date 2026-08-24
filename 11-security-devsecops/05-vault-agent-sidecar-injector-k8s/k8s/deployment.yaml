@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: default
+  labels:
+    app.kubernetes.io/name: payment-service
+    app.kubernetes.io/component: microservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+      annotations:
+        # 1. Enable Vault Agent Mutation & Injection Webhook
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "payment-k8s-role"
+        vault.hashicorp.com/agent-pre-populate-only: "false"
+
+        # 2. Inject and render JSON Secret Template
+        vault.hashicorp.com/agent-inject-secret-config.json: "secret/data/payment-service/config"
+        vault.hashicorp.com/agent-inject-template-config.json: |
+          {{- with secret "secret/data/payment-service/config" -}}
+          {
+            "stripe_api_key": "{{ .Data.data.stripe_api_key }}",
+            "jwt_secret": "{{ .Data.data.jwt_secret }}",
+            "database_password": "{{ .Data.data.database_password }}",
+            "secret_version": "{{ .Data.metadata.version }}"
+          }
+          {{- end -}}
+
+        # 3. Inject and render Dotenv Secret Template
+        vault.hashicorp.com/agent-inject-secret-app.env: "secret/data/payment-service/config"
+        vault.hashicorp.com/agent-inject-template-app.env: |
+          {{- with secret "secret/data/payment-service/config" -}}
+          STRIPE_API_KEY="{{ .Data.data.stripe_api_key }}"
+          JWT_SECRET="{{ .Data.data.jwt_secret }}"
+          DB_PASSWORD="{{ .Data.data.database_password }}"
+          SECRET_VERSION="{{ .Data.metadata.version }}"
+          {{- end -}}
+    spec:
+      serviceAccountName: payment-app-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: payment-service
+          image: payment-service:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SECRETS_CONFIG_PATH
+              value: "/vault/secrets/config.json"
+            - name: SECRETS_ENV_PATH
+              value: "/vault/secrets/app.env"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

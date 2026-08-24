@@ -1,0 +1,29 @@
+# ==============================================================================
+# .checkov.yml - Declarative Checkov Policy-as-Code Configuration
+# ==============================================================================
+# Configures targeted infrastructure frameworks, output formats, severity
+# thresholds, and documented check suppressions.
+# ==============================================================================
+
+# Target Infrastructure as Code Frameworks
+framework:
+  - terraform
+  - kubernetes
+  - dockerfile
+
+# Output format options: cli, json, sarif
+output: cli
+compact: true
+
+# Gating behavior (false = non-zero exit code on violations)
+soft-fail: false
+
+# Directory exclusions
+skip-path:
+  - .terraform
+  - reports
+
+# Documented Risk-Acceptance Policy Suppressions
+# Format: CheckID: "Justification"
+# skip-check:
+#   - CKV_AWS_145: "S3 default encryption via SSE-S3 accepted in dev environment"

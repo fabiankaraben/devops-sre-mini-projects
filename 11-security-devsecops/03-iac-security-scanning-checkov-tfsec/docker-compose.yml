@@ -1,0 +1,12 @@
+services:
+  iac-scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: checkov-iac-scanner:v1.0.0
+    container_name: checkov-iac-scanner-sandbox
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./reports:/workspace/reports
+    command: ["./iac_security_audit.sh", "--target", "all"]

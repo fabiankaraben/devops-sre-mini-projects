@@ -1,0 +1,26 @@
+# ==============================================================================
+# docker-compose.yml - Isolated Sandbox for Git Secrets Detection Suite
+# ==============================================================================
+# Provides a completely isolated containerized environment for executing
+# pre-commit hooks, Gitleaks, detect-secrets, and the test suite without
+# polluting the host machine or modifying host Git repositories.
+# ==============================================================================
+
+services:
+  secrets-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pre-commit-secrets-suite:v1.0.0
+    container_name: pre-commit-secrets-detector
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PRE_COMMIT_HOME=/workspace/.pre-commit-cache
+    volumes:
+      - pre_commit_cache:/workspace/.pre-commit-cache
+    working_dir: /workspace
+    command: ["/workspace/test_secret_blocking.sh"]
+
+volumes:
+  pre_commit_cache:
+    name: pre_commit_secrets_cache

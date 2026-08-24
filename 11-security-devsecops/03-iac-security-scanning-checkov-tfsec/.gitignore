@@ -1,0 +1,24 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Terraform runtime & state
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Checkov & Scanner Caches
+.checkov_cache/
+reports/*.json
+reports/*.sarif
+reports/*.txt
+reports/*.md
+
+# Logs & temp files
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Vault runtime data & unseal keys
+data/
+vault_data/
+postgres_data/
+*.token
+.vault-token
+vault_init_keys.json
+app/config/approle_creds.json
+
+# Logs & temp files
+*.log
+.DS_Store
+Thumbs.db

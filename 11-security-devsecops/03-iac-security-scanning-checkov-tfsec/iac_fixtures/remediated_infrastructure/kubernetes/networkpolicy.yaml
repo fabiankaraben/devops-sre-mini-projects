@@ -1,0 +1,34 @@
+# ==============================================================================
+# networkpolicy.yaml - Compliant Kubernetes NetworkPolicy Manifest
+# ==============================================================================
+# Restricts ingress and egress traffic for the hardened-api pod selector.
+# ==============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hardened-api-netpol
+  namespace: production
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: hardened-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend-gateway
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: internal-database
+      ports:
+        - protocol: TCP
+          port: 5432

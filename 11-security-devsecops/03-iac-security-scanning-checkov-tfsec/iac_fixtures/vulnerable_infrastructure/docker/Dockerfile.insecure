@@ -1,0 +1,23 @@
+# ==============================================================================
+# Dockerfile.insecure - Insecure Dockerfile Manifest (Anti-Patterns)
+# ==============================================================================
+# Intentional Dockerfile misconfigurations for Checkov auditing:
+# 1. CKV_DOCKER_7: Base image uses unpinned 'latest' tag
+# 2. CKV_DOCKER_3: Missing USER directive (runs as root UID 0)
+# 3. CKV_DOCKER_2: Missing HEALTHCHECK instruction
+# 4. CKV_DOCKER_4: Uses ADD instead of COPY for local files
+# 5. CKV_DOCKER_1: Secret exposed in ENV instruction
+# ==============================================================================
+
+FROM python:latest
+
+ENV API_SECRET_TOKEN="SecretToken1234567890abcdef" \
+    PORT=8080
+
+WORKDIR /app
+
+ADD . /app
+
+EXPOSE 8080
+
+CMD ["python", "app.py"]

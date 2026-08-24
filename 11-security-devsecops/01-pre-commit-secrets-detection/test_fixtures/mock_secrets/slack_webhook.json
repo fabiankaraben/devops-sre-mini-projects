@@ -1,0 +1,6 @@
+{
+  "channel": "#prod-alerts",
+  "username": "IncidentBot",
+  "webhook_url": "https://hooks.slack.com/services/T01234567/B0123456789/AbCdEfGhIjKlMnOpQrStUvWx",
+  "text": "CRITICAL: Database replication lag exceeds 300 seconds."
+}

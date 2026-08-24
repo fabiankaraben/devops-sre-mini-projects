@@ -1,0 +1,41 @@
+services:
+  vault:
+    image: hashicorp/vault:1.15.5
+    container_name: vault-k8s-server
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      VAULT_API_ADDR: "http://127.0.0.1:8200"
+      VAULT_LOCAL_CONFIG: '{"ui":true,"disable_mlock":true,"storage":{"inmem":{}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":1}},"default_lease_ttl":"1h","max_lease_ttl":"24h"}'
+    cap_add:
+      - IPC_LOCK
+    command: ["server"]
+    networks:
+      - vault-k8s-net
+
+  payment-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: payment-service:v1.0.0
+    container_name: payment-service-app
+    ports:
+      - "8080:8080"
+    environment:
+      SECRETS_CONFIG_PATH: "/vault/secrets/config.json"
+      SECRETS_ENV_PATH: "/vault/secrets/app.env"
+      PORT: "8080"
+    volumes:
+      - vault_shared_secrets:/vault/secrets
+    depends_on:
+      - vault
+    networks:
+      - vault-k8s-net
+
+networks:
+  vault-k8s-net:
+    driver: bridge
+
+volumes:
+  vault_shared_secrets:

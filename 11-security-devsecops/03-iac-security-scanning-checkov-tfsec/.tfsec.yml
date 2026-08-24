@@ -1,0 +1,9 @@
+# ==============================================================================
+# .tfsec.yml - tfsec Security Policy Configuration
+# ==============================================================================
+# Defines rule exclusions and minimum severity thresholds for Terraform scans.
+# ==============================================================================
+
+minimum_severity: HIGH
+exclude: []
+ignore_unspecified_blocks: false
