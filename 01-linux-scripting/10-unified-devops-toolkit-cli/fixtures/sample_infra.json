@@ -1,0 +1,57 @@
+{
+  "project_name": "ecommerce-production-stack",
+  "environment": "production",
+  "currency": "USD",
+  "resources": [
+    {
+      "name": "api-gateway-cluster",
+      "type": "compute",
+      "count": 3,
+      "specs": {
+        "instance_type": "t3.xlarge",
+        "vcpu": 4,
+        "ram_gb": 16,
+        "hourly_rate": 0.1664
+      }
+    },
+    {
+      "name": "db-primary-postgres",
+      "type": "compute",
+      "count": 1,
+      "specs": {
+        "instance_type": "r6i.2xlarge",
+        "vcpu": 8,
+        "ram_gb": 64,
+        "hourly_rate": 0.504
+      }
+    },
+    {
+      "name": "db-persistent-storage",
+      "type": "storage",
+      "specs": {
+        "storage_type": "gp3",
+        "size_gb": 500,
+        "monthly_rate_per_gb": 0.08
+      }
+    },
+    {
+      "name": "redis-cache-cluster",
+      "type": "compute",
+      "count": 2,
+      "specs": {
+        "instance_type": "cache.m6g.large",
+        "vcpu": 2,
+        "ram_gb": 6.38,
+        "hourly_rate": 0.136
+      }
+    },
+    {
+      "name": "outbound-cdn-egress",
+      "type": "bandwidth",
+      "specs": {
+        "estimated_tb_monthly": 15,
+        "rate_per_gb": 0.05
+      }
+    }
+  ]
+}

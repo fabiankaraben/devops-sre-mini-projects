@@ -1,0 +1,26 @@
+services:
+  sysctl_lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sysctl-performance-lab:latest
+    container_name: sysctl_performance_lab
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+    command: >
+      bash -c "
+        echo '=== 1. Initial Kernel Parameter Audit ==='
+        ./sysctl_tuner.sh --audit --profile web --no-fail
+        echo '=== 2. Pre-Tuning Network Benchmark ==='
+        ./benchmark_network.sh -n 300 -c 30
+        echo '=== 3. Applying Web Performance Profile ==='
+        ./sysctl_tuner.sh --apply --profile web
+        echo '=== 4. Post-Tuning Kernel Parameter Audit ==='
+        ./sysctl_tuner.sh --audit --profile web --no-fail
+        echo '=== 5. Post-Tuning Network Benchmark ==='
+        ./benchmark_network.sh -n 300 -c 30
+        echo '=== 6. Rolling Back to Snapshot Backup ==='
+        ./sysctl_tuner.sh --rollback
+      "

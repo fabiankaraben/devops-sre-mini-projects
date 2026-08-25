@@ -1,0 +1,34 @@
+services:
+  node1:
+    build:
+      context: ./node1
+      dockerfile: Dockerfile
+    image: mock-ssh-node1:latest
+    container_name: mock_ssh_node1
+    ports:
+      - "2222:22"
+    networks:
+      mock_ssh_net:
+        ipv4_address: 172.29.0.10
+    restart: unless-stopped
+
+  node2:
+    build:
+      context: ./node2
+      dockerfile: Dockerfile
+    image: mock-ssh-node2:latest
+    container_name: mock_ssh_node2
+    ports:
+      - "2223:22"
+    networks:
+      mock_ssh_net:
+        ipv4_address: 172.29.0.20
+    restart: unless-stopped
+
+networks:
+  mock_ssh_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.29.0.0/24

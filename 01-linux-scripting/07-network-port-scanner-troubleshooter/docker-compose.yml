@@ -1,0 +1,68 @@
+services:
+  web_server:
+    build:
+      context: ./mock_network_grid/web_service
+      dockerfile: Dockerfile
+    image: mock-web-server:latest
+    container_name: mock_web_server
+    ports:
+      - "9080:80"
+      - "9081:8080"
+    networks:
+      mock_net:
+        ipv4_address: 172.28.0.10
+    restart: unless-stopped
+
+  db_server:
+    build:
+      context: ./mock_network_grid/db_service
+      dockerfile: Dockerfile
+    image: mock-db-server:latest
+    container_name: mock_db_server
+    ports:
+      - "9432:5432"
+      - "9379:6379"
+    networks:
+      mock_net:
+        ipv4_address: 172.28.0.20
+    restart: unless-stopped
+
+  secure_gateway:
+    build:
+      context: ./mock_network_grid/secure_gateway
+      dockerfile: Dockerfile
+    image: mock-secure-gateway:latest
+    container_name: mock_secure_gateway
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "9022:22"
+      - "9843:8443"
+      - "9999:9999"
+    networks:
+      mock_net:
+        ipv4_address: 172.28.0.30
+    restart: unless-stopped
+
+  net_scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: net-troubleshoot-scanner:latest
+    container_name: net_troubleshoot_scanner
+    depends_on:
+      - web_server
+      - db_server
+      - secure_gateway
+    networks:
+      mock_net:
+        ipv4_address: 172.28.0.50
+    command: ["-t", "172.28.0.10,172.28.0.20,172.28.0.30", "-p", "80,8080,5432,6379,22,8443,9999", "--timeout", "0.5", "--markdown", "--no-fail"]
+
+networks:
+  mock_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/24

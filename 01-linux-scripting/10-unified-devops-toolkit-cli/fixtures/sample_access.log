@@ -1,0 +1,15 @@
+192.168.1.10 - - [25/Aug/2026:10:00:01 +0000] "GET /api/v1/health HTTP/1.1" 200 45 "https://example.com" "Mozilla/5.0" 0.005
+192.168.1.10 - - [25/Aug/2026:10:00:02 +0000] "GET /api/v1/users HTTP/1.1" 200 1024 "https://example.com" "Mozilla/5.0" 0.042
+10.0.0.15 - - [25/Aug/2026:10:00:03 +0000] "POST /api/v1/orders HTTP/1.1" 201 256 "https://example.com/checkout" "Mozilla/5.0" 0.120
+172.16.0.5 - - [25/Aug/2026:10:00:04 +0000] "GET /api/v1/products/42 HTTP/1.1" 200 4096 "https://example.com" "Mozilla/5.0" 0.015
+192.168.1.10 - - [25/Aug/2026:10:00:05 +0000] "GET /api/v1/users/admin HTTP/1.1" 403 128 "https://example.com" "Mozilla/5.0" 0.008
+10.0.0.15 - - [25/Aug/2026:10:00:06 +0000] "GET /api/v1/unknown HTTP/1.1" 404 88 "-" "curl/7.88.1" 0.002
+192.168.1.20 - - [25/Aug/2026:10:00:07 +0000] "GET /api/v1/reports/monthly HTTP/1.1" 500 512 "https://example.com" "Mozilla/5.0" 0.850
+192.168.1.10 - - [25/Aug/2026:10:00:08 +0000] "GET /api/v1/health HTTP/1.1" 200 45 "-" "Prometheus/2.45.0" 0.003
+172.16.0.5 - - [25/Aug/2026:10:00:09 +0000] "GET /api/v1/products HTTP/1.1" 200 8192 "https://example.com" "Mozilla/5.0" 0.035
+10.0.0.99 - - [25/Aug/2026:10:00:10 +0000] "POST /api/v1/auth/login HTTP/1.1" 401 128 "https://example.com/login" "Mozilla/5.0" 0.025
+192.168.1.20 - - [25/Aug/2026:10:00:11 +0000] "GET /api/v1/reports/monthly HTTP/1.1" 503 256 "https://example.com" "Mozilla/5.0" 1.250
+10.0.0.15 - - [25/Aug/2026:10:00:12 +0000] "GET /api/v1/users HTTP/1.1" 200 1024 "https://example.com" "Mozilla/5.0" 0.040
+192.168.1.10 - - [25/Aug/2026:10:00:13 +0000] "GET /static/app.js HTTP/1.1" 304 0 "https://example.com" "Mozilla/5.0" 0.001
+192.168.1.10 - - [25/Aug/2026:10:00:14 +0000] "GET /static/style.css HTTP/1.1" 200 2048 "https://example.com" "Mozilla/5.0" 0.004
+172.16.0.88 - - [25/Aug/2026:10:00:15 +0000] "GET /api/v1/products HTTP/1.1" 200 8192 "https://example.com" "Mozilla/5.0" 0.032

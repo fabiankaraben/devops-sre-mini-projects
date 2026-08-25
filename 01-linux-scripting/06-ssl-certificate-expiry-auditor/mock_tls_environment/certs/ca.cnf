@@ -1,0 +1,41 @@
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir               = /Users/fabian/Documents/CodeProjects/github.com/fabiankaraben/devops-sre-mini-projects/01-linux-scripting/06-ssl-certificate-expiry-auditor/mock_tls_environment/certs
+certs             = /Users/fabian/Documents/CodeProjects/github.com/fabiankaraben/devops-sre-mini-projects/01-linux-scripting/06-ssl-certificate-expiry-auditor/mock_tls_environment/certs
+new_certs_dir     = /Users/fabian/Documents/CodeProjects/github.com/fabiankaraben/devops-sre-mini-projects/01-linux-scripting/06-ssl-certificate-expiry-auditor/mock_tls_environment/certs
+database          = /Users/fabian/Documents/CodeProjects/github.com/fabiankaraben/devops-sre-mini-projects/01-linux-scripting/06-ssl-certificate-expiry-auditor/mock_tls_environment/certs/index.txt
+serial            = /Users/fabian/Documents/CodeProjects/github.com/fabiankaraben/devops-sre-mini-projects/01-linux-scripting/06-ssl-certificate-expiry-auditor/mock_tls_environment/certs/serial
+certificate       = /Users/fabian/Documents/CodeProjects/github.com/fabiankaraben/devops-sre-mini-projects/01-linux-scripting/06-ssl-certificate-expiry-auditor/mock_tls_environment/certs/rootCA.crt
+private_key       = /Users/fabian/Documents/CodeProjects/github.com/fabiankaraben/devops-sre-mini-projects/01-linux-scripting/06-ssl-certificate-expiry-auditor/mock_tls_environment/certs/rootCA.key
+default_days      = 365
+default_md        = sha256
+policy            = policy_loose
+copy_extensions   = copy
+
+[ policy_loose ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+[ req ]
+default_bits        = 2048
+distinguished_name  = req_distinguished_name
+string_mask         = utf8only
+default_md          = sha256
+
+[ req_distinguished_name ]
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = localhost
+IP.1 = 127.0.0.1

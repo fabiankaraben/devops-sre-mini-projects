@@ -1,0 +1,20 @@
+services:
+  process_reaper_demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: process-reaper-lab:latest
+    container_name: process_reaper_lab
+    init: true
+    command: >
+      bash -c "
+        echo '[CONTAINER] Starting background Zombie Spawner (3 zombies)...'
+        /usr/local/bin/zombie_spawner -z 3 -d 30 &
+        sleep 2
+        echo '[CONTAINER] Running initial process diagnosis:'
+        python3 process_reaper.py --scan
+        echo '[CONTAINER] Executing auto-reap cycle:'
+        python3 process_reaper.py --auto-reap
+        echo '[CONTAINER] Post-remediation process status:'
+        python3 process_reaper.py --scan
+      "

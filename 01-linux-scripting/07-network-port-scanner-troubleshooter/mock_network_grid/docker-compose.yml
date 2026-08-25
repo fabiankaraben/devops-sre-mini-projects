@@ -1,0 +1,53 @@
+services:
+  web_server:
+    build:
+      context: ./web_service
+      dockerfile: Dockerfile
+    image: mock-web-server:latest
+    container_name: mock_web_server
+    ports:
+      - "9080:80"
+      - "9081:8080"
+    networks:
+      mock_net:
+        ipv4_address: 172.28.0.10
+    restart: unless-stopped
+
+  db_server:
+    build:
+      context: ./db_service
+      dockerfile: Dockerfile
+    image: mock-db-server:latest
+    container_name: mock_db_server
+    ports:
+      - "9432:5432"
+      - "9379:6379"
+    networks:
+      mock_net:
+        ipv4_address: 172.28.0.20
+    restart: unless-stopped
+
+  secure_gateway:
+    build:
+      context: ./secure_gateway
+      dockerfile: Dockerfile
+    image: mock-secure-gateway:latest
+    container_name: mock_secure_gateway
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "9022:22"
+      - "9843:8443"
+      - "9999:9999"
+    networks:
+      mock_net:
+        ipv4_address: 172.28.0.30
+    restart: unless-stopped
+
+networks:
+  mock_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/24

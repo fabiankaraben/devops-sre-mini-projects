@@ -1,0 +1,13 @@
+# ==============================================================================
+# DevOps Toolkit CLI - Server Inventory Manifest
+# ==============================================================================
+# Format: <host_or_ip> [user=username] [port=port_number]
+# ==============================================================================
+
+# Local Mock Cluster Containers
+127.0.0.1 user=root port=2222
+127.0.0.1 user=root port=2223
+
+# Staging Nodes
+# staging-web-01.infra.local user=deploy port=22
+# staging-db-01.infra.local user=postgres port=22
