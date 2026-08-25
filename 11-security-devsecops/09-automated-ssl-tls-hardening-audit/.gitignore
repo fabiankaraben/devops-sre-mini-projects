@@ -1,0 +1,23 @@
+# Generated certificates and keys
+certs/*.key
+certs/*.crt
+certs/*.srl
+certs/*.csr
+certs/*.pem
+
+# Reports and logs
+reports/
+*.log
+*.json
+*.html
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment & temporary files
+.env
+*.tmp
+.DS_Store

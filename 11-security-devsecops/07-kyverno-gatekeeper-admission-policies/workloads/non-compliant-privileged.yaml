@@ -1,0 +1,31 @@
+# ==============================================================================
+# non-compliant-privileged.yaml - Policy Violation: Privileged Container
+# ==============================================================================
+# Expected Result: ADMISSION DENIED by 'disallow-privileged-containers' policy.
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-violation-privileged
+  namespace: admission-security-demo
+  labels:
+    app.kubernetes.io/name: violation-test
+    security.policy/test: privileged-violation
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+  containers:
+    - name: privileged-workload
+      image: nginx:1.27.0-alpine
+      securityContext:
+        privileged: true
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

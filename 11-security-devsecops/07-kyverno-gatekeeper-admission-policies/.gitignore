@@ -1,0 +1,11 @@
+# Logs and reports
+reports/
+*.log
+
+# Environment & temporary test files
+.env
+*.tmp
+
+# IDE & OS files
+.DS_Store
+__pycache__/

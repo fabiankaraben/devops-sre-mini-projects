@@ -1,0 +1,30 @@
+# ==============================================================================
+# non-compliant-writable-fs.yaml - Policy Violation: Writable Root Filesystem
+# ==============================================================================
+# Expected Result: ADMISSION DENIED by 'require-read-only-root-filesystem' policy.
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-violation-writable-fs
+  namespace: admission-security-demo
+  labels:
+    app.kubernetes.io/name: violation-test
+    security.policy/test: writable-rootfs-violation
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+  containers:
+    - name: writable-workload
+      image: nginx:1.27.0-alpine
+      securityContext:
+        readOnlyRootFilesystem: false
+        privileged: false
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

@@ -1,0 +1,58 @@
+# ==============================================================================
+# compliant-pod.yaml - Hardened, Zero-Trust Compliant Workload
+# ==============================================================================
+# Satisfies all cluster security governance policies:
+#   1. Non-root user (UID 10001) & runAsNonRoot: true
+#   2. Read-only root filesystem with emptyDir mount for temporary state
+#   3. No privileged execution & privilege escalation disabled
+#   4. Pinned immutable image version (no :latest)
+#   5. Complete CPU/Memory resource requests and limits
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-compliant-pod
+  namespace: admission-security-demo
+  labels:
+    app.kubernetes.io/name: secure-service
+    security.policy/compliance: compliant
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: web-server
+      image: nginx:1.27.0-alpine
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+      volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: var-cache
+          mountPath: /var/cache/nginx
+        - name: var-run
+          mountPath: /var/run
+  volumes:
+    - name: tmp-volume
+      emptyDir: {}
+    - name: var-cache
+      emptyDir: {}
+    - name: var-run
+      emptyDir: {}

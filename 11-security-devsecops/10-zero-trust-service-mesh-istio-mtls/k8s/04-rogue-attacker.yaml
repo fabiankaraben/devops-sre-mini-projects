@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rogue-attacker
+  namespace: mesh-unmanaged
+  labels:
+    app: rogue-attacker
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rogue-attacker
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: rogue-attacker
+        version: v1
+    spec:
+      serviceAccountName: rogue-sa
+      containers:
+        - name: attacker-client
+          image: curlimages/curl:8.10.1
+          command:
+            - /bin/sh
+            - -c
+            - "sleep infinity"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 25m
+              memory: 32Mi

@@ -1,0 +1,48 @@
+# ==============================================================================
+# falco.yaml - Falco 0.44+ Runtime Configuration with Modern eBPF Engine
+# ==============================================================================
+
+engine:
+  kind: modern_ebpf
+  modern_ebpf:
+    cpus_for_each_buffer: 1
+
+load_plugins:
+  - container
+
+plugins:
+  - name: container
+    library_path: libcontainer.so
+    init_config:
+      label_max_len: 100
+      with_size: false
+
+rules_files:
+  - /etc/falco/falco_rules.local.yaml
+
+json_output: true
+json_include_output_property: true
+json_include_tags_property: true
+json_include_output_fields_property: true
+
+time_format_iso_8601: true
+
+log_stderr: true
+log_syslog: false
+log_level: info
+
+priority: notice
+
+buffered_outputs: false
+
+stdout_output:
+  enabled: true
+
+file_output:
+  enabled: true
+  keep_alive: true
+  filename: /var/log/falco/falco_alerts.json
+
+http_output:
+  enabled: true
+  url: "http://alert-verifier:8080/alerts"

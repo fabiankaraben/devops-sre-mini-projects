@@ -1,0 +1,15 @@
+# Reports and generated alerts
+reports/
+*.log
+*.json
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment & temporary files
+.env
+*.tmp
+.DS_Store

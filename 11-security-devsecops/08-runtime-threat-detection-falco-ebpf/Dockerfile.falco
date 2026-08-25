@@ -1,0 +1,10 @@
+# ==============================================================================
+# Dockerfile.falco - Hardened Falco eBPF Engine with Custom Rules
+# ==============================================================================
+# Packages Falco 0.44+ with custom runtime configuration and security rules.
+# ==============================================================================
+
+FROM falcosecurity/falco:latest
+
+COPY config/falco.yaml /etc/falco/falco.yaml
+COPY rules/falco_rules.local.yaml /etc/falco/falco_rules.local.yaml

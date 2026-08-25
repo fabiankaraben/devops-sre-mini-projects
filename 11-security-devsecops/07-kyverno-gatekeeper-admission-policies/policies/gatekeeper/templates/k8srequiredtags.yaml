@@ -1,0 +1,50 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredtags
+  annotations:
+    description: Requires all container images to have an explicit tag other than ':latest'.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredTags
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredtags
+
+        violation[{"msg": msg, "details": {}}] {
+            c := input_containers[_]
+            [image, tag] := parse_image(c.image)
+            is_invalid_tag(tag)
+            msg := sprintf("Container '%v' uses disallowed or missing image tag '%v'. The ':latest' tag and untagged images are prohibited.", [c.name, c.image])
+        }
+
+        is_invalid_tag(tag) {
+            tag == "latest"
+        }
+        is_invalid_tag(tag) {
+            tag == ""
+        }
+
+        parse_image(str) = [image, tag] {
+            contains(str, ":")
+            parts := split(str, ":")
+            tag := parts[count(parts) - 1]
+            image := substring(str, 0, count(str) - count(tag) - 1)
+        }
+
+        parse_image(str) = [str, ""] {
+            not contains(str, ":")
+        }
+
+        input_containers[c] {
+            c := input.review.object.spec.containers[_]
+        }
+        input_containers[c] {
+            c := input.review.object.spec.initContainers[_]
+        }
+        input_containers[c] {
+            c := input.review.object.spec.ephemeralContainers[_]
+        }

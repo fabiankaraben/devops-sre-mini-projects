@@ -1,0 +1,30 @@
+# ==============================================================================
+# non-compliant-root-user.yaml - Policy Violation: Root User Execution (UID 0)
+# ==============================================================================
+# Expected Result: ADMISSION DENIED by 'require-run-as-non-root' policy.
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-violation-root-user
+  namespace: admission-security-demo
+  labels:
+    app.kubernetes.io/name: violation-test
+    security.policy/test: root-user-violation
+spec:
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+  containers:
+    - name: root-workload
+      image: nginx:1.27.0-alpine
+      securityContext:
+        privileged: false
+        readOnlyRootFilesystem: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

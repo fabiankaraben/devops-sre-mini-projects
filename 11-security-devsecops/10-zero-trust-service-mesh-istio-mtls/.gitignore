@@ -1,0 +1,17 @@
+# Reports and logs
+reports/
+*.log
+*.json
+*.html
+
+# Kubernetes and temporary files
+kubeconfig*
+.kube/
+*.tmp
+.DS_Store
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/

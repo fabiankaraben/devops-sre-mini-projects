@@ -1,0 +1,52 @@
+# ==============================================================================
+# docker-compose.yml - Runtime Threat Detection Sandbox with Falco & eBPF
+# ==============================================================================
+# Deploys Falco with modern eBPF driver, a target victim microservice, and
+# an automated HTTP webhook alert listener.
+# ==============================================================================
+
+services:
+  alert-verifier:
+    build:
+      context: .
+      dockerfile: Dockerfile.alert_verifier
+    image: falco-alert-verifier:latest
+    container_name: falco-alert-verifier
+    restart: unless-stopped
+    ports:
+      - "8765:8080"
+
+  falco:
+    build:
+      context: .
+      dockerfile: Dockerfile.falco
+    image: falco-ebpf-engine:latest
+    container_name: falco-ebpf-engine
+    restart: unless-stopped
+    privileged: true
+    pid: host
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - /dev:/host/dev
+      - /proc:/host/proc:ro
+      - /etc:/host/etc:ro
+    command:
+      - falco
+      - -o
+      - engine.kind=modern_ebpf
+      - -c
+      - /etc/falco/falco.yaml
+    depends_on:
+      - alert-verifier
+
+  victim-app:
+    build:
+      context: app
+      dockerfile: Dockerfile
+    image: victim-app:latest
+    container_name: victim-payment-app
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    depends_on:
+      - falco

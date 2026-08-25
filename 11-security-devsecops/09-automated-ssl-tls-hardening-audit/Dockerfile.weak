@@ -1,0 +1,11 @@
+# ==============================================================================
+# Dockerfile.weak - Vulnerable Legacy TLS Server
+# ==============================================================================
+
+FROM nginx:alpine
+
+COPY certs/server.crt /etc/nginx/certs/server.crt
+COPY certs/server.key /etc/nginx/certs/server.key
+COPY nginx/weak.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80 443

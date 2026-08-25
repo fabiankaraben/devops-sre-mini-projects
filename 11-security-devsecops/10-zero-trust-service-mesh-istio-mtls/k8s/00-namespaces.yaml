@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mesh-secure
+  labels:
+    istio-injection: enabled
+    security.devsecops/zone: secure-mesh
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mesh-unmanaged
+  labels:
+    security.devsecops/zone: unmanaged-attacker

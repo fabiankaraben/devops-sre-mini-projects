@@ -1,0 +1,19 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: backend-access-policy
+  namespace: mesh-secure
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/mesh-secure/sa/frontend-sa"
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/api/v1/payments*", "/health"]

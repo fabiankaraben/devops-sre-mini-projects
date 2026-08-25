@@ -1,0 +1,21 @@
+# Environment and python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+venv/
+
+# Cosign Private & Public Keys (Keep private keys out of VCS)
+*.key
+cosign.password
+
+# Generated SBOM and Verification Reports
+reports/
+*.spdx.json
+*.cyclonedx.json
+*.sig
+*.att
+
+# Logs
+*.log

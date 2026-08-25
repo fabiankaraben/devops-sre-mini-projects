@@ -1,0 +1,23 @@
+# ==============================================================================
+# non-compliant-no-resources.yaml - Policy Violation: Missing CPU/Memory Limits
+# ==============================================================================
+# Expected Result: ADMISSION DENIED by 'require-resource-requests-limits' policy.
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-violation-no-resources
+  namespace: admission-security-demo
+  labels:
+    app.kubernetes.io/name: violation-test
+    security.policy/test: no-resources-violation
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+  containers:
+    - name: unbounded-workload
+      image: nginx:1.27.0-alpine
+      securityContext:
+        readOnlyRootFilesystem: true
+        privileged: false

@@ -1,0 +1,30 @@
+# ==============================================================================
+# non-compliant-latest-tag.yaml - Policy Violation: ':latest' Image Tag
+# ==============================================================================
+# Expected Result: ADMISSION DENIED by 'disallow-latest-tag' policy.
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-violation-latest-tag
+  namespace: admission-security-demo
+  labels:
+    app.kubernetes.io/name: violation-test
+    security.policy/test: latest-tag-violation
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+  containers:
+    - name: unversioned-workload
+      image: nginx:latest
+      securityContext:
+        readOnlyRootFilesystem: true
+        privileged: false
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

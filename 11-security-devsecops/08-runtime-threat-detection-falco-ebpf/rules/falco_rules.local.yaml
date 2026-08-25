@@ -1,0 +1,82 @@
+# ==============================================================================
+# falco_rules.local.yaml - Custom Runtime Threat Detection Security Rules
+# ==============================================================================
+# Modern Falco 0.44+ eBPF rules tailored for container security monitoring.
+# Maps directly to MITRE ATT&CK for Containers tactics.
+# ==============================================================================
+
+- list: shell_binaries
+  items: [bash, sh, ksh, zsh, csh, tcsh, ash]
+
+- list: reverse_shell_ports
+  items: [4444, 1337, 9001, 8888, 5555, 6666]
+
+- list: sensitive_credential_files
+  items: [/etc/shadow, /etc/shadow-, /etc/gshadow, /etc/sudoers, /etc/pam.d]
+
+- macro: spawned_process
+  condition: (evt.type in (execve, execveat))
+
+- macro: container
+  condition: (container.id != host and container.name != host)
+
+- macro: open_read
+  condition: (evt.type in (open, openat, openat2) and evt.is_open_read=true)
+
+- macro: open_write
+  condition: (evt.type in (open, openat, openat2, creat) and evt.is_open_write=true)
+
+# ------------------------------------------------------------------------------
+# RULE 1: Interactive Terminal Shell Spawned in Container
+# MITRE ATT&CK: Execution (T1059) / Initial Access (T1190)
+# ------------------------------------------------------------------------------
+- rule: Terminal Shell Spawned in Container
+  desc: Detects interactive shell execution inside a running container.
+  condition: spawned_process and container and proc.name in (shell_binaries)
+  output: Notice Interactive shell spawned in container (user=%user.name user_uid=%user.uid process=%proc.name cmdline=%proc.cmdline container_id=%container.id container_name=%container.name image=%container.image.repository)
+  priority: WARNING
+  tags: [container, shell, mitre_execution, T1059]
+
+# ------------------------------------------------------------------------------
+# RULE 2: Read Sensitive Credential File (/etc/shadow)
+# MITRE ATT&CK: Credential Access (T1003)
+# ------------------------------------------------------------------------------
+- rule: Read Sensitive Credential File
+  desc: Detects attempts to access Linux password hashes or sensitive security files.
+  condition: open_read and container and (fd.name in (sensitive_credential_files) or fd.name startswith /etc/shadow)
+  output: Warning Sensitive credential file accessed for read (user=%user.name user_uid=%user.uid process=%proc.name file=%fd.name cmdline=%proc.cmdline container_name=%container.name image=%container.image.repository)
+  priority: CRITICAL
+  tags: [filesystem, credentials, mitre_credential_access, T1003]
+
+# ------------------------------------------------------------------------------
+# RULE 3: Outbound Reverse Shell Connection
+# MITRE ATT&CK: Command and Control (T1571 / T1095)
+# ------------------------------------------------------------------------------
+- rule: Outbound Reverse Shell Connection
+  desc: Detects outbound network connection to typical reverse shell / C2 listener ports.
+  condition: (evt.type in (connect, sendto)) and container and (fd.rport in (reverse_shell_ports) or fd.sport in (reverse_shell_ports))
+  output: Critical Outbound reverse shell connection detected (user=%user.name process=%proc.name cmdline=%proc.cmdline connection=%fd.name remote_ip=%fd.rip remote_port=%fd.rport container_name=%container.name)
+  priority: CRITICAL
+  tags: [network, reverse_shell, mitre_command_and_control, T1571]
+
+# ------------------------------------------------------------------------------
+# RULE 4: Execution of Untrusted Binary in /tmp
+# MITRE ATT&CK: Defense Evasion (T1027) / Execution (T1204)
+# ------------------------------------------------------------------------------
+- rule: Execution from Writable Directory /tmp
+  desc: Detects process executions originating from temporary writable directories.
+  condition: spawned_process and container and (proc.cwd in (/tmp, /var/tmp, /dev/shm) or proc.cmdline contains "/tmp/" or proc.exepath startswith "/tmp" or proc.name in (xmrig, minerd, xmrminer))
+  output: Warning Process execution from temporary writable directory (user=%user.name process=%proc.name exepath=%proc.exepath cmdline=%proc.cmdline container_name=%container.name)
+  priority: WARNING
+  tags: [process, execution, mitre_defense_evasion, T1027]
+
+# ------------------------------------------------------------------------------
+# RULE 5: Tampering with System Binary Directories
+# MITRE ATT&CK: Persistence (T1543) / Defense Evasion (T1562)
+# ------------------------------------------------------------------------------
+- rule: System Binary Directory Modification
+  desc: Detects write operations attempting to alter core Linux system binaries.
+  condition: open_write and container and (fd.name startswith /usr/bin or fd.name startswith /usr/sbin or fd.name startswith /bin or fd.name startswith /sbin)
+  output: Warning Modification attempt to system binary directory (user=%user.name process=%proc.name file=%fd.name cmdline=%proc.cmdline container_name=%container.name)
+  priority: WARNING
+  tags: [filesystem, tampering, mitre_persistence, T1543]

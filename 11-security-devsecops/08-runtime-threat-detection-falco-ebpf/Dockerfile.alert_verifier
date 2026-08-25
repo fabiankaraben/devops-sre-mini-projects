@@ -1,0 +1,13 @@
+# ==============================================================================
+# Dockerfile.alert_verifier - Lightweight Falco Webhook Alert Receiver Daemon
+# ==============================================================================
+
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+COPY alert_verifier.py /app/alert_verifier.py
+
+EXPOSE 8080
+
+CMD ["python3", "/app/alert_verifier.py", "--server", "--port", "8080", "--log-file", "/app/reports/received_alerts.json"]
