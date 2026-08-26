@@ -1,0 +1,12 @@
+# ==============================================================================
+# terraform.tfvars.example - Multi-Region Disaster Recovery with Route 53
+# ==============================================================================
+
+primary_region        = "us-east-1"
+secondary_region      = "us-west-2"
+project_name          = "mr-dr-app"
+domain_name           = "cloud-dr.internal"
+subdomain             = "app"
+health_check_interval = 10
+failure_threshold     = 3
+enable_s3_crr         = true

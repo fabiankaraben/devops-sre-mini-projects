@@ -1,0 +1,24 @@
+# ==============================================================================
+# Docker Compose: Local Azure Event Grid & Function Simulation
+# ==============================================================================
+# Runs the containerized Azure Function with local mock Cosmos DB persistence,
+# Event Grid webhook handling, and REST metadata inspection endpoints.
+# ==============================================================================
+
+services:
+  function-processor:
+    build:
+      context: ./function
+      dockerfile: Dockerfile
+    container_name: azure-function-blob-processor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - COSMOS_DB_DATABASE=media-metadata
+      - COSMOS_DB_CONTAINER=blobs
+      - STORAGE_CONTAINER_NAME=images-upload
+    labels:
+      com.devops.project: "azure-eventgrid-processor"
+      com.devops.tier: "serverless-compute"

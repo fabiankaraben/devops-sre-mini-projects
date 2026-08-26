@@ -1,0 +1,35 @@
+# Terraform state and lock files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+.tmp_*
+
+# GCP credentials & tokens
+*.json
+!test_report.json
+!test_benchmark_results.json
+credentials.json
+key.json
+service-account.json
+
+# Python caches and virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Local logs and test reports
+*.log
+test_report.json
+test_benchmark_results.json
+
+# Docker & local state
+.docker/
+
+# OS files
+.DS_Store
+Thumbs.db

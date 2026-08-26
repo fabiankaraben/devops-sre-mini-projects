@@ -1,0 +1,59 @@
+# ==============================================================================
+# Docker Compose: Multi-Region Disaster Recovery Stack with Route 53 Failover
+# ==============================================================================
+
+services:
+  primary-region:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: aws-us-east-1-primary
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - PORT=8080
+      - REGION_NAME=us-east-1
+      - REGION_ROLE=PRIMARY
+      - S3_BUCKET=prod-primary-assets-us-east-1
+    labels:
+      com.devops.project: "multi-region-dr"
+      com.devops.tier: "primary-workload"
+
+  secondary-region:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: aws-us-west-2-secondary
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    environment:
+      - PORT=8080
+      - REGION_NAME=us-west-2
+      - REGION_ROLE=SECONDARY_DR
+      - S3_BUCKET=prod-dr-backup-us-west-2
+    labels:
+      com.devops.project: "multi-region-dr"
+      com.devops.tier: "standby-dr-workload"
+
+  route53-gateway:
+    build:
+      context: ./router
+      dockerfile: Dockerfile
+    container_name: aws-route53-dns-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - PRIMARY_URL=http://primary-region:8080
+      - SECONDARY_URL=http://secondary-region:8080
+      - HEALTH_CHECK_INTERVAL=1.0
+      - FAILURE_THRESHOLD=3
+    depends_on:
+      - primary-region
+      - secondary-region
+    labels:
+      com.devops.project: "multi-region-dr"
+      com.devops.tier: "route53-dns-gateway"

@@ -1,0 +1,26 @@
+# ==============================================================================
+# Example Terraform Variables for Azure Event Grid Blob Processor
+# ==============================================================================
+# Copy this file to 'terraform.tfvars' to customize configuration defaults:
+# cp terraform.tfvars.example terraform.tfvars
+# ==============================================================================
+
+location            = "eastus"
+resource_group_name = "rg-blob-eventgrid-processor"
+
+# Prefix names for globally unique resources
+storage_account_name_prefix  = "stgmedia"
+cosmosdb_account_name_prefix = "cosmos-media"
+function_app_name_prefix     = "func-blob-proc"
+
+# Container and Database names
+blob_container_name   = "images-upload"
+cosmos_database_name  = "media-metadata"
+cosmos_container_name = "blobs"
+
+tags = {
+  Project      = "08-azure-functions-eventgrid-processor"
+  Environment  = "development"
+  ManagedBy    = "terraform"
+  Architecture = "serverless-event-driven"
+}

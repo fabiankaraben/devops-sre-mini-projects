@@ -1,0 +1,22 @@
+# ==============================================================================
+# Docker Compose: Local FinOps Governance & Tag Compliance Stack
+# ==============================================================================
+
+services:
+  governance-engine:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+    container_name: finops-tag-governance-engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - MANDATORY_TAGS=Environment,Owner,CostCenter,Project
+      - ALLOWED_ENVIRONMENTS=production,staging,development,sandbox
+      - ENABLE_AUTO_REMEDIATION=true
+      - GRACE_PERIOD_DAYS=7
+    labels:
+      com.devops.project: "cloud-cost-governance"
+      com.devops.tier: "finops-engine"

@@ -1,0 +1,13 @@
+# ==============================================================================
+# terraform.tfvars.example - Cloud Cost Governance and Tag Compliance Engine
+# ==============================================================================
+
+aws_region               = "us-east-1"
+project_name             = "cost-governance"
+mandatory_tags           = ["Environment", "Owner", "CostCenter", "Project"]
+allowed_environments     = ["production", "staging", "development", "sandbox"]
+compliance_schedule_cron = "cron(0 8 * * ? *)"
+grace_period_days        = 7
+slack_webhook_url        = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+alert_email              = "finops-alerts@company.com"
+enable_auto_remediation  = true

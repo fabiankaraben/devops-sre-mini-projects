@@ -1,0 +1,31 @@
+# ==============================================================================
+# Git Ignore - Cloud Cost Governance and Tag Compliance Engine
+# ==============================================================================
+
+# Terraform runtime & state
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tftmp
+
+# Python bytecode & virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+
+# Cloud Custodian output & cache
+.custodian/
+custodian-out/
+out/
+
+# Test logs & local artifacts
+*.log
+test_report.json
+compliance_report.json
+compliance_report.html
+test_resources_state.json

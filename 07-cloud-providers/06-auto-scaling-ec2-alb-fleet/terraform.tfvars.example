@@ -1,0 +1,35 @@
+# ==============================================================================
+# Example Terraform Variables for High-Availability Auto Scaling Fleet
+# ==============================================================================
+# Copy this file to 'terraform.tfvars' to customize configuration defaults:
+# cp terraform.tfvars.example terraform.tfvars
+# ==============================================================================
+
+aws_region   = "us-east-1"
+aws_endpoint = "" # Set to "http://localhost:4566" if testing against LocalStack
+
+project_name = "asg-alb-fleet"
+vpc_cidr     = "10.0.0.0/16"
+
+public_subnet_cidrs = [
+  "10.0.1.0/24",
+  "10.0.2.0/24",
+  "10.0.3.0/24"
+]
+
+# Free Tier eligible instance type
+instance_type = "t3.micro"
+
+# Fleet sizing & autoscaling thresholds
+asg_min_size              = 1
+asg_desired_capacity      = 2
+asg_max_size              = 4
+target_cpu_utilization    = 50.0
+health_check_grace_period = 180
+
+tags = {
+  Project      = "asg-alb-fleet"
+  Environment  = "development"
+  ManagedBy    = "Terraform"
+  Architecture = "HighAvailability-ALB-ASG"
+}

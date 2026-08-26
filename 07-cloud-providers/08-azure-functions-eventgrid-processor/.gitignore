@@ -1,0 +1,36 @@
+# Terraform state and lock files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+.tmp_*
+
+# Azure credentials & local settings
+local.settings.json
+*.publishsettings
+credentials.json
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Local test data and reports
+test_blobs_temp/
+*.log
+test_report.json
+test_upload_results.json
+
+# Docker & emulator data
+.docker/
+__blobstorage__/
+__queuestorage__/
+__tablestorage__/
+
+# OS files
+.DS_Store
+Thumbs.db

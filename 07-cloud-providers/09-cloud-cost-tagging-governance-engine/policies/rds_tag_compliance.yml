@@ -1,0 +1,26 @@
+# ==============================================================================
+# Cloud Custodian Policy: RDS Database Instance Tag Compliance
+# ==============================================================================
+# Audits relational database instances for cost allocation and owner tagging.
+# ==============================================================================
+
+policies:
+  - name: rds-tag-compliance-audit
+    resource: aws.rds
+    description: |
+      Audit RDS database instances and clusters for mandatory FinOps tags:
+      - Environment
+      - Owner
+      - CostCenter
+      - Project
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - "tag:Owner": absent
+          - "tag:CostCenter": absent
+          - "tag:Project": absent
+    actions:
+      - type: tag
+        tags:
+          CustodianCompliance: "NonCompliant"
+          CustodianAuditDate: "{now}"

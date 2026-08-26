@@ -1,0 +1,35 @@
+# ==============================================================================
+# Example Terraform Variables for GCP Cloud Run Scalable Microservice
+# ==============================================================================
+# Copy this file to 'terraform.tfvars' to customize configuration defaults:
+# cp terraform.tfvars.example terraform.tfvars
+# ==============================================================================
+
+project_id   = "my-gcp-project-id"
+gcp_region   = "us-central1"
+service_name = "scalable-microservice"
+
+# Container configuration
+container_image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+
+# Serverless autoscaling boundaries & concurrency tuning
+min_instance_count = 0  # 0 enables true Scale-to-Zero ($0 cost when idle)
+max_instance_count = 10 # Upper scaling limit
+max_concurrency    = 80 # Max parallel requests per single container
+
+# Resource limits
+cpu_limit    = "1000m" # 1 vCPU
+memory_limit = "512Mi"
+
+# Ingress access
+allow_unauthenticated = true
+
+# Secret Manager secret payload
+secret_api_key_value = "sk-live-cloudrun-secret-key-2026"
+
+labels = {
+  project      = "gcp-cloud-run-microservice"
+  environment  = "development"
+  managed_by   = "terraform"
+  architecture = "serverless-knative-container"
+}

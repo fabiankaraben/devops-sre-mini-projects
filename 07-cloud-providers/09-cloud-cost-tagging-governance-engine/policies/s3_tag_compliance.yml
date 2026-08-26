@@ -1,0 +1,27 @@
+# ==============================================================================
+# Cloud Custodian Policy: S3 Bucket Tag Compliance & FinOps Allocation
+# ==============================================================================
+# Audits S3 buckets for mandatory billing tags and enforces cost ownership.
+# ==============================================================================
+
+policies:
+  - name: s3-tag-compliance-audit
+    resource: aws.s3
+    description: |
+      Audit S3 buckets for required FinOps allocation tags:
+      - Environment
+      - Owner
+      - CostCenter
+      - Project
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - "tag:Owner": absent
+          - "tag:CostCenter": absent
+          - "tag:Project": absent
+    actions:
+      - type: tag
+        tags:
+          CustodianCompliance: "NonCompliant"
+          CustodianAuditDate: "{now}"
+          CustodianAction: "NotifyOwner"

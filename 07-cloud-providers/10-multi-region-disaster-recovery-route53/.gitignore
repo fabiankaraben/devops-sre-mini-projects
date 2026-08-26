@@ -1,0 +1,24 @@
+# ==============================================================================
+# Git Ignore - Multi-Region Disaster Recovery with Route 53 Failover
+# ==============================================================================
+
+# Terraform runtime & state
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tftmp
+
+# Python bytecode & virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Test logs & local artifacts
+*.log
+test_report.json
+failover_report.json
+response.json

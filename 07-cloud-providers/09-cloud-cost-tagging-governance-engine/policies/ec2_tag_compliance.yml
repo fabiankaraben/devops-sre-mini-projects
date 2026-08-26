@@ -1,0 +1,59 @@
+# ==============================================================================
+# Cloud Custodian Policy: EC2 & EBS Tag Compliance & Cost Governance
+# ==============================================================================
+# Identifies running EC2 instances and attached EBS volumes missing mandatory
+# billing tags (Environment, Owner, CostCenter, Project).
+# Marks non-compliant resources with CustodianCompliance=NonCompliant.
+# ==============================================================================
+
+policies:
+  - name: ec2-tag-compliance-audit
+    resource: aws.ec2
+    description: |
+      Audit all EC2 instances for mandatory billing tags:
+      - Environment (must be production, staging, development, or sandbox)
+      - Owner (valid email)
+      - CostCenter (CC-XXXX)
+      - Project
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - "tag:Owner": absent
+          - "tag:CostCenter": absent
+          - "tag:Project": absent
+          - type: value
+            key: "tag:Environment"
+            op: not-in
+            value: ["production", "staging", "development", "sandbox"]
+    actions:
+      - type: tag
+        tags:
+          CustodianCompliance: "NonCompliant"
+          CustodianAuditDate: "{now}"
+          CustodianAction: "FlaggedForRemediation"
+
+  - name: ec2-untagged-dev-stop-offhours
+    resource: aws.ec2
+    description: |
+      Stop untagged or non-compliant development instances to prevent cloud waste.
+    filters:
+      - "tag:CustodianCompliance": "NonCompliant"
+      - "tag:Environment": "development"
+      - "State.Name": "running"
+    actions:
+      - type: stop
+
+  - name: ebs-unattached-and-untagged-cost-cleanup
+    resource: aws.ebs
+    description: |
+      Identify unattached EBS volumes (wasted storage) missing billing tags.
+    filters:
+      - "Attachments": []
+      - or:
+          - "tag:CostCenter": absent
+          - "tag:Owner": absent
+    actions:
+      - type: tag
+        tags:
+          CustodianCompliance: "OrphanVolumeNonCompliant"
+          ScheduledDeletion: "7d"

@@ -1,0 +1,64 @@
+# ==============================================================================
+# Cloud Custodian Master Policy: Comprehensive Cloud Cost & Tag Governance
+# ==============================================================================
+# Master policy file covering EC2, EBS, S3, and RDS resources.
+# ==============================================================================
+
+policies:
+  # ----------------------------------------------------------------------------
+  # 1. EC2 Instance Tag Audit & Enforcement
+  # ----------------------------------------------------------------------------
+  - name: ec2-tag-compliance-audit
+    resource: aws.ec2
+    description: "Scan EC2 instances for Environment, Owner, CostCenter, Project tags"
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - "tag:Owner": absent
+          - "tag:CostCenter": absent
+          - "tag:Project": absent
+          - type: value
+            key: "tag:Environment"
+            op: not-in
+            value: ["production", "staging", "development", "sandbox"]
+    actions:
+      - type: tag
+        tags:
+          CustodianCompliance: "NonCompliant"
+          CustodianAuditDate: "{now}"
+
+  # ----------------------------------------------------------------------------
+  # 2. S3 Bucket Tag Audit
+  # ----------------------------------------------------------------------------
+  - name: s3-tag-compliance-audit
+    resource: aws.s3
+    description: "Scan S3 buckets for mandatory FinOps billing tags"
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - "tag:Owner": absent
+          - "tag:CostCenter": absent
+          - "tag:Project": absent
+    actions:
+      - type: tag
+        tags:
+          CustodianCompliance: "NonCompliant"
+          CustodianAuditDate: "{now}"
+
+  # ----------------------------------------------------------------------------
+  # 3. RDS Instance Tag Audit
+  # ----------------------------------------------------------------------------
+  - name: rds-tag-compliance-audit
+    resource: aws.rds
+    description: "Scan RDS database instances for mandatory FinOps billing tags"
+    filters:
+      - or:
+          - "tag:Environment": absent
+          - "tag:Owner": absent
+          - "tag:CostCenter": absent
+          - "tag:Project": absent
+    actions:
+      - type: tag
+        tags:
+          CustodianCompliance: "NonCompliant"
+          CustodianAuditDate: "{now}"

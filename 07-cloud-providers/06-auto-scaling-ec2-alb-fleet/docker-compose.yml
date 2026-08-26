@@ -1,0 +1,99 @@
+# ==============================================================================
+# Docker Compose: Local Multi-AZ Auto Scaling & ALB Simulation Environment
+# ==============================================================================
+# Simulates an Application Load Balancer distributing HTTP traffic across
+# EC2 instances located across 3 distinct Availability Zones (us-east-1a/b/c).
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Application Load Balancer (ALB Simulation via Nginx)
+  # ----------------------------------------------------------------------------
+  alb:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.alb
+    container_name: asg-alb-fleet-alb
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      app-node-1:
+        condition: service_healthy
+      app-node-2:
+        condition: service_healthy
+      app-node-3:
+        condition: service_healthy
+    networks:
+      - asg_network
+    labels:
+      com.devops.project: "asg-alb-fleet"
+      com.devops.tier: "load-balancer"
+
+  # ----------------------------------------------------------------------------
+  # 2. EC2 Node 1 (Simulated AZ: us-east-1a)
+  # ----------------------------------------------------------------------------
+  app-node-1:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: asg-alb-fleet-node-1a
+    restart: unless-stopped
+    environment:
+      - PORT=80
+      - INSTANCE_ID=i-0a11223344556677a
+      - AVAILABILITY_ZONE=us-east-1a
+      - AMI_ID=ami-0c101f26f147fa7fd
+    networks:
+      - asg_network
+    labels:
+      com.devops.project: "asg-alb-fleet"
+      com.devops.tier: "compute-fleet"
+      com.devops.az: "us-east-1a"
+
+  # ----------------------------------------------------------------------------
+  # 3. EC2 Node 2 (Simulated AZ: us-east-1b)
+  # ----------------------------------------------------------------------------
+  app-node-2:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: asg-alb-fleet-node-1b
+    restart: unless-stopped
+    environment:
+      - PORT=80
+      - INSTANCE_ID=i-0b22334455667788b
+      - AVAILABILITY_ZONE=us-east-1b
+      - AMI_ID=ami-0c101f26f147fa7fd
+    networks:
+      - asg_network
+    labels:
+      com.devops.project: "asg-alb-fleet"
+      com.devops.tier: "compute-fleet"
+      com.devops.az: "us-east-1b"
+
+  # ----------------------------------------------------------------------------
+  # 4. EC2 Node 3 (Simulated AZ: us-east-1c - Dynamic Scale-Out Target)
+  # ----------------------------------------------------------------------------
+  app-node-3:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: asg-alb-fleet-node-1c
+    restart: unless-stopped
+    environment:
+      - PORT=80
+      - INSTANCE_ID=i-0c33445566778899c
+      - AVAILABILITY_ZONE=us-east-1c
+      - AMI_ID=ami-0c101f26f147fa7fd
+    networks:
+      - asg_network
+    labels:
+      com.devops.project: "asg-alb-fleet"
+      com.devops.tier: "compute-fleet"
+      com.devops.az: "us-east-1c"
+
+networks:
+  asg_network:
+    name: asg_fleet_network
+    driver: bridge

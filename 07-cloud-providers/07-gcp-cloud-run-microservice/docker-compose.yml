@@ -1,0 +1,27 @@
+# ==============================================================================
+# Docker Compose: Local GCP Cloud Run Microservice Simulation
+# ==============================================================================
+# Runs the containerized microservice with Cloud Run environment variables,
+# Secret Manager simulation, and port 8080 binding.
+# ==============================================================================
+
+services:
+  cloud-run-service:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: gcp-cloud-run-microservice
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - K_SERVICE=scalable-microservice
+      - K_REVISION=scalable-microservice-v1
+      - K_CONFIGURATION=scalable-microservice
+      - CONTAINER_ID=cr-inst-01a-local
+      - CONCURRENCY_LIMIT=80
+      - API_SECRET_KEY=sk-cloudrun-secret-demo-key-2026
+    labels:
+      com.devops.project: "gcp-cloud-run-microservice"
+      com.devops.tier: "serverless-compute"
