@@ -1,0 +1,30 @@
+FROM debian:bookworm-slim
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Security Auditor Node with nmap, hping3, and security testing tools"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install nmap, hping3, diagnostic tools, and dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        bash \
+        nmap \
+        hping3 \
+        curl \
+        python3 \
+        ca-certificates \
+        procps \
+        iproute2 \
+        iputils-ping && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /audit
+COPY scripts/entrypoint-auditor.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=3 \
+    CMD nmap --version >/dev/null 2>&1 || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

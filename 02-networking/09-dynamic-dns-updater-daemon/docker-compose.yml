@@ -1,0 +1,46 @@
+services:
+  # ============================================================================
+  # Mock Cloudflare v4 / Route53 REST API & WAN IP Discovery Server
+  # ============================================================================
+  mock-dns-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock
+    container_name: ddns-mock-dns
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - ddns-net
+
+  # ============================================================================
+  # Dynamic DNS Updater Background Daemon
+  # ============================================================================
+  ddns-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile.daemon
+    container_name: ddns-daemon
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - API_BASE_URL=http://mock-dns-server:8080
+      - CHECK_INTERVAL=3.0
+      - ZONE_ID=zone_1234567890abcdef
+      - DOMAINS=home.example.com,vpn.example.com
+      - IP_DISCOVERY_URLS=http://mock-dns-server:8080/ip,http://mock-dns-server:8080/json/ip
+      - STATUS_PORT=8000
+    depends_on:
+      mock-dns-server:
+        condition: service_healthy
+    networks:
+      - ddns-net
+
+# ==============================================================================
+# Isolated Network
+# ==============================================================================
+networks:
+  ddns-net:
+    name: ddns-internal-net
+    driver: bridge

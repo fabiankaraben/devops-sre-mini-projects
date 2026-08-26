@@ -1,0 +1,54 @@
+services:
+  # ============================================================================
+  # Hardened Linux Target Server (Protected by nftables)
+  # ============================================================================
+  hardened-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: nftables-server
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PORT_WEB=8080
+      - PORT_HTTP=80
+      - PORT_SSH=22
+    ports:
+      - "8085:8080"
+      - "8086:80"
+      - "2222:22"
+    networks:
+      firewall-net:
+        ipv4_address: 172.25.0.10
+
+  # ============================================================================
+  # Security Auditor Container (Runs nmap, hping3, and penetration tests)
+  # ============================================================================
+  security-auditor:
+    build:
+      context: .
+      dockerfile: Dockerfile.auditor
+    container_name: nftables-auditor
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      firewall-net:
+        ipv4_address: 172.25.0.20
+    depends_on:
+      hardened-server:
+        condition: service_healthy
+
+# ==============================================================================
+# Isolated Firewall Testing Network
+# ==============================================================================
+networks:
+  firewall-net:
+    name: nftables-firewall-net
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/24

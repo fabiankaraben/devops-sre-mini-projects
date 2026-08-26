@@ -1,0 +1,16 @@
+FROM python:3.11-alpine
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Python Backend Service for Envoy Canary Router"
+
+RUN apk add --no-cache curl bash && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+COPY services/ /app/services/
+
+ENV PYTHONUNBUFFERED=1
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=5 \
+    CMD curl -f http://127.0.0.1:${PORT:-8001}/health || exit 1
+
+CMD ["python3", "/app/services/service_v1.py"]

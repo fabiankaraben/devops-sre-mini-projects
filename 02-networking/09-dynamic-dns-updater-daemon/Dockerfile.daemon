@@ -1,0 +1,22 @@
+FROM python:3.11-alpine
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Dynamic DNS Updater Background Daemon"
+
+RUN apk add --no-cache curl bash && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+RUN mkdir -p /data
+
+COPY daemon/ /app/
+
+ENV PYTHONUNBUFFERED=1
+ENV CACHE_FILE=/data/ddns_cache.json
+ENV STATUS_PORT=8000
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=5 \
+    CMD curl -f http://127.0.0.1:8000/health || exit 1
+
+ENTRYPOINT ["python3", "/app/ddns_daemon.py"]

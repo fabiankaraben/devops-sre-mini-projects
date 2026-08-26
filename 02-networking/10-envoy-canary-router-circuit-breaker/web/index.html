@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Envoy L7 Canary Router & Circuit Breaker | SRE Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0B0F19;
+            --bg-surface: #111827;
+            --bg-surface-elevated: #1F2937;
+            --border-subtle: #374151;
+            --border-accent: #6366F1;
+            --text-primary: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --accent-primary: #6366F1;
+            --accent-v1: #10B981;
+            --accent-v2: #8B5CF6;
+            --accent-warning: #F59E0B;
+            --accent-danger: #EF4444;
+            --accent-cyan: #06B6D4;
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .container { max-width: 1380px; margin: 0 auto; }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-group { display: flex; align-items: center; gap: 0.85rem; }
+        .logo-icon {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.35);
+        }
+
+        .title-area h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+        .title-area p { font-size: 0.82rem; color: var(--text-secondary); }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .badge-live {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--accent-v1);
+        }
+
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+        }
+
+        /* Architecture Card */
+        .arch-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .arch-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .arch-flow {
+            display: grid;
+            grid-template-columns: 1fr auto 1.5fr auto 2fr;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .flow-node {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.85rem 1rem;
+            text-align: center;
+        }
+
+        .node-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 0.2rem; }
+        .node-desc { font-size: 0.72rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+
+        .flow-split {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .node-v1 {
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .node-v2 {
+            border-color: rgba(139, 92, 246, 0.4);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .flow-arrow { color: var(--text-muted); font-size: 1.25rem; text-align: center; }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 1.1rem;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .kpi-card:hover { border-color: var(--accent-primary); transform: translateY(-2px); }
+
+        .kpi-label { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.4rem; }
+        .kpi-value { font-size: 1.65rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+
+        .val-v1 { color: var(--accent-v1); }
+        .val-v2 { color: #A78BFA; }
+        .val-cb { color: var(--accent-cyan); font-size: 1.2rem; }
+
+        /* Workspace Grid */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .workspace-grid { grid-template-columns: 1fr; }
+            .arch-flow { grid-template-columns: 1fr; }
+        }
+
+        /* Controls Panel */
+        .controls-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .panel-heading {
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 0.6rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-group { display: flex; flex-direction: column; gap: 0.6rem; }
+
+        .btn {
+            background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+            color: #FFFFFF;
+            border: none;
+            padding: 0.65rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+
+        .btn-secondary {
+            background: var(--bg-surface-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        .btn-secondary:hover { background: var(--border-subtle); }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+        .sim-box {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.85rem;
+        }
+
+        .sim-box-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Inspector Panel */
+        .inspector-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-md);
+        }
+
+        .table-wrap { overflow-x: auto; margin-top: 0.75rem; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left; }
+        th {
+            background: var(--bg-surface-elevated);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid var(--border-subtle);
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+        .tag { padding: 0.2rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+        .tag-v1 { background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .tag-v2 { background: rgba(139, 92, 246, 0.15); color: #A78BFA; border: 1px solid rgba(139, 92, 246, 0.3); }
+        .tag-override { background: rgba(6, 182, 212, 0.15); color: #06B6D4; border: 1px solid rgba(6, 182, 212, 0.3); }
+
+        .live-log {
+            background: #06090E;
+            border: 1px solid #1E293B;
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #E2E8F0;
+            height: 140px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .log-entry { margin-bottom: 0.25rem; line-height: 1.4; }
+        .log-time { color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-group">
+                <div class="logo-icon">🔀</div>
+                <div class="title-area">
+                    <h1>Envoy L7 Canary Router &amp; Circuit Breaker</h1>
+                    <p>Weighted 90/10 Canary Shifting, Header Overrides &amp; Outlier Detection Auto-Ejection</p>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="badge badge-live"><span class="pulse-dot"></span> ENVOY INGRESS (:10000)</span>
+                <span class="badge">Envoy v1.31 + Outlier Detection</span>
+            </div>
+        </header>
+
+        <!-- Architecture Flow -->
+        <div class="arch-card">
+            <div class="arch-title">L7 Routing &amp; Circuit Breaker Topology</div>
+            <div class="arch-flow">
+                <div class="flow-node">
+                    <div class="node-name">👤 Client Request</div>
+                    <div class="node-desc">/api/v1/data</div>
+                </div>
+
+                <div class="flow-arrow">➔</div>
+
+                <div class="flow-node" style="border-color: var(--accent-primary);">
+                    <div class="node-name" style="color: #818CF8;">🛡️ Envoy Proxy (:10000)</div>
+                    <div class="node-desc">L7 Router &amp; Outlier Detection</div>
+                </div>
+
+                <div class="flow-arrow">➔</div>
+
+                <div class="flow-split">
+                    <div class="flow-node node-v1">
+                        <div class="node-name" style="color: var(--accent-v1);">🏛️ Service V1 (Stable - 90%)</div>
+                        <div class="node-desc">v1.0.0 Production Baseline</div>
+                    </div>
+                    <div class="flow-node node-v2">
+                        <div class="node-name" style="color: #A78BFA;">🚀 Service V2 (Canary - 10%)</div>
+                        <div class="node-desc">v2.0.0-canary (Auto-Ejected on 5xx)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">TOTAL REQUESTS SENT</div>
+                <div class="kpi-value" id="kpi-total">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">V1 STABLE (TARGET: 90%)</div>
+                <div class="kpi-value val-v1" id="kpi-v1">0 (0.0%)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">V2 CANARY (TARGET: 10%)</div>
+                <div class="kpi-value val-v2" id="kpi-v2">0 (0.0%)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">OUTLIER DETECTION STATUS</div>
+                <div class="kpi-value val-cb" id="kpi-outlier">HEALTHY ✓</div>
+            </div>
+        </div>
+
+        <!-- Workspace Grid -->
+        <div class="workspace-grid">
+            <!-- Controls Sidebar -->
+            <div class="controls-panel">
+                <div class="panel-heading">
+                    <span>Traffic Generator</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">Envoy :10000</span>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn" onclick="sendRequests(50)">
+                        <span>⚡</span> Send 50 Weighted Requests (90/10)
+                    </button>
+                    <button class="btn btn-secondary" onclick="sendRequests(20, true)">
+                        <span>🎯</span> Send 20 Header Overrides (x-canary)
+                    </button>
+                    <button class="btn btn-secondary" onclick="sendRequests(100)">
+                        <span>🚀</span> Send 100 Batch Requests
+                    </button>
+                </div>
+
+                <div class="panel-heading" style="margin-top:0.5rem;">
+                    <span>Circuit Breaker Tests</span>
+                </div>
+
+                <div class="sim-box">
+                    <div class="sim-box-title">
+                        <span>💥 Canary 500 Error Outage</span>
+                        <span id="fault-badge" class="badge" style="font-size:0.65rem;">OFF</span>
+                    </div>
+                    <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                        Injects 500 errors into Service V2. Envoy Outlier Detection ejects V2 and fails over 100% to V1!
+                    </p>
+                    <button class="btn btn-secondary" style="width:100%; font-size:0.75rem;" onclick="toggleCanaryFault()">
+                        Trigger Canary Outage (500)
+                    </button>
+                </div>
+
+                <button class="btn btn-danger" style="margin-top:auto;" onclick="resetStats()">
+                    <span>🗑️</span> Reset Stats &amp; Faults
+                </button>
+            </div>
+
+            <!-- Inspector Panel -->
+            <div class="inspector-panel">
+                <div class="panel-heading">
+                    <span>Live Traffic Stream &amp; Routing Verification</span>
+                    <button class="badge" style="cursor:pointer;" onclick="fetchStats()">🔄 Refresh</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Routed Backend</th>
+                                <th>Version</th>
+                                <th>Routing Rule</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="traffic-table-body">
+                            <tr>
+                                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">
+                                    No requests sent yet. Click "Send 50 Weighted Requests" above.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="live-log" id="live-console">
+                    <div class="log-entry"><span class="log-time">[INIT]</span> Connected to Envoy Edge Router on :10000.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let totalSent = 0;
+        let v1Count = 0;
+        let v2Count = 0;
+        let isFaultActive = false;
+        const requestHistory = [];
+
+        function logToConsole(msg) {
+            const consoleEl = document.getElementById('live-console');
+            const now = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerHTML = `<span class="log-time">[${now}]</span> ${msg}`;
+            consoleEl.appendChild(div);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        async function fetchStats() {
+            try {
+                // Fetch stats from V1, V2, and Envoy admin
+                const [v1Res, v2Res] = await Promise.all([
+                    fetch('/v1/stats').then(r => r.json()).catch(() => ({ total_requests: 0 })),
+                    fetch('/v2/stats').then(r => r.json()).catch(() => ({ total_requests: 0, fault_simulation: { enabled: false } }))
+                ]);
+
+                isFaultActive = Boolean(v2Res.fault_simulation && v2Res.fault_simulation.enabled);
+                const faultBadge = document.getElementById('fault-badge');
+                if (isFaultActive) {
+                    faultBadge.innerText = '500 ERROR ACTIVE';
+                    faultBadge.style.color = 'var(--accent-danger)';
+                } else {
+                    faultBadge.innerText = 'OFF';
+                    faultBadge.style.color = 'var(--text-muted)';
+                }
+            } catch (err) {
+                console.error("Failed to fetch stats:", err);
+            }
+        }
+
+        async function sendRequests(count = 50, override = false) {
+            logToConsole(`Dispatching ${count} requests to Envoy :10000 ${override ? 'with x-canary: true' : '(weighted)'}...`);
+            const targetUrl = 'http://' + window.location.hostname + ':10000/api/v1/data';
+
+            for (let i = 0; i < count; i++) {
+                const headers = { 'Content-Type': 'application/json' };
+                if (override) {
+                    headers['x-canary'] = 'true';
+                }
+
+                const t0 = performance.now();
+                try {
+                    const res = await fetch(targetUrl, { headers });
+                    const elapsed = (performance.now() - t0).toFixed(1);
+                    const backendVer = res.headers.get('x-backend-version') || 'v1.0.0';
+                    const routeRule = res.headers.get('x-envoy-routing-rule') || 'weighted';
+
+                    totalSent++;
+                    if (backendVer.includes('v2')) {
+                        v2Count++;
+                    } else {
+                        v1Count++;
+                    }
+
+                    requestHistory.unshift({
+                        id: `req-${Date.now().toString().slice(-6)}-${i}`,
+                        backend: backendVer.includes('v2') ? 'service_v2' : 'service_v1',
+                        version: backendVer,
+                        rule: override ? 'header-override' : 'weighted-90/10',
+                        status: res.status,
+                        latency: `${elapsed}ms`
+                    });
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('kpi-total').innerText = totalSent;
+            const v1Pct = totalSent > 0 ? ((v1Count / totalSent) * 100).toFixed(1) : '0.0';
+            const v2Pct = totalSent > 0 ? ((v2Count / totalSent) * 100).toFixed(1) : '0.0';
+
+            document.getElementById('kpi-v1').innerText = `${v1Count} (${v1Pct}%)`;
+            document.getElementById('kpi-v2').innerText = `${v2Count} (${v2Pct}%)`;
+
+            // Outlier check
+            const outlierEl = document.getElementById('kpi-outlier');
+            if (isFaultActive) {
+                outlierEl.innerText = 'V2 EJECTED (100% -> V1) ⚡';
+                outlierEl.style.color = 'var(--accent-warning)';
+            } else {
+                outlierEl.innerText = 'HEALTHY ✓';
+                outlierEl.style.color = 'var(--accent-v1)';
+            }
+
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('traffic-table-body');
+            if (requestHistory.length === 0) return;
+
+            let html = '';
+            requestHistory.slice(0, 15).forEach(r => {
+                const isV2 = r.backend === 'service_v2';
+                const tagClass = isV2 ? 'tag-v2' : 'tag-v1';
+                const ruleTag = r.rule === 'header-override' ? '<span class="tag tag-override">x-canary: true</span>' : '<span class="tag" style="background:#1E293B; color:#94A3B8;">90/10 Split</span>';
+
+                html += `
+                    <tr>
+                        <td style="color:#818CF8;">${r.id}</td>
+                        <td><span class="tag ${tagClass}">${r.backend}</span></td>
+                        <td>${r.version}</td>
+                        <td>${ruleTag}</td>
+                        <td><span style="color:${r.status < 400 ? 'var(--accent-v1)' : 'var(--accent-danger)'}">${r.status}</span></td>
+                        <td style="color:var(--text-secondary);">${r.latency}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function toggleCanaryFault() {
+            const newFault = !isFaultActive;
+            const targetUrl = 'http://' + window.location.hostname + ':8002/api/canary/simulate-fault';
+            await fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: newFault, status_code: 500, count: 20 })
+            });
+            isFaultActive = newFault;
+            logToConsole(`Canary 500 fault simulation set to ${newFault ? 'ENABLED' : 'DISABLED'}. Envoy will eject V2 on 3 consecutive 500 errors!`);
+            fetchStats();
+            updateUI();
+        }
+
+        async function resetStats() {
+            totalSent = 0; v1Count = 0; v2Count = 0; requestHistory.length = 0;
+            isFaultActive = false;
+            await Promise.all([
+                fetch('http://' + window.location.hostname + ':8001/api/reset', { method: 'POST' }).catch(() => {}),
+                fetch('http://' + window.location.hostname + ':8002/api/canary/reset', { method: 'POST' }).catch(() => {})
+            ]);
+            logToConsole("Reset all request counters and faults.");
+            updateUI();
+            fetchStats();
+        }
+
+        setInterval(fetchStats, 3000);
+        fetchStats();
+    </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+FROM python:3.11-alpine
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Mock Cloudflare v4 / Route53 REST API and WAN IP Discovery Server"
+
+RUN apk add --no-cache curl bash && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+COPY mock_api/ /app/
+COPY web/ /app/web/
+
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+ENV WEB_DIR=/app/web
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=5 \
+    CMD curl -f http://127.0.0.1:8080/health || exit 1
+
+ENTRYPOINT ["python3", "/app/mock_dns_api.py"]

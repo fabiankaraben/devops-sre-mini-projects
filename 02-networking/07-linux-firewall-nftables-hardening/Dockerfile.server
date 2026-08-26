@@ -1,0 +1,28 @@
+FROM alpine:3.20
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Hardened Linux Target Server running nftables and mock services"
+
+# Install kernel networking tools, nftables, python runtime, and utilities
+RUN apk update && \
+    apk add --no-cache \
+        bash \
+        nftables \
+        iproute2 \
+        curl \
+        python3 \
+        ca-certificates && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /app
+COPY config/ /config/
+COPY server/server.py /app/server.py
+COPY scripts/entrypoint-server.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh /app/server.py
+
+EXPOSE 8080 80 22
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=5 \
+    CMD curl -f http://127.0.0.1:8080/health || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

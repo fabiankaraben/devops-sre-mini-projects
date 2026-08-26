@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic DNS (DDNS) Daemon | SRE Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0A0E17;
+            --bg-surface: #111827;
+            --bg-surface-elevated: #1F2937;
+            --border-subtle: #374151;
+            --border-accent: #3B82F6;
+            --text-primary: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --accent-primary: #3B82F6;
+            --accent-primary-hover: #2563EB;
+            --accent-primary-gradient: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+            --accent-success: #10B981;
+            --accent-warning: #F59E0B;
+            --accent-danger: #EF4444;
+            --accent-cyan: #06B6D4;
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .container { max-width: 1380px; margin: 0 auto; }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-group { display: flex; align-items: center; gap: 0.85rem; }
+        .logo-icon {
+            background: var(--accent-primary-gradient);
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.35);
+        }
+
+        .title-area h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+        .title-area p { font-size: 0.82rem; color: var(--text-secondary); }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .badge-live {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--accent-success);
+        }
+
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+        }
+
+        /* Architecture Card */
+        .arch-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .arch-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .arch-flow {
+            display: grid;
+            grid-template-columns: 1fr auto 1.3fr auto 1.5fr auto 1.5fr;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .flow-node {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.85rem 1rem;
+            text-align: center;
+        }
+
+        .node-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 0.2rem; }
+        .node-desc { font-size: 0.72rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+
+        .flow-arrow { color: var(--text-muted); font-size: 1.25rem; text-align: center; }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 1.1rem;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .kpi-card:hover { border-color: var(--accent-primary); transform: translateY(-2px); }
+
+        .kpi-label { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.4rem; }
+        .kpi-value { font-size: 1.5rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+
+        .val-wan { color: #38BDF8; }
+        .val-dns { color: var(--accent-success); }
+        .val-cache { color: #A78BFA; }
+        .val-status { color: var(--accent-cyan); font-size: 1.2rem; }
+
+        /* Main Workspace Grid */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .workspace-grid { grid-template-columns: 1fr; }
+            .arch-flow { grid-template-columns: 1fr; }
+        }
+
+        /* Controls */
+        .controls-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .panel-heading {
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 0.6rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-group { display: flex; flex-direction: column; gap: 0.6rem; }
+
+        .btn {
+            background: var(--accent-primary-gradient);
+            color: #FFFFFF;
+            border: none;
+            padding: 0.65rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+
+        .btn-secondary {
+            background: var(--bg-surface-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+        .btn-secondary:hover { background: var(--border-subtle); }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+        .sim-box {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.85rem;
+        }
+
+        .sim-box-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Inspector */
+        .inspector-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-md);
+        }
+
+        .table-wrap { overflow-x: auto; margin-top: 0.75rem; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left; }
+        th {
+            background: var(--bg-surface-elevated);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid var(--border-subtle);
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+        .tag { padding: 0.2rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+        .tag-synced { background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .tag-mismatch { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+        .live-log {
+            background: #06090E;
+            border: 1px solid #1E293B;
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #E2E8F0;
+            height: 140px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .log-entry { margin-bottom: 0.25rem; line-height: 1.4; }
+        .log-time { color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-group">
+                <div class="logo-icon">🌐</div>
+                <div class="title-area">
+                    <h1>Dynamic DNS (DDNS) Updater Daemon</h1>
+                    <p>Resilient WAN IP Change Detection, Local State Caching &amp; Cloudflare v4 REST API Sync</p>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="badge badge-live"><span class="pulse-dot"></span> DAEMON ACTIVE</span>
+                <span class="badge">Cloudflare v4 &amp; Route53 Compatible</span>
+            </div>
+        </header>
+
+        <!-- Architecture Flow -->
+        <div class="arch-card">
+            <div class="arch-title">Real-Time Dynamic DNS Sync Pipeline</div>
+            <div class="arch-flow">
+                <div class="flow-node">
+                    <div class="node-name">📡 ISP Gateway</div>
+                    <div class="node-desc" id="arch-wan-ip">203.0.113.10</div>
+                </div>
+                <div class="flow-arrow">➔</div>
+                <div class="flow-node">
+                    <div class="node-name">🔍 Multi-IP Discovery</div>
+                    <div class="node-desc">/ip &amp; /json/ip</div>
+                </div>
+                <div class="flow-arrow">➔</div>
+                <div class="flow-node" style="border-color: var(--accent-primary);">
+                    <div class="node-name" style="color: #60A5FA;">⚙️ DDNS Daemon</div>
+                    <div class="node-desc">Cache &amp; Backoff</div>
+                </div>
+                <div class="flow-arrow">➔</div>
+                <div class="flow-node" style="border-color: var(--accent-success);">
+                    <div class="node-name" style="color: var(--accent-success);">☁️ Cloudflare v4 API</div>
+                    <div class="node-desc">PUT /dns_records</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">CURRENT PUBLIC WAN IP</div>
+                <div class="kpi-value val-wan" id="kpi-wan-ip">203.0.113.10</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">ACTIVE DNS RECORD IP (home)</div>
+                <div class="kpi-value val-dns" id="kpi-dns-ip">203.0.113.10</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">SYNC STATUS</div>
+                <div class="kpi-value val-status" id="kpi-sync-status">SYNCED ✓</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">REDUNDANT API CALLS SAVED</div>
+                <div class="kpi-value val-cache" id="kpi-cached-polls">0</div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="workspace-grid">
+            <!-- Controls Sidebar -->
+            <div class="controls-panel">
+                <div class="panel-heading">
+                    <span>ISP WAN Simulator</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">Dynamic IP</span>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn" onclick="triggerWANChange()">
+                        <span>🔄</span> Simulate ISP WAN IP Rotation
+                    </button>
+                </div>
+
+                <div class="panel-heading" style="margin-top:0.5rem;">
+                    <span>SRE Fault Injection</span>
+                </div>
+
+                <div class="sim-box">
+                    <div class="sim-box-title">
+                        <span>💥 Cloud API 500 / 429 Outage</span>
+                        <span id="fault-badge" class="badge" style="font-size:0.65rem;">OFF</span>
+                    </div>
+                    <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                        Forces Cloudflare API to return HTTP 500/429 errors. The daemon triggers exponential backoff with jitter.
+                    </p>
+                    <button class="btn btn-secondary" style="width:100%; font-size:0.75rem;" onclick="toggleFaultSimulation()">
+                        Toggle API Error (500)
+                    </button>
+                </div>
+
+                <button class="btn btn-danger" style="margin-top:auto;" onclick="resetState()">
+                    <span>🗑️</span> Reset State &amp; Logs
+                </button>
+            </div>
+
+            <!-- Inspector Panel -->
+            <div class="inspector-panel">
+                <div class="panel-heading">
+                    <span>Managed DNS Records &amp; Live Propagation</span>
+                    <button class="badge" style="cursor:pointer;" onclick="fetchData()">🔄 Refresh</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hostname</th>
+                                <th>Type</th>
+                                <th>Active IP Content</th>
+                                <th>TTL</th>
+                                <th>Status vs WAN</th>
+                                <th>Last Modified</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dns-table-body">
+                            <tr>
+                                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">Loading DNS records...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="live-log" id="live-console">
+                    <div class="log-entry"><span class="log-time">[INIT]</span> Connected to Mock DNS &amp; WAN Discovery API.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isFaultActive = false;
+
+        function logToConsole(msg) {
+            const consoleEl = document.getElementById('live-console');
+            const now = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerHTML = `<span class="log-time">[${now}]</span> ${msg}`;
+            consoleEl.appendChild(div);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/dns/status');
+                const data = await res.json();
+
+                const wanIp = data.current_wan_ip || '0.0.0.0';
+                document.getElementById('kpi-wan-ip').innerText = wanIp;
+                document.getElementById('arch-wan-ip').innerText = wanIp;
+
+                const records = data.records || [];
+                const homeRecord = records.find(r => r.name === 'home.example.com') || records[0];
+                const homeIp = homeRecord ? homeRecord.content : 'N/A';
+                document.getElementById('kpi-dns-ip').innerText = homeIp;
+
+                const isSynced = (wanIp === homeIp);
+                const syncStatusEl = document.getElementById('kpi-sync-status');
+                if (isSynced) {
+                    syncStatusEl.innerText = 'SYNCED ✓';
+                    syncStatusEl.style.color = 'var(--accent-success)';
+                } else {
+                    syncStatusEl.innerText = 'SYNCING... ⏳';
+                    syncStatusEl.style.color = 'var(--accent-warning)';
+                }
+
+                document.getElementById('kpi-cached-polls').innerText = data.total_audit_events || 0;
+
+                // Fault badge
+                isFaultActive = Boolean(data.fault_simulation && data.fault_simulation.enabled);
+                const faultBadge = document.getElementById('fault-badge');
+                if (isFaultActive) {
+                    faultBadge.innerText = '500 ERROR ACTIVE';
+                    faultBadge.style.color = 'var(--accent-danger)';
+                } else {
+                    faultBadge.innerText = 'OFF';
+                    faultBadge.style.color = 'var(--text-muted)';
+                }
+
+                renderTable(records, wanIp);
+            } catch (err) {
+                console.error("Failed to fetch DNS status:", err);
+            }
+        }
+
+        function renderTable(records, wanIp) {
+            const tbody = document.getElementById('dns-table-body');
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">No DNS records managed.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            records.forEach(r => {
+                const isMatch = (r.content === wanIp);
+                const statusTag = isMatch ?
+                    `<span class="tag tag-synced">✓ SYNCED</span>` :
+                    `<span class="tag tag-mismatch">PENDING (${r.content} ≠ ${wanIp})</span>`;
+
+                html += `
+                    <tr>
+                        <td style="color:#60A5FA; font-weight:600;">${r.name}</td>
+                        <td><span class="tag" style="background:#1E293B; color:#94A3B8;">${r.type}</span></td>
+                        <td style="color:var(--text-primary);">${r.content}</td>
+                        <td style="color:var(--text-secondary);">${r.ttl}s</td>
+                        <td>${statusTag}</td>
+                        <td style="color:var(--text-muted); font-size:0.75rem;">${r.modified_on ? r.modified_on.substring(11, 19) : 'now'}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function triggerWANChange() {
+            logToConsole("Simulating ISP dynamic public WAN IP rotation...");
+            const res = await fetch('/api/wan/simulate-ip-change', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await res.json();
+            logToConsole(`New WAN IP assigned: ${data.new_ip}. Waiting for daemon polling cycle...`);
+            fetchData();
+        }
+
+        async function toggleFaultSimulation() {
+            const newFault = !isFaultActive;
+            await fetch('/api/wan/simulate-fault', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: newFault, status_code: 500, count: 3 })
+            });
+            logToConsole(`API fault simulation set to ${newFault ? 'ENABLED (500 Error)' : 'DISABLED'}.`);
+            fetchData();
+        }
+
+        async function resetState() {
+            await fetch('/api/dns/reset', { method: 'POST' });
+            logToConsole("Reset all DNS records and simulated WAN IP.");
+            fetchData();
+        }
+
+        setInterval(fetchData, 2000);
+        fetchData();
+    </script>
+</body>
+</html>

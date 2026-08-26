@@ -1,0 +1,80 @@
+services:
+  # ============================================================================
+  # Envoy L7 Edge Router (Port 10000: Traffic Ingress | Port 9901: Admin)
+  # ============================================================================
+  envoy-router:
+    build:
+      context: .
+      dockerfile: Dockerfile.envoy
+    container_name: envoy-canary-router
+    restart: unless-stopped
+    ports:
+      - "10000:10000"
+      - "9901:9901"
+    networks:
+      - canary-net
+    depends_on:
+      service_v1:
+        condition: service_healthy
+      service_v2:
+        condition: service_healthy
+      canary-dashboard:
+        condition: service_healthy
+
+  # ============================================================================
+  # Stable Production Backend Service (v1.0.0 - 90% Target Weight)
+  # ============================================================================
+  service_v1:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: service-v1-stable
+    restart: unless-stopped
+    command: ["python3", "/app/services/service_v1.py"]
+    environment:
+      - PORT=8001
+      - SERVICE_NAME=service_v1
+    ports:
+      - "8001:8001"
+    networks:
+      - canary-net
+
+  # ============================================================================
+  # Experimental Canary Backend Service (v2.0.0-canary - 10% Target Weight)
+  # ============================================================================
+  service_v2:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: service-v2-canary
+    restart: unless-stopped
+    command: ["python3", "/app/services/service_v2.py"]
+    environment:
+      - PORT=8002
+      - SERVICE_NAME=service_v2
+    ports:
+      - "8002:8002"
+    networks:
+      - canary-net
+
+  # ============================================================================
+  # Interactive SRE Dashboard (Port 8080)
+  # ============================================================================
+  canary-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: canary-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - canary-net
+
+# ==============================================================================
+# Isolated Network
+# ==============================================================================
+networks:
+  canary-net:
+    name: envoy-canary-net
+    driver: bridge

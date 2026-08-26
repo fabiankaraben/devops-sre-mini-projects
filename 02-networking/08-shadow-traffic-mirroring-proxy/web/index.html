@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow Traffic Mirroring Proxy | DevOps & SRE Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0B0F19;
+            --bg-surface: #111827;
+            --bg-surface-elevated: #1F2937;
+            --border-subtle: #374151;
+            --border-accent: #4F46E5;
+            --text-primary: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --accent-primary: #6366F1;
+            --accent-primary-hover: #4F46E5;
+            --accent-primary-gradient: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            --accent-success: #10B981;
+            --accent-warning: #F59E0B;
+            --accent-danger: #EF4444;
+            --accent-cyan: #06B6D4;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+            --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            padding: 1.5rem;
+        }
+
+        .container {
+            max-width: 1380px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            background: var(--accent-primary-gradient);
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.35);
+        }
+
+        .title-area h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .title-area p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .badge-live {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--accent-success);
+        }
+
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+        }
+
+        /* Architecture Visualizer */
+        .arch-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .arch-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .arch-flow {
+            display: grid;
+            grid-template-columns: 1fr auto 1.5fr auto 2fr;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0.5rem;
+        }
+
+        .flow-node {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.85rem 1rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .node-primary {
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .node-shadow {
+            border-color: rgba(139, 92, 246, 0.4);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .node-name {
+            font-weight: 600;
+            font-size: 0.88rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .node-desc {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .flow-split {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .flow-arrow {
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            text-align: center;
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 1.1rem;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+
+        .kpi-value {
+            font-size: 1.65rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .val-primary { color: var(--accent-success); }
+        .val-shadow { color: #A78BFA; }
+        .val-accuracy { color: var(--accent-cyan); }
+        .val-latency { color: var(--accent-warning); }
+
+        /* Main Workspace Grid */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+            .arch-flow {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Controls Panel */
+        .controls-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .panel-heading {
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 0.6rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .btn {
+            background: var(--accent-primary-gradient);
+            color: #FFFFFF;
+            border: none;
+            padding: 0.65rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-surface-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-subtle);
+            border-color: var(--text-secondary);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: none;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        /* Simulation Controls */
+        .sim-box {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.85rem;
+        }
+
+        .sim-box-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.6rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sim-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.4rem;
+            cursor: pointer;
+        }
+
+        /* Table & Inspector */
+        .inspector-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-md);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 0.75rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            text-align: left;
+        }
+
+        th {
+            background: var(--bg-surface-elevated);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid var(--border-subtle);
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .tag {
+            padding: 0.2rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .tag-post { background: rgba(99, 102, 241, 0.2); color: #818CF8; }
+        .tag-get { background: rgba(16, 185, 129, 0.2); color: #34D399; }
+        .tag-match { background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        .json-preview {
+            max-width: 280px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #9CA3AF;
+        }
+
+        /* Log console */
+        .live-log {
+            background: #06090E;
+            border: 1px solid #1E293B;
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #E2E8F0;
+            height: 140px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            line-height: 1.4;
+        }
+
+        .log-time { color: var(--text-muted); }
+        .log-primary { color: var(--accent-success); }
+        .log-shadow { color: #A78BFA; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-group">
+                <div class="logo-icon">🪞</div>
+                <div class="title-area">
+                    <h1>Shadow Traffic Mirroring Proxy</h1>
+                    <p>Production Nginx <code>ngx_http_mirror_module</code> with Zero Latency & Fault Isolation</p>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="badge badge-live"><span class="pulse-dot"></span> PROXY ACTIVE (:8080)</span>
+                <span class="badge">Nginx 1.27 + Async Mirror</span>
+            </div>
+        </header>
+
+        <!-- Architecture Flow Card -->
+        <div class="arch-card">
+            <div class="arch-title">Live Traffic Topology & Data Path</div>
+            <div class="arch-flow">
+                <div class="flow-node">
+                    <div class="node-name">👤 Live Client</div>
+                    <div class="node-desc">POST /api/v1/orders</div>
+                </div>
+
+                <div class="flow-arrow">➔</div>
+
+                <div class="flow-node" style="border-color: var(--accent-primary);">
+                    <div class="node-name">🔀 Nginx Reverse Proxy</div>
+                    <div class="node-desc">ngx_http_mirror_module</div>
+                </div>
+
+                <div class="flow-arrow">➔</div>
+
+                <div class="flow-split">
+                    <div class="flow-node node-primary">
+                        <div class="node-name" style="color: var(--accent-success);">✅ Primary API (v1.0.0)</div>
+                        <div class="node-desc">Processes Live Traffic &amp; Responds to Client</div>
+                    </div>
+                    <div class="flow-node node-shadow">
+                        <div class="node-name" style="color: #A78BFA;">👻 Shadow API (v2.0.0-rc1)</div>
+                        <div class="node-desc">Mirrored Async Copy (Response Discarded)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Metrics Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">TOTAL REQUESTS INJECTED</div>
+                <div class="kpi-value" id="kpi-total">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">PRIMARY PROCESSED (v1)</div>
+                <div class="kpi-value val-primary" id="kpi-primary">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">SHADOW MIRRORED (v2)</div>
+                <div class="kpi-value val-shadow" id="kpi-shadow">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">REPLICATION ACCURACY</div>
+                <div class="kpi-value val-accuracy" id="kpi-accuracy">100%</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">CLIENT RESPONSE TIME</div>
+                <div class="kpi-value val-latency" id="kpi-latency">&lt; 5 ms</div>
+            </div>
+        </div>
+
+        <!-- Workspace Section -->
+        <div class="workspace-grid">
+            <!-- Controls Sidebar -->
+            <div class="controls-panel">
+                <div class="panel-heading">
+                    <span>Traffic Generator</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">POST / GET</span>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn" id="btn-inject-10" onclick="injectOrders(10)">
+                        <span>⚡</span> Inject 10 Order Requests
+                    </button>
+                    <button class="btn btn-secondary" id="btn-inject-50" onclick="injectOrders(50)">
+                        <span>🚀</span> Inject 50 Batch Requests
+                    </button>
+                    <button class="btn btn-secondary" id="btn-inject-user" onclick="injectUser()">
+                        <span>👤</span> Inject 1 User Registration
+                    </button>
+                </div>
+
+                <div class="panel-heading" style="margin-top:0.5rem;">
+                    <span>SRE Isolation Tests</span>
+                </div>
+
+                <!-- Latency Simulation Box -->
+                <div class="sim-box">
+                    <div class="sim-box-title">
+                        <span>⏳ Shadow Latency Simulation</span>
+                        <span id="delay-status-badge" class="badge" style="font-size:0.65rem;">OFF</span>
+                    </div>
+                    <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                        Injects a 2.0s delay on the Shadow backend. The Client response time remains under 10ms (Zero Latency Impact).
+                    </p>
+                    <button class="btn btn-secondary" id="btn-toggle-delay" style="width:100%; font-size:0.75rem;" onclick="toggleShadowDelay()">
+                        Toggle 2.0s Shadow Delay
+                    </button>
+                </div>
+
+                <!-- Fault Simulation Box -->
+                <div class="sim-box">
+                    <div class="sim-box-title">
+                        <span>💥 Shadow Fault Simulation</span>
+                        <span id="error-status-badge" class="badge" style="font-size:0.65rem;">OFF</span>
+                    </div>
+                    <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                        Forces the Shadow backend to return HTTP 500 errors. The client continues receiving HTTP 200/201 (Fault Isolation).
+                    </p>
+                    <button class="btn btn-secondary" id="btn-toggle-error" style="width:100%; font-size:0.75rem;" onclick="toggleShadowFault()">
+                        Toggle HTTP 500 Error
+                    </button>
+                </div>
+
+                <button class="btn btn-danger" style="margin-top:auto;" onclick="resetStats()">
+                    <span>🗑️</span> Reset All Logs &amp; Stats
+                </button>
+            </div>
+
+            <!-- Inspector Panel -->
+            <div class="inspector-panel">
+                <div class="panel-heading">
+                    <span>Replicated Traffic Inspector (Primary vs Shadow)</span>
+                    <button class="badge" style="cursor:pointer;" onclick="fetchData()">🔄 Refresh</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Request ID</th>
+                                <th>Method</th>
+                                <th>Path</th>
+                                <th>Primary Payload</th>
+                                <th>Shadow Status</th>
+                                <th>Integrity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="traffic-table-body">
+                            <tr>
+                                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">
+                                    No traffic recorded yet. Click "Inject 10 Order Requests" to test traffic mirroring.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="live-log" id="live-console">
+                    <div class="log-entry"><span class="log-time">[INIT]</span> Dashboard initialized. Connected to Reverse Proxy on :8080.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isDelayActive = false;
+        let isFaultActive = false;
+
+        function logToConsole(msg, type='info') {
+            const consoleEl = document.getElementById('live-console');
+            const now = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            if (type === 'primary') {
+                div.innerHTML = `<span class="log-time">[${now}]</span> <span class="log-primary">[PRIMARY]</span> ${msg}`;
+            } else if (type === 'shadow') {
+                div.innerHTML = `<span class="log-time">[${now}]</span> <span class="log-shadow">[SHADOW]</span> ${msg}`;
+            } else {
+                div.innerHTML = `<span class="log-time">[${now}]</span> ${msg}`;
+            }
+            consoleEl.appendChild(div);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        async function fetchData() {
+            try {
+                const [primaryRes, shadowRes, diffRes] = await Promise.all([
+                    fetch('/primary/api/stats').then(r => r.json()).catch(() => ({ total_requests: 0, recent_requests: [] })),
+                    fetch('/shadow/api/stats').then(r => r.json()).catch(() => ({ total_mirrored_requests: 0, recent_requests: [] })),
+                    fetch('/shadow/api/shadow/diff').then(r => r.json()).catch(() => ({ replication_accuracy_percent: 100 }))
+                ]);
+
+                document.getElementById('kpi-primary').innerText = primaryRes.total_requests || 0;
+                document.getElementById('kpi-shadow').innerText = shadowRes.total_mirrored_requests || 0;
+                document.getElementById('kpi-total').innerText = primaryRes.total_requests || 0;
+                document.getElementById('kpi-accuracy').innerText = `${diffRes.replication_accuracy_percent || 100}%`;
+
+                // Update simulation badges
+                isDelayActive = (shadowRes.simulated_delay_sec > 0);
+                isFaultActive = Boolean(shadowRes.simulated_error_enabled);
+
+                const delayBadge = document.getElementById('delay-status-badge');
+                if (isDelayActive) {
+                    delayBadge.innerText = `${shadowRes.simulated_delay_sec}s ACTIVE`;
+                    delayBadge.style.color = 'var(--accent-warning)';
+                } else {
+                    delayBadge.innerText = 'OFF';
+                    delayBadge.style.color = 'var(--text-muted)';
+                }
+
+                const errorBadge = document.getElementById('error-status-badge');
+                if (isFaultActive) {
+                    errorBadge.innerText = '500 ERROR ACTIVE';
+                    errorBadge.style.color = 'var(--accent-danger)';
+                } else {
+                    errorBadge.innerText = 'OFF';
+                    errorBadge.style.color = 'var(--text-muted)';
+                }
+
+                renderTable(primaryRes.recent_requests || [], shadowRes.recent_requests || []);
+            } catch (err) {
+                console.error("Fetch error:", err);
+            }
+        }
+
+        function renderTable(primaryRequests, shadowRequests) {
+            const tbody = document.getElementById('traffic-table-body');
+            if (primaryRequests.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">No traffic recorded yet. Click "Inject 10 Order Requests" to test traffic mirroring.</td></tr>`;
+                return;
+            }
+
+            const shadowMap = {};
+            shadowRequests.forEach(r => { shadowMap[r.request_id] = r; });
+
+            let html = '';
+            const reversed = [...primaryRequests].reverse();
+            reversed.slice(0, 15).forEach(p => {
+                const s = shadowMap[p.request_id];
+                const isMirrored = Boolean(s);
+                const tagClass = p.method === 'POST' ? 'tag-post' : 'tag-get';
+                const bodyStr = p.body ? JSON.stringify(p.body) : '(no body)';
+
+                let integrityBadge = `<span class="tag tag-match">✓ 100% MATCH</span>`;
+                if (!isMirrored) {
+                    integrityBadge = `<span class="tag" style="background:rgba(239,68,68,0.2); color:#F87171;">MISSING</span>`;
+                }
+
+                html += `
+                    <tr>
+                        <td style="color:#818CF8;">${p.request_id ? p.request_id.substring(0, 18) : 'req-auto'}</td>
+                        <td><span class="tag ${tagClass}">${p.method}</span></td>
+                        <td style="color:var(--text-secondary);">${p.path}</td>
+                        <td><div class="json-preview" title="${bodyStr.replace(/"/g, '&quot;')}">${bodyStr}</div></td>
+                        <td>${isMirrored ? '<span style="color:#34D399;">Mirrored (Async)</span>' : '<span style="color:#F87171;">Not received</span>'}</td>
+                        <td>${integrityBadge}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function injectOrders(count = 10) {
+            logToConsole(`Starting injection of ${count} order requests via Nginx proxy /api/v1/orders...`);
+            const startTime = performance.now();
+            for (let i = 1; i <= count; i++) {
+                const payload = {
+                    order_id: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    item: `High-Performance Compute Node #${i}`,
+                    amount: (Math.random() * 200 + 10).toFixed(2),
+                    currency: "USD"
+                };
+
+                const res = await fetch('/api/v1/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+            }
+            const duration = (performance.now() - startTime).toFixed(1);
+            document.getElementById('kpi-latency').innerText = `${(duration / count).toFixed(1)} ms`;
+            logToConsole(`Successfully sent ${count} orders in ${duration}ms. Client latency: ${(duration / count).toFixed(1)}ms/req`, 'primary');
+            fetchData();
+        }
+
+        async function injectUser() {
+            const payload = {
+                user_id: `USR-${Math.floor(Math.random() * 900 + 100)}`,
+                name: "SRE Automation Agent",
+                role: "Traffic Mirroring Verifier"
+            };
+            const res = await fetch('/api/v1/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            logToConsole(`Injected user registration ${payload.user_id}`, 'primary');
+            fetchData();
+        }
+
+        async function toggleShadowDelay() {
+            const newDelay = isDelayActive ? 0.0 : 2.0;
+            await fetch('/shadow/api/shadow/simulate-delay', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delay_seconds: newDelay })
+            });
+            logToConsole(`Shadow delay set to ${newDelay}s. Notice that Client response time remains unaffected!`, 'shadow');
+            fetchData();
+        }
+
+        async function toggleShadowFault() {
+            const newFault = !isFaultActive;
+            await fetch('/shadow/api/shadow/simulate-error', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enable: newFault, status_code: 500 })
+            });
+            logToConsole(`Shadow fault simulation set to ${newFault ? '500 ERROR' : 'DISABLED'}. Proxy discards shadow errors safely.`, 'shadow');
+            fetchData();
+        }
+
+        async function resetStats() {
+            await Promise.all([
+                fetch('/primary/api/reset', { method: 'POST' }),
+                fetch('/shadow/api/reset', { method: 'POST' })
+            ]);
+            logToConsole("Cleared all audit logs and reset simulation flags.");
+            fetchData();
+        }
+
+        // Auto-refresh every 2.5 seconds
+        setInterval(fetchData, 2500);
+        fetchData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+FROM envoyproxy/envoy:v1.31-latest
+
+LABEL maintainer="DevOps & SRE Mini Projects"
+LABEL description="Envoy L7 Canary Edge Router & Circuit Breaker"
+
+COPY config/envoy.yaml /etc/envoy/envoy.yaml
+
+EXPOSE 10000 9901
+
+CMD ["envoy", "-c", "/etc/envoy/envoy.yaml"]

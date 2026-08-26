@@ -1,0 +1,171 @@
+services:
+  # ============================================================================
+  # Site A: Gateway and Private Application
+  # ============================================================================
+  gateway-a:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: wg-gateway-a
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+    environment:
+      - NODE_NAME=Site-A-Gateway
+      - NODE_ID=node-a
+    networks:
+      wan-transit:
+        ipv4_address: 192.168.100.10
+      lan-site-a:
+        ipv4_address: 10.10.0.254
+
+  app-a:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: wg-app-a
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - SITE_NAME=Site-A
+      - SITE_COLOR=#3b82f6
+      - GATEWAY_IP=10.10.0.254
+      - PORT=8080
+    ports:
+      - "8081:8080"
+    networks:
+      lan-site-a:
+        ipv4_address: 10.10.0.10
+    depends_on:
+      gateway-a:
+        condition: service_healthy
+
+  # ============================================================================
+  # Site B: Gateway and Private Application
+  # ============================================================================
+  gateway-b:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: wg-gateway-b
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+    environment:
+      - NODE_NAME=Site-B-Gateway
+      - NODE_ID=node-b
+    networks:
+      wan-transit:
+        ipv4_address: 192.168.100.20
+      lan-site-b:
+        ipv4_address: 10.20.0.254
+
+  app-b:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: wg-app-b
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - SITE_NAME=Site-B
+      - SITE_COLOR=#10b981
+      - GATEWAY_IP=10.20.0.254
+      - PORT=8080
+    ports:
+      - "8082:8080"
+    networks:
+      lan-site-b:
+        ipv4_address: 10.20.0.10
+    depends_on:
+      gateway-b:
+        condition: service_healthy
+
+  # ============================================================================
+  # Site C: Gateway and Private Application
+  # ============================================================================
+  gateway-c:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: wg-gateway-c
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+    environment:
+      - NODE_NAME=Site-C-Gateway
+      - NODE_ID=node-c
+    networks:
+      wan-transit:
+        ipv4_address: 192.168.100.30
+      lan-site-c:
+        ipv4_address: 10.30.0.254
+
+  app-c:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: wg-app-c
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - SITE_NAME=Site-C
+      - SITE_COLOR=#f59e0b
+      - GATEWAY_IP=10.30.0.254
+      - PORT=8080
+    ports:
+      - "8083:8080"
+    networks:
+      lan-site-c:
+        ipv4_address: 10.30.0.10
+    depends_on:
+      gateway-c:
+        condition: service_healthy
+
+# ==============================================================================
+# Isolated Networks Definition
+# ==============================================================================
+networks:
+  wan-transit:
+    name: wg-wan-transit
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.100.0/24
+
+  lan-site-a:
+    name: wg-lan-site-a
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.10.0.0/24
+
+  lan-site-b:
+    name: wg-lan-site-b
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.20.0.0/24
+
+  lan-site-c:
+    name: wg-lan-site-c
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.30.0.0/24

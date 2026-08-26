@@ -1,0 +1,60 @@
+services:
+  # ============================================================================
+  # Nginx Reverse Proxy with Asynchronous Traffic Mirroring (ngx_http_mirror)
+  # ============================================================================
+  mirror-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    container_name: shadow-proxy
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - mirror-net
+    depends_on:
+      primary-api:
+        condition: service_healthy
+      shadow-api:
+        condition: service_healthy
+
+  # ============================================================================
+  # Primary Production API Service (v1.0.0)
+  # ============================================================================
+  primary-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: primary-api
+    restart: unless-stopped
+    command: ["python3", "/app/services/primary_api.py"]
+    environment:
+      - PORT=8001
+      - SERVICE_NAME=primary-api
+    networks:
+      - mirror-net
+
+  # ============================================================================
+  # Shadow Experimental API Service (v2.0.0-rc1)
+  # ============================================================================
+  shadow-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: shadow-api
+    restart: unless-stopped
+    command: ["python3", "/app/services/shadow_api.py"]
+    environment:
+      - PORT=8002
+      - PRIMARY_HOST=primary-api:8001
+      - SERVICE_NAME=shadow-api
+    networks:
+      - mirror-net
+
+# ==============================================================================
+# Isolated Bridge Network
+# ==============================================================================
+networks:
+  mirror-net:
+    name: shadow-mirror-net
+    driver: bridge
