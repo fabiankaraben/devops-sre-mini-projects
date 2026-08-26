@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitops-webapp-config
+  labels:
+    app.kubernetes.io/name: gitops-webapp
+    app.kubernetes.io/part-of: gitops-pipeline
+    app.kubernetes.io/managed-by: argocd
+data:
+  APP_ENV: "production"
+  APP_NAME: "GitOps Web Portal"
+  APP_VERSION: "v1.0.0"
+  APP_MESSAGE: "Continuous Delivery managed by ArgoCD and GitOps workflow"
+  FEATURE_ANALYTICS: "enabled"
+  RECONCILIATION_TARGET_SEC: "60"

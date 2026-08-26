@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "preview-app.fullname" . }}-config
+  labels:
+    {{- include "preview-app.labels" . | nindent 4 }}
+data:
+  PR_NUMBER: {{ .Values.prNumber | quote }}
+  COMMIT_SHA: {{ .Values.commitSha | quote }}
+  BRANCH_NAME: {{ .Values.branchName | quote }}
+  APP_VERSION: {{ .Values.image.tag | quote }}
+  FEATURE_FLAG_NEW_UI: {{ .Values.featureFlags.newUi | quote }}

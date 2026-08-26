@@ -1,0 +1,10 @@
+@Library('enterprise-shared-library') _
+
+standardPipeline(
+    appName: 'ecommerce-cart-service',
+    buildType: 'nodejs',
+    agentImage: 'node:20-alpine',
+    dir: 'app',
+    minCoverage: 85,
+    slackChannel: '#cicd-deployments'
+)

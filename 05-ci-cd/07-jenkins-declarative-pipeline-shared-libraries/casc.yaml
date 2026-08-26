@@ -1,0 +1,66 @@
+jenkins:
+  systemMessage: "DevOps SRE Mini-Project 07: Jenkins Declarative Pipeline with Shared Libraries"
+  numExecutors: 2
+  mode: NORMAL
+  scmCheckoutRetryCount: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "admin123"
+          name: "Jenkins Administrator"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "secret-api-key"
+              secret: "PROD_API_KEY_SECURE_TOKEN_99887766"
+              description: "Production API Secret Key for credential masking verification"
+          - string:
+              scope: GLOBAL
+              id: "slack-webhook-token"
+              secret: "xoxb-1234567890-abcdefghijklmn-secrettoken"
+              description: "Slack Webhook Bearer Token"
+
+unclassified:
+  globalLibraries:
+    libraries:
+      - name: "enterprise-shared-library"
+        defaultVersion: "main"
+        implicit: false
+        allowVersionOverride: true
+        includeInChangesets: false
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "file:///var/jenkins_home/shared-library.git"
+                traits:
+                  - "gitBranchDiscovery"
+
+jobs:
+  - script: >
+      pipelineJob('enterprise-ci-pipeline') {
+        description('Enterprise CI pipeline using Declarative syntax, Shared Libraries, and dynamic Docker agents.')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('file:///var/jenkins_home/pipeline-repo.git')
+                }
+                branch('main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }

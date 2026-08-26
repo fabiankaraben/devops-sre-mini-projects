@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitops-webapp
+  labels:
+    app.kubernetes.io/name: gitops-webapp
+    app.kubernetes.io/part-of: gitops-pipeline
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    ingress.class: traefik
+spec:
+  rules:
+    - host: gitops-webapp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitops-webapp
+                port:
+                  number: 80

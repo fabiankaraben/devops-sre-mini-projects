@@ -1,0 +1,10 @@
+{
+  "name": "ecommerce-cart-service",
+  "version": "1.0.0",
+  "description": "Sample microservice for Jenkins Shared Library pipeline testing",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node tests/app.test.js"
+  }
+}

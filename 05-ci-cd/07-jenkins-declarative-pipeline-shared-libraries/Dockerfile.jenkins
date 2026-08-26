@@ -1,0 +1,46 @@
+FROM jenkins/jenkins:lts-jdk17
+
+USER root
+
+# Install Docker CLI, Git, and system utilities
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg \
+        lsb-release \
+        git \
+        jq && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Add entrypoint wrapper
+COPY init-jenkins.sh /usr/local/bin/init-jenkins.sh
+RUN chmod +x /usr/local/bin/init-jenkins.sh
+
+# Copy JCasC and seed project files into image
+RUN mkdir -p /var/jenkins_config /seed/project
+COPY casc.yaml /var/jenkins_config/casc.yaml
+RUN chmod 644 /var/jenkins_config/casc.yaml
+COPY vars /seed/project/vars
+COPY src /seed/project/src
+COPY app /seed/project/app
+COPY Jenkinsfile /seed/project/Jenkinsfile
+
+# Ensure jenkins user has access to docker socket
+RUN groupadd -f -g 999 docker || true && \
+    usermod -aG docker jenkins || true
+
+USER jenkins
+
+# Pre-install plugins
+COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/ref/plugins.txt
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt --war /usr/share/jenkins/jenkins.war
+
+ENTRYPOINT ["/usr/local/bin/init-jenkins.sh"]

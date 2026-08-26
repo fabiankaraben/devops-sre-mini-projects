@@ -1,0 +1,29 @@
+{
+  "name": "08-ephemeral-preview-environments-pr",
+  "version": "1.0.0",
+  "description": "Ephemeral Preview Environments per Pull Request Mini-Project",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint README.md",
+    "setup": "bash ./setup_preview_cluster.sh",
+    "test": "bash ./test_pr_lifecycle.sh",
+    "cleanup": "bash ./cleanup.sh"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.44.0"
+  },
+  "keywords": [
+    "kubernetes",
+    "k3d",
+    "helm",
+    "preview-environments",
+    "review-apps",
+    "pull-request",
+    "github-actions",
+    "ephemeral",
+    "devops",
+    "ci-cd"
+  ],
+  "author": "DevOps SRE Learner",
+  "license": "MIT"
+}

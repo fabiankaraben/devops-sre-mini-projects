@@ -1,0 +1,29 @@
+{
+  "name": "10-multi-region-blue-green-orchestrator",
+  "version": "1.0.0",
+  "description": "Multi-Region Blue-Green Deployment Orchestrator Mini-Project",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint README.md",
+    "setup": "bash ./setup_multi_region.sh",
+    "test": "bash ./test_orchestration.sh",
+    "cleanup": "bash ./cleanup.sh"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.44.0"
+  },
+  "keywords": [
+    "blue-green-deployment",
+    "zero-downtime",
+    "multi-region",
+    "orchestrator",
+    "smoke-tests",
+    "rollback",
+    "load-testing",
+    "ci-cd",
+    "sre",
+    "devops"
+  ],
+  "author": "DevOps SRE Learner",
+  "license": "MIT"
+}

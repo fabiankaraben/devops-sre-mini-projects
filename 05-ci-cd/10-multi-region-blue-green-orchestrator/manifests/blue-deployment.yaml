@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service-blue
+  labels:
+    app: order-service
+    color: blue
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+      color: blue
+  template:
+    metadata:
+      labels:
+        app: order-service
+        color: blue
+    spec:
+      containers:
+        - name: order-service
+          image: order-service:v1.0.0
+          ports:
+            - containerPort: 3000
+          env:
+            - name: APP_COLOR
+              value: "blue"
+            - name: APP_VERSION
+              value: "v1.0.0"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi

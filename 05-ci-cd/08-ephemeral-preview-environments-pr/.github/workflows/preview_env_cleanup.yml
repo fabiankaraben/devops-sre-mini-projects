@@ -1,0 +1,59 @@
+name: Destroy Ephemeral PR Preview Environment
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+jobs:
+  cleanup-preview:
+    name: Teardown Review App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm & Kubectl
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Teardown Ephemeral Namespace & Helm Release
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          NS="preview-pr-${PR_NUM}"
+          echo "::group::Destroying Preview Release and Namespace ${NS}"
+          
+          helm uninstall "preview-pr-${PR_NUM}" --namespace "${NS}" || true
+          kubectl delete namespace "${NS}" --ignore-not-found=true --wait=true --timeout=2m
+
+          echo "::endgroup::"
+
+      - name: Update PR Comment on Decommission
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const commentBody = `### 🛑 Ephemeral Preview Environment Decommissioned\n\n` +
+              `The review app in namespace \`preview-pr-${prNumber}\` has been **completely destroyed** following the closure of this pull request. All compute, ingress, and namespace resources have been reclaimed.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(c => c.body.includes('Ephemeral Preview Environment'));
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            }

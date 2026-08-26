@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local test sandboxes, state, logs
+.tmp_sandbox/
+.tmp_*
+*.log
+router_state.json
+
+# OS metadata
+.DS_Store

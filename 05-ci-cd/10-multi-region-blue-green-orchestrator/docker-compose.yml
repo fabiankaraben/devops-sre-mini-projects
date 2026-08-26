@@ -1,0 +1,89 @@
+services:
+  global-edge-router:
+    build:
+      context: ./edge_proxy
+      dockerfile: Dockerfile
+    container_name: bg-global-edge-router
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+      - HOST=0.0.0.0
+      - UPSTREAM_US_EAST_BLUE=http://app-us-east-blue:3000
+      - UPSTREAM_US_EAST_GREEN=http://app-us-east-green:3000
+      - UPSTREAM_EU_WEST_BLUE=http://app-eu-west-blue:3000
+      - UPSTREAM_EU_WEST_GREEN=http://app-eu-west-green:3000
+    depends_on:
+      - app-us-east-blue
+      - app-us-east-green
+      - app-eu-west-blue
+      - app-eu-west-green
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8090/health')\" || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+
+  app-us-east-blue:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bg-app-us-east-blue
+    environment:
+      - PORT=3000
+      - APP_COLOR=blue
+      - APP_VERSION=v1.0.0
+      - REGION_NAME=us-east
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+
+  app-us-east-green:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bg-app-us-east-green
+    environment:
+      - PORT=3000
+      - APP_COLOR=green
+      - APP_VERSION=v2.0.0
+      - REGION_NAME=us-east
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+
+  app-eu-west-blue:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bg-app-eu-west-blue
+    environment:
+      - PORT=3000
+      - APP_COLOR=blue
+      - APP_VERSION=v1.0.0
+      - REGION_NAME=eu-west
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+
+  app-eu-west-green:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bg-app-eu-west-green
+    environment:
+      - PORT=3000
+      - APP_COLOR=green
+      - APP_VERSION=v2.0.0
+      - REGION_NAME=eu-west
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5

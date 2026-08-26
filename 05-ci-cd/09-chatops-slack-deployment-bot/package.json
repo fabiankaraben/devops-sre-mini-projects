@@ -1,0 +1,29 @@
+{
+  "name": "09-chatops-slack-deployment-bot",
+  "version": "1.0.0",
+  "description": "ChatOps Slack Deployment Bot Mini-Project",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint README.md",
+    "setup": "bash ./setup_bot.sh",
+    "test": "bash ./test_chatops.sh",
+    "cleanup": "bash ./cleanup.sh"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.44.0"
+  },
+  "keywords": [
+    "chatops",
+    "slack-bot",
+    "slash-commands",
+    "rbac",
+    "hmac-sha256",
+    "ci-cd",
+    "devops",
+    "deployments",
+    "rollback",
+    "python"
+  ],
+  "author": "DevOps SRE Learner",
+  "license": "MIT"
+}

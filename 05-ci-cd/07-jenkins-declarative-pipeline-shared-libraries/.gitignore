@@ -1,0 +1,11 @@
+# Node dependencies
+node_modules/
+
+# Local test sandboxes, caches and build artifacts
+.tmp_sandbox/
+.tmp_*
+*.log
+jenkins_home/
+
+# OS metadata
+.DS_Store

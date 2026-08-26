@@ -1,0 +1,26 @@
+{
+  "name": "06-gitops-cd-argocd",
+  "version": "1.0.0",
+  "description": "GitOps Continuous Delivery with ArgoCD Mini-Project",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint README.md",
+    "setup": "bash ./setup_gitops_cluster.sh",
+    "test": "bash ./gitops_sync_test.sh",
+    "cleanup": "bash ./cleanup.sh"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.44.0"
+  },
+  "keywords": [
+    "gitops",
+    "argocd",
+    "kubernetes",
+    "k3d",
+    "continuous-delivery",
+    "devops",
+    "sre"
+  ],
+  "author": "DevOps SRE Learner",
+  "license": "MIT"
+}

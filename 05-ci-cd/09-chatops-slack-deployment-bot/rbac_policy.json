@@ -1,0 +1,37 @@
+{
+  "roles": {
+    "admin": {
+      "description": "Full access to deploy and rollback across all environments including production",
+      "allowed_commands": ["deploy", "rollback", "status", "history", "help"],
+      "allowed_environments": ["development", "dev", "staging", "stage", "production", "prod"]
+    },
+    "developer": {
+      "description": "Access to deploy to non-production environments and view status",
+      "allowed_commands": ["deploy", "status", "history", "help"],
+      "allowed_environments": ["development", "dev", "staging", "stage"]
+    },
+    "viewer": {
+      "description": "Read-only access to query environment status and history",
+      "allowed_commands": ["status", "history", "help"],
+      "allowed_environments": []
+    }
+  },
+  "user_role_mappings": {
+    "bob_sre": "admin",
+    "carol_lead": "admin",
+    "alice_dev": "developer",
+    "dave_qa": "developer",
+    "viewer_dan": "viewer"
+  },
+  "supported_applications": [
+    "order-service",
+    "payment-service",
+    "auth-service",
+    "api-gateway"
+  ],
+  "supported_environments": [
+    "development",
+    "staging",
+    "production"
+  ]
+}

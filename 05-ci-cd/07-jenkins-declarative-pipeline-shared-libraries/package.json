@@ -1,0 +1,27 @@
+{
+  "name": "07-jenkins-declarative-pipeline-shared-libraries",
+  "version": "1.0.0",
+  "description": "Jenkins Declarative Pipeline with Shared Libraries Mini-Project",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint README.md",
+    "setup": "bash ./setup_jenkins.sh",
+    "test": "bash ./run_pipeline_test.sh",
+    "cleanup": "bash ./cleanup.sh"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.44.0"
+  },
+  "keywords": [
+    "jenkins",
+    "declarative-pipeline",
+    "shared-libraries",
+    "groovy",
+    "docker-agent",
+    "jcasc",
+    "devops",
+    "ci-cd"
+  ],
+  "author": "DevOps SRE Learner",
+  "license": "MIT"
+}

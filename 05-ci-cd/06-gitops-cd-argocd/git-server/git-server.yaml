@@ -1,0 +1,275 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitops-system
+  labels:
+    app.kubernetes.io/part-of: gitops-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-server-config
+  namespace: gitops-system
+data:
+  init-and-run.sh: |
+    #!/bin/sh
+    set -e
+
+    echo "[GIT-SERVER] Installing git and git-daemon..."
+    apk add --no-cache git git-daemon
+
+    echo "[GIT-SERVER] Initializing bare repository at /git/repo.git..."
+    mkdir -p /git/repo.git
+    cd /git/repo.git
+    git init --bare --shared
+    git symbolic-ref HEAD refs/heads/main
+    git config daemon.receivepack true
+    git config receive.denyCurrentBranch ignore
+    touch /git/repo.git/git-daemon-export-ok
+
+    echo "[GIT-SERVER] Populating initial commit from seed manifests..."
+    mkdir -p /tmp/seed
+    cd /tmp/seed
+    git init
+    git config user.name "GitOps Admin"
+    git config user.email "admin@gitops.local"
+
+    cp /seed-manifests/* /tmp/seed/
+    git add .
+    git commit -m "feat(gitops): initial infrastructure and webapp manifests"
+    git branch -M main
+    git remote add origin /git/repo.git
+    git push -u origin main
+
+    echo "[GIT-SERVER] Initial commit published to branch 'main'."
+    echo "[GIT-SERVER] Starting Git Daemon on port 9418..."
+
+    exec git daemon --base-path=/git --export-all --enable=receive-pack --reuseaddr --listen=0.0.0.0 --port=9418 --verbose /git
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-seed-manifests
+  namespace: gitops-system
+data:
+  kustomization.yaml: |
+    apiVersion: kustomize.config.k8s.io/v1beta1
+    kind: Kustomization
+    namespace: gitops-demo
+    labels:
+      - pairs:
+          app.kubernetes.io/managed-by: argocd
+          app.kubernetes.io/part-of: gitops-demo
+    resources:
+      - configmap.yaml
+      - deployment.yaml
+      - service.yaml
+      - ingress.yaml
+  configmap.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: gitops-webapp-config
+      labels:
+        app.kubernetes.io/name: gitops-webapp
+        app.kubernetes.io/part-of: gitops-pipeline
+        app.kubernetes.io/managed-by: argocd
+    data:
+      APP_ENV: "production"
+      APP_NAME: "GitOps Web Portal"
+      APP_VERSION: "v1.0.0"
+      APP_MESSAGE: "Continuous Delivery managed by ArgoCD and GitOps workflow"
+      FEATURE_ANALYTICS: "enabled"
+      RECONCILIATION_TARGET_SEC: "60"
+  deployment.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: gitops-webapp
+      labels:
+        app.kubernetes.io/name: gitops-webapp
+        app.kubernetes.io/instance: gitops-webapp-prod
+        app.kubernetes.io/version: "1.0.0"
+        app.kubernetes.io/component: web-frontend
+        app.kubernetes.io/part-of: gitops-pipeline
+        app.kubernetes.io/managed-by: argocd
+    spec:
+      replicas: 2
+      revisionHistoryLimit: 5
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 0
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: gitops-webapp
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: gitops-webapp
+            app.kubernetes.io/instance: gitops-webapp-prod
+            app.kubernetes.io/version: "1.0.0"
+        spec:
+          containers:
+            - name: webapp
+              image: nginx:1.27-alpine
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: http
+                  containerPort: 80
+                  protocol: TCP
+              envFrom:
+                - configMapRef:
+                    name: gitops-webapp-config
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+              readinessProbe:
+                httpGet:
+                  path: /
+                  port: 80
+                initialDelaySeconds: 2
+                periodSeconds: 5
+                timeoutSeconds: 2
+                successThreshold: 1
+                failureThreshold: 3
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 80
+                initialDelaySeconds: 5
+                periodSeconds: 10
+                timeoutSeconds: 2
+                failureThreshold: 3
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                    - NET_RAW
+                  add:
+                    - NET_BIND_SERVICE
+                    - CHOWN
+                    - SETUID
+                    - SETGID
+  service.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: gitops-webapp
+      labels:
+        app.kubernetes.io/name: gitops-webapp
+        app.kubernetes.io/part-of: gitops-pipeline
+        app.kubernetes.io/managed-by: argocd
+    spec:
+      type: ClusterIP
+      ports:
+        - name: http
+          port: 80
+          targetPort: http
+          protocol: TCP
+      selector:
+        app.kubernetes.io/name: gitops-webapp
+  ingress.yaml: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: gitops-webapp
+      labels:
+        app.kubernetes.io/name: gitops-webapp
+        app.kubernetes.io/part-of: gitops-pipeline
+        app.kubernetes.io/managed-by: argocd
+      annotations:
+        ingress.class: traefik
+    spec:
+      rules:
+        - host: gitops-webapp.local
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: gitops-webapp
+                    port:
+                      number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-server
+  namespace: gitops-system
+  labels:
+    app.kubernetes.io/name: git-server
+    app.kubernetes.io/part-of: gitops-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: git-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: git-server
+    spec:
+      containers:
+        - name: git-server
+          image: alpine:3.21
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/init-and-run.sh"]
+          ports:
+            - name: git
+              containerPort: 9418
+              protocol: TCP
+          volumeMounts:
+            - name: git-storage
+              mountPath: /git
+            - name: script-volume
+              mountPath: /scripts
+            - name: seed-volume
+              mountPath: /seed-manifests
+          readinessProbe:
+            tcpSocket:
+              port: 9418
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: git-storage
+          emptyDir: {}
+        - name: script-volume
+          configMap:
+            name: git-server-config
+            defaultMode: 0755
+        - name: seed-volume
+          configMap:
+            name: git-seed-manifests
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-server
+  namespace: gitops-system
+  labels:
+    app.kubernetes.io/name: git-server
+    app.kubernetes.io/part-of: gitops-demo
+spec:
+  type: ClusterIP
+  ports:
+    - name: git
+      port: 9418
+      targetPort: 9418
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: git-server

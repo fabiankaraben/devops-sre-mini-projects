@@ -1,0 +1,11 @@
+# Node dependencies
+node_modules/
+
+# Local test sandboxes, caches, kubeconfigs, and logs
+.tmp_sandbox/
+.tmp_*
+*.log
+kubeconfig.yaml
+
+# OS metadata
+.DS_Store

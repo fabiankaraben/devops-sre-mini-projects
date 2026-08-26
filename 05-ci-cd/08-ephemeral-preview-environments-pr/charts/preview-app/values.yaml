@@ -1,0 +1,64 @@
+# Default values for preview-app.
+prNumber: "0"
+commitSha: "head"
+branchName: "main"
+replicaCount: 1
+
+image:
+  repository: preview-app
+  pullPolicy: IfNotPresent
+  tag: "v1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+securityContext:
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations: {}
+  host: "" # If empty, dynamic hostTemplate pr-{{ .Values.prNumber }}.preview.local is used
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+autoscaling:
+  enabled: false
+
+featureFlags:
+  newUi: false
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Temporary test sandboxes and logs
+.tmp_sandbox/
+.tmp_*
+*.log
+
+# OS metadata
+.DS_Store
