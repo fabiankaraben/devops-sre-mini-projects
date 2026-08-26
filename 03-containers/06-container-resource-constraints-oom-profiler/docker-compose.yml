@@ -1,0 +1,78 @@
+# ==============================================================================
+# docker-compose.yml - Container Resource Constraints and OOM Profiler
+# ==============================================================================
+# Demonstrates Linux cgroups v2 resource limits (Memory limits, Swap controls,
+# and Completely Fair Scheduler (CFS) CPU quotas).
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Scenario 1: Memory Constraint & Controlled OOM Killer Trigger
+  # ----------------------------------------------------------------------------
+  # Constrained to 128MB RAM with swap disabled/equal to memory limit.
+  # Gradually allocates memory chunks of 10MB until the Linux Kernel
+  # Out-Of-Memory (OOM) Killer terminates the process with SIGKILL (Exit Code 137).
+  # ----------------------------------------------------------------------------
+  oom-victim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devops-oom-profiler:latest
+    container_name: devops-oom-victim
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+        reservations:
+          memory: 32M
+    command: ["--mode=oom", "--chunk-size-mb=10", "--delay=0.3"]
+    restart: "no"
+
+  # ----------------------------------------------------------------------------
+  # Scenario 2: Predictable In-Bounds Memory Execution
+  # ----------------------------------------------------------------------------
+  # Same 128MB constraint, but operates safely within boundaries (allocating 60MB).
+  # Exits cleanly with Exit Code 0 and OOMKilled: false.
+  # ----------------------------------------------------------------------------
+  memory-safe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devops-oom-profiler:latest
+    container_name: devops-oom-safe
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+    command: ["--mode=safe", "--chunk-size-mb=10", "--target-mb=60", "--delay=0.2"]
+    restart: "no"
+
+  # ----------------------------------------------------------------------------
+  # Scenario 3: CPU CFS Quota Throttling Demonstration
+  # ----------------------------------------------------------------------------
+  # Strictly limited to 0.5 CPU (50,000 µs quota per 100,000 µs period).
+  # Runs 4 CPU-intensive threads; demonstrates ~50% throttle rate in cgroups.
+  # ----------------------------------------------------------------------------
+  cpu-throttled:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devops-oom-profiler:latest
+    container_name: devops-cpu-throttled
+    cpus: 0.5
+    mem_limit: 256m
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+    command: ["--mode=cpu", "--cpu-threads=4", "--cpu-duration=12"]
+    restart: "no"

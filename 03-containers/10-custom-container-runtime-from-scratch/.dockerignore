@@ -1,0 +1,16 @@
+# Git and IDE
+.git
+.gitignore
+.DS_Store
+.idea
+.vscode
+
+# Binaries and rootfs bundles
+my_runtime
+bundle/
+rootfs/
+*.tar.gz
+
+# Logs and scratch
+*.log
+*.tmp

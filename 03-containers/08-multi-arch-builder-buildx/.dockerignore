@@ -1,0 +1,15 @@
+# Git and IDE
+.git
+.gitignore
+.DS_Store
+.idea
+.vscode
+
+# Build artifacts and binaries
+server
+*.exe
+*.test
+
+# Logs and scratch
+*.log
+*.tmp

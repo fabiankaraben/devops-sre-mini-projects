@@ -1,0 +1,82 @@
+# ==============================================================================
+# docker-compose.yml - Docker Socket Security Proxy Gateway
+# ==============================================================================
+# Demonstrates securing the privileged Docker daemon socket (/var/run/docker.sock)
+# using an HAProxy-based security gateway (Tecnativa docker-socket-proxy).
+# Exposes a strictly controlled, read-only API subset to monitoring clients.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Security Proxy Gateway (HAProxy-based Docker Socket Interceptor)
+  # ----------------------------------------------------------------------------
+  # Mounts the privileged UNIX socket in READ-ONLY mode (:ro).
+  # Blocks all mutating (POST/DELETE) and sensitive endpoints (VOLUMES, EXEC, BUILD).
+  # ----------------------------------------------------------------------------
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: devops-socket-proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2375:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # --- Permitted Read-Only API Surfaces (1 = Enabled) ---
+      - CONTAINERS=1   # Allows GET /containers/json, GET /containers/{id}/json
+      - INFO=1         # Allows GET /info
+      - VERSION=1      # Allows GET /version
+      - PING=1         # Allows GET /_ping
+      - EVENTS=1       # Allows GET /events
+
+      # --- Strictly Forbidden Mutating & Sensitive API Surfaces (0 = Disabled) ---
+      - POST=0         # BLOCKS all POST requests (Container Creation, Start, Stop, Kill)
+      - DELETE=0       # BLOCKS all DELETE requests (Container Removal, Image Pruning)
+      - VOLUMES=0      # BLOCKS GET/POST/DELETE on /volumes/* (Storage Data Snooping)
+      - NETWORKS=0     # BLOCKS GET/POST/DELETE on /networks/* (Network Spoofing)
+      - EXEC=0         # BLOCKS /containers/{id}/exec (Remote Code Execution)
+      - BUILD=0        # BLOCKS /build (Arbitrary Container Building)
+      - AUTH=0         # BLOCKS /auth (Registry Credentials Access)
+      - SECRETS=0      # BLOCKS /secrets/* (Docker Swarm Secrets)
+      - SWARM=0        # BLOCKS /swarm/*
+      - NODES=0        # BLOCKS /nodes/*
+      - SERVICES=0     # BLOCKS /services/*
+      - TASKS=0        # BLOCKS /tasks/*
+      - PLUGINS=0      # BLOCKS /plugins/*
+      - SESSION=0      # BLOCKS /session
+      - DISTRIBUTION=0 # BLOCKS /distribution/*
+    networks:
+      - proxy-net
+
+  # ----------------------------------------------------------------------------
+  # Unprivileged Monitoring Agent (Simulated Client)
+  # ----------------------------------------------------------------------------
+  # This container does NOT have /var/run/docker.sock mounted.
+  # It communicates strictly over HTTP to the security proxy gateway.
+  # ----------------------------------------------------------------------------
+  monitoring-agent:
+    image: curlimages/curl:latest
+    container_name: devops-monitoring-agent
+    restart: "no"
+    depends_on:
+      - socket-proxy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "=== [Monitoring Agent] Querying Docker API via Security Proxy ==="
+        echo "--> Probing /_ping:"
+        curl -s -f http://socket-proxy:2375/_ping && echo " [OK]"
+        echo "--> Querying /version:"
+        curl -s http://socket-proxy:2375/version | head -c 100 && echo "..."
+        echo "--> Querying /containers/json (Active Containers Count):"
+        curl -s http://socket-proxy:2375/containers/json | head -c 100 && echo "..."
+        echo "--> Attempting Malicious POST /containers/create (Should be 403 Forbidden):"
+        curl -s -o /dev/null -w "HTTP Response Code: %{http_code}\n" -X POST http://socket-proxy:2375/containers/create -H "Content-Type: application/json" -d '{"Image":"alpine"}'
+        echo "=== [Monitoring Agent] Verification completed successfully ==="
+    networks:
+      - proxy-net
+
+networks:
+  proxy-net:
+    name: devops-proxy-net
+    driver: bridge

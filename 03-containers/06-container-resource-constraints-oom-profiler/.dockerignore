@@ -1,0 +1,19 @@
+# Git and IDE files
+.git
+.gitignore
+.DS_Store
+.idea
+.vscode
+
+# Python cache and environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Local logs and test outputs
+*.log
+*.tmp
+.pytest_cache/

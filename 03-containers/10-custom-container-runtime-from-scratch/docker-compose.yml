@@ -1,0 +1,34 @@
+# ==============================================================================
+# docker-compose.yml - Custom Container Runtime from Scratch Lab
+# ==============================================================================
+# Provides a privileged Linux laboratory environment enabling Linux kernel
+# namespaces (CLONE_NEWUTS, CLONE_NEWPID, CLONE_NEWNS, CLONE_NEWIPC), chroot/pivot_root,
+# and Cgroups controls.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Interactive Container Runtime Laboratory
+  # ----------------------------------------------------------------------------
+  runtime-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devops-runtime-lab:latest
+    container_name: devops-runtime-lab
+    privileged: true
+    command: ["/bin/bash", "-c", "sleep infinity"]
+    restart: "no"
+
+  # ----------------------------------------------------------------------------
+  # Automated Test Suite Service
+  # ----------------------------------------------------------------------------
+  runtime-test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devops-runtime-lab:latest
+    container_name: devops-runtime-runner
+    privileged: true
+    command: ["/lab/runtime_test_suite.sh"]
+    restart: "no"

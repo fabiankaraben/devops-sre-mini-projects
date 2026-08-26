@@ -1,0 +1,40 @@
+# ==============================================================================
+# docker-compose.yml - Rootless Container Execution Environment Lab
+# ==============================================================================
+# Demonstrates Linux User Namespaces (CLONE_NEWUSER), subordinate UID/GID mappings
+# (/etc/subuid, /etc/subgid), and how root inside an unprivileged container is
+# safely restricted from host compromise.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Interactive Rootless Execution Laboratory
+  # ----------------------------------------------------------------------------
+  rootless-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devops-rootless-lab:latest
+    container_name: devops-rootless-lab
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    command: ["/bin/bash", "-c", "sleep infinity"]
+    restart: "no"
+
+  # ----------------------------------------------------------------------------
+  # Automated Isolation Verifier Service
+  # ----------------------------------------------------------------------------
+  rootless-verifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devops-rootless-lab:latest
+    container_name: devops-rootless-verifier
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    command: ["/home/developer/verify_isolation.sh"]
+    restart: "no"
