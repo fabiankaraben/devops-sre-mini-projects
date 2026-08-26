@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ SIEM Security Event Monitor - Linux Auditd</title>
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --critical: #ef4444;
+            --critical-bg: rgba(239, 68, 68, 0.15);
+            --high: #f97316;
+            --high-bg: rgba(249, 115, 22, 0.15);
+            --medium: #eab308;
+            --medium-bg: rgba(234, 179, 8, 0.15);
+            --low: #3b82f6;
+            --low-bg: rgba(59, 130, 246, 0.15);
+            --success: #10b981;
+            --accent: #6366f1;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.4) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1.25rem 2rem;
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-badge {
+            background: linear-gradient(135deg, #ef4444 0%, #6366f1 100%);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .header-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .header-text p {
+            font-size: 0.825rem;
+            color: var(--text-secondary);
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            padding: 0.375rem 0.875rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.3); }
+        }
+
+        main {
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            backdrop-filter: blur(8px);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-val {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: var(--font-mono);
+        }
+
+        .critical-text { color: var(--critical); }
+        .high-text { color: var(--high); }
+        .medium-text { color: var(--medium); }
+        .accent-text { color: var(--accent); }
+
+        .feed-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .feed-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.4);
+        }
+
+        .feed-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .feed-controls {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .search-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.375rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.825rem;
+            outline: none;
+            width: 240px;
+        }
+
+        .search-box:focus {
+            border-color: var(--accent);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 600px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.875rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .sev-CRITICAL { background: var(--critical-bg); color: var(--critical); border: 1px solid var(--critical); }
+        .sev-HIGH { background: var(--high-bg); color: var(--high); border: 1px solid var(--high); }
+        .sev-MEDIUM { background: var(--medium-bg); color: var(--medium); border: 1px solid var(--medium); }
+        .sev-LOW { background: var(--low-bg); color: var(--low); border: 1px solid var(--low); }
+
+        .tag-pill {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            padding: 0.2rem 0.45rem;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            margin-right: 0.25rem;
+        }
+
+        .code-snippet {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            word-break: break-all;
+        }
+
+        .user-tag {
+            color: #38bdf8;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-title">
+            <div class="logo-badge">🛡️</div>
+            <div class="header-text">
+                <h1>Linux Auditd SIEM Security Operations Center</h1>
+                <p>Real-Time Kernel Security Audit & Threat Correlator</p>
+            </div>
+        </div>
+        <div class="status-pill">
+            <div class="pulse-dot"></div>
+            <span id="siem-status">LIVE INGESTION ACTIVE</span>
+        </div>
+    </header>
+
+    <main>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span>Critical Incidents</span>
+                    <span>🚨</span>
+                </div>
+                <div class="metric-val critical-text" id="stat-critical">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span>High Severity</span>
+                    <span>⚠️</span>
+                </div>
+                <div class="metric-val high-text" id="stat-high">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span>Medium Severity</span>
+                    <span>⚡</span>
+                </div>
+                <div class="metric-val medium-text" id="stat-medium">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span>Total Correlated Events</span>
+                    <span>📊</span>
+                </div>
+                <div class="metric-val accent-text" id="stat-total">0</div>
+            </div>
+        </div>
+
+        <div class="feed-container">
+            <div class="feed-header">
+                <div class="feed-title">
+                    <span>🔴 Live Security Threat Feed</span>
+                </div>
+                <div class="feed-controls">
+                    <input type="text" id="filter-input" class="search-box" placeholder="Filter by rule, path, user...">
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Severity</th>
+                            <th>Timestamp</th>
+                            <th>Rule Key</th>
+                            <th>Target File / Syscall</th>
+                            <th>Command / Process Line</th>
+                            <th>User (AUID/EUID)</th>
+                            <th>MITRE Technique</th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-tbody">
+                        <tr>
+                            <td colspan="7" class="empty-state">Waiting for security events from log shipper...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        DevOps & SRE Mini-Projects &bull; 09-10 Linux Auditd Security Log Analysis &bull; Elastic Common Schema (ECS)
+    </footer>
+
+    <script>
+        let allEvents = [];
+
+        async function fetchEvents() {
+            try {
+                const res = await fetch('/api/alerts');
+                if (res.ok) {
+                    allEvents = await res.json();
+                    renderEvents();
+                }
+            } catch (err) {
+                console.error("Failed to fetch alerts:", err);
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                if (res.ok) {
+                    const stats = await res.json();
+                    document.getElementById('stat-critical').innerText = stats.critical || 0;
+                    document.getElementById('stat-high').innerText = stats.high || 0;
+                    document.getElementById('stat-medium').innerText = stats.medium || 0;
+                    document.getElementById('stat-total').innerText = stats.total || 0;
+                }
+            } catch (err) {
+                console.error("Failed to fetch stats:", err);
+            }
+        }
+
+        function renderEvents() {
+            const tbody = document.getElementById('events-tbody');
+            const filter = document.getElementById('filter-input').value.toLowerCase();
+
+            const filtered = allEvents.filter(ev => {
+                const haystack = JSON.stringify(ev).toLowerCase();
+                return haystack.includes(filter);
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No matching security events detected.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(ev => {
+                const sev = ev.rule?.threat_level || 'MEDIUM';
+                const ts = ev.timestamp || new Date().toISOString();
+                const key = ev.rule?.name || 'unknown_rule';
+                const target = ev.file?.path || ev.syscall || 'N/A';
+                const cmd = ev.process?.command_line || ev.process?.name || 'N/A';
+                const user = `auid:${ev.user?.audit_id || 'unset'} / uid:${ev.user?.id || '0'}`;
+                const mitre = ev.rule?.mitre_technique || 'T1059';
+
+                return `
+                    <tr>
+                        <td><span class="severity-badge sev-${sev}">${sev}</span></td>
+                        <td style="color: var(--text-secondary); font-size: 0.75rem; font-family: var(--font-mono);">${ts}</td>
+                        <td><span class="tag-pill">${key}</span></td>
+                        <td><span class="code-snippet">${target}</span></td>
+                        <td><span class="code-snippet">${cmd}</span></td>
+                        <td><span class="user-tag">${user}</span></td>
+                        <td><span class="tag-pill" style="background: rgba(239, 68, 68, 0.1); color: #fca5a5;">${mitre}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('filter-input').addEventListener('input', renderEvents);
+
+        setInterval(() => {
+            fetchEvents();
+            fetchStats();
+        }, 2000);
+
+        fetchEvents();
+        fetchStats();
+    </script>
+</body>
+</html>

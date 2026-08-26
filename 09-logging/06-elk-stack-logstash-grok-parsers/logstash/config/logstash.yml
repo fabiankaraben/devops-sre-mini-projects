@@ -1,0 +1,8 @@
+# ==============================================================================
+# Logstash Server Configuration
+# ==============================================================================
+http.host: "0.0.0.0"
+http.port: 9600
+xpack.monitoring.enabled: false
+pipeline.ecs_compatibility: disabled
+log.level: info

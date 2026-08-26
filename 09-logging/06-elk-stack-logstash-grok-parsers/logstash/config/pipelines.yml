@@ -1,0 +1,7 @@
+# ==============================================================================
+# Logstash Multi-Pipeline Definition
+# ==============================================================================
+- pipeline.id: elk-grok-pipeline
+  path.config: "/usr/share/logstash/pipeline/logstash.conf"
+  pipeline.workers: 2
+  pipeline.batch.size: 125

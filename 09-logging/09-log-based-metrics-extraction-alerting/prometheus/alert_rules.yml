@@ -1,0 +1,13 @@
+groups:
+  - name: log-extracted-metrics
+    rules:
+      - alert: NginxLogMetric500Spike
+        expr: sum(rate(promtail_custom_nginx_http_requests_total{status=~"5.."}[5m])) > 0.05
+        for: 0s
+        labels:
+          severity: critical
+          source: prometheus-promtail-metric
+          team: sre-traffic
+        annotations:
+          summary: "HTTP 500 error rate spike detected via Promtail log metric"
+          description: "Log-extracted metric 5xx error rate is {{ $value }} errors/sec."

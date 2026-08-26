@@ -1,0 +1,52 @@
+# ==============================================================================
+# Docker Compose: Mini-Project 09-10 Linux Auditd Security Event Log Analysis
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. SIEM Analytics Server & Security Operations Center (SOC) Dashboard (:9099)
+  # ----------------------------------------------------------------------------
+  siem-dashboard:
+    build:
+      context: ./siem
+      dockerfile: Dockerfile
+    image: mini-proj-09-10-siem:local
+    container_name: audit-siem-dashboard
+    ports:
+      - "9099:9099"
+    networks:
+      - audit-siem-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9099/api/health')\" || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+      start_period: 3s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 2. Linux Auditd Log Shipper & Correlation Parser
+  # ----------------------------------------------------------------------------
+  audit-shipper:
+    build:
+      context: ./shipper
+      dockerfile: Dockerfile
+    image: mini-proj-09-10-shipper:local
+    container_name: audit-siem-shipper
+    volumes:
+      - audit_logs:/var/log/audit
+    networks:
+      - audit-siem-net
+    depends_on:
+      siem-dashboard:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  audit_logs:
+    name: audit_logs_data
+
+networks:
+  audit-siem-net:
+    name: audit-siem-net
+    driver: bridge

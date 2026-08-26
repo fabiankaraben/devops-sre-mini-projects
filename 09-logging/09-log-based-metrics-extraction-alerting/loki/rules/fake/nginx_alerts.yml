@@ -1,0 +1,13 @@
+groups:
+  - name: nginx-logql-alerts
+    rules:
+      - alert: NginxHighErrorRateLogQL
+        expr: sum(rate({app="nginx"} |= "500" [5m])) > 0.05
+        for: 0s
+        labels:
+          severity: critical
+          source: loki-ruler
+          team: sre-observability
+        annotations:
+          summary: "Nginx 500 error rate spike detected directly from raw logs"
+          description: "LogQL rate extraction detected {{ $value }} errors/sec over the last 5 minutes."

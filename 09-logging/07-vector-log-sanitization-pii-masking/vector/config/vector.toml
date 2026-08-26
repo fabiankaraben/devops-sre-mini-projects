@@ -1,0 +1,140 @@
+# ==============================================================================
+# Vector Pipeline Configuration: High-Throughput Log Sanitization & PII Masking
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Global API & Health Monitoring
+# ------------------------------------------------------------------------------
+[api]
+enabled = true
+address = "0.0.0.0:8686"
+playground = false
+
+# ------------------------------------------------------------------------------
+# 2. Input Sources
+# ------------------------------------------------------------------------------
+# Ingest structured & raw logs via HTTP REST POST
+[sources.source_http]
+type = "http_server"
+address = "0.0.0.0:8080"
+path = "/"
+encoding = "text"
+
+# Ingest high-speed raw log streams via TCP socket
+[sources.source_tcp]
+type = "socket"
+address = "0.0.0.0:9000"
+mode = "tcp"
+decoding.codec = "bytes"
+
+# ------------------------------------------------------------------------------
+# 3. Telemetry Transformations: VRL (Vector Remap Language) Sanitizer
+# ------------------------------------------------------------------------------
+[transforms.sanitize_pii]
+type = "remap"
+inputs = ["source_http", "source_tcp"]
+source = '''
+# ------------------------------------------------------------------------------
+# Stage 1: Dynamic JSON Payload Decoding
+# ------------------------------------------------------------------------------
+# If .message contains a serialized JSON string, parse and unpack its fields
+if is_string(.message) {
+    parsed, err = parse_json(.message)
+    if err == null && is_object(parsed) {
+        . = merge!(., parsed)
+        del(.message)
+    }
+}
+
+# ------------------------------------------------------------------------------
+# Stage 2: Direct High-Risk Field Redaction
+# ------------------------------------------------------------------------------
+if exists(.password) { .password = "[REDACTED]" }
+if exists(.password_confirmation) { .password_confirmation = "[REDACTED]" }
+if exists(.api_key) { .api_key = "[REDACTED_API_KEY]" }
+if exists(.secret) { .secret = "[REDACTED_SECRET]" }
+if exists(.cvv) { .cvv = "[REDACTED_CVV]" }
+if exists(.cvv2) { .cvv2 = "[REDACTED_CVV]" }
+if exists(.security_code) { .security_code = "[REDACTED_CVV]" }
+if exists(.authorization) { .authorization = "[REDACTED_AUTH_HEADER]" }
+if exists(.auth_token) { .auth_token = "[REDACTED_TOKEN]" }
+if exists(.access_token) { .access_token = "[REDACTED_TOKEN]" }
+if exists(.bearer_token) { .bearer_token = "[REDACTED_TOKEN]" }
+
+# ------------------------------------------------------------------------------
+# Stage 3: Regex Masking on Discrete Structured Fields
+# ------------------------------------------------------------------------------
+# 1. Credit Card Numbers (Visa, MasterCard, Amex, Discover, standard 13-16 digits)
+if exists(.credit_card) {
+    .credit_card = replace(to_string!(.credit_card), r'\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12}|(?:[0-9]{4}[ -]?){3}[0-9]{4})\b', "[REDACTED_CREDIT_CARD]")
+}
+if exists(.card_number) {
+    .card_number = replace(to_string!(.card_number), r'\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12}|(?:[0-9]{4}[ -]?){3}[0-9]{4})\b', "[REDACTED_CREDIT_CARD]")
+}
+
+# 2. Social Security Numbers (SSN: Format xxx-xx-xxxx)
+if exists(.ssn) {
+    .ssn = replace(to_string!(.ssn), r'\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b', "[REDACTED_SSN]")
+}
+
+# 3. Email Addresses (Format user@domain.tld)
+if exists(.email) {
+    .email = replace(to_string!(.email), r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', "[REDACTED_EMAIL]")
+}
+
+# 4. Phone Numbers (US & International formats)
+if exists(.phone) {
+    .phone = replace(to_string!(.phone), r'\b(?:\+?1[-. ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})\b', "[REDACTED_PHONE]")
+}
+if exists(.phone_number) {
+    .phone_number = replace(to_string!(.phone_number), r'\b(?:\+?1[-. ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})\b', "[REDACTED_PHONE]")
+}
+
+# ------------------------------------------------------------------------------
+# Stage 4: Deep in-place Sanitization for Unstructured Messages & Text Strings
+# ------------------------------------------------------------------------------
+if exists(.message) && is_string(.message) {
+    msg = to_string!(.message)
+    # Mask credit cards
+    msg = replace(msg, r'\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12}|(?:[0-9]{4}[ -]?){3}[0-9]{4})\b', "[REDACTED_CREDIT_CARD]")
+    # Mask SSNs
+    msg = replace(msg, r'\b[0-9]{3}-[0-9]{2}-[0-9]{4}\b', "[REDACTED_SSN]")
+    # Mask Emails
+    msg = replace(msg, r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', "[REDACTED_EMAIL]")
+    # Mask Bearer JWT tokens
+    msg = replace(msg, r'eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+', "[REDACTED_JWT]")
+    # Mask Key-Value pairs in text strings
+    msg = replace(msg, r'(?i)password\s*[:=]\s*\S+', "password=[REDACTED]")
+    msg = replace(msg, r'(?i)secret\s*[:=]\s*\S+', "secret=[REDACTED]")
+    msg = replace(msg, r'(?i)api[_-]?key\s*[:=]\s*\S+', "api_key=[REDACTED]")
+    msg = replace(msg, r'(?i)token\s*[:=]\s*\S+', "token=[REDACTED]")
+    msg = replace(msg, r'(?i)cvv[2]?\s*[:=]\s*\S+', "cvv=[REDACTED]")
+    msg = replace(msg, r'(?i)authorization\s*[:=]\s*Bearer\s+\S+', "authorization=[REDACTED_AUTH_HEADER]")
+    # Mask phone numbers
+    msg = replace(msg, r'\b(?:\+?1[-. ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})\b', "[REDACTED_PHONE]")
+    .message = msg
+}
+
+# ------------------------------------------------------------------------------
+# Stage 5: Security Compliance & Audit Metadata Tagging
+# ------------------------------------------------------------------------------
+._sanitized = true
+._sanitizer = "vector-vrl"
+._sanitized_at = now()
+'''
+
+# ------------------------------------------------------------------------------
+# 4. Output Sinks
+# ------------------------------------------------------------------------------
+# Primary Sink: Persist sanitized NDJSON records to file
+[sinks.sink_file]
+type = "file"
+inputs = ["sanitize_pii"]
+path = "/var/log/vector/sanitized.log"
+encoding.codec = "json"
+
+# Secondary Sink: Stream formatted sanitized JSON to stdout console for container inspection
+[sinks.sink_stdout]
+type = "console"
+inputs = ["sanitize_pii"]
+encoding.codec = "json"

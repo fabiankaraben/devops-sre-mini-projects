@@ -1,0 +1,15 @@
+# ==============================================================================
+# Custom Grok Patterns for Logstash Pipeline
+# ==============================================================================
+
+# Extended Nginx Access Log format with request latency in milliseconds
+NGINX_ACCESS_EXTENDED %{IPORHOST:client_ip} - %{DATA:auth_user} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:request_method} %{NOTSPACE:request_path}(?: HTTP/%{NUMBER:http_version})?|%{DATA:raw_request})" %{NUMBER:response_code:int} (?:%{NUMBER:bytes_sent:int}|-) "(?:%{DATA:referrer}|-)" "(?:%{DATA:user_agent}|-)" %{NUMBER:request_time_ms:float}
+
+# Standard Apache Combined Access Log with flexible dash/null values
+APACHE_COMBINED_CUSTOM %{IPORHOST:client_ip} %{DATA:ident} %{DATA:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:request_method} %{NOTSPACE:request_path}(?: HTTP/%{NUMBER:http_version})?|%{DATA:raw_request})" %{NUMBER:response_code:int} (?:%{NUMBER:bytes_sent:int}|-) "(?:%{DATA:referrer}|-)" "(?:%{DATA:user_agent}|-)"
+
+# Standard Apache Common Access Log (without referrer and user-agent)
+APACHE_COMMON_CUSTOM %{IPORHOST:client_ip} %{DATA:ident} %{DATA:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:request_method} %{NOTSPACE:request_path}(?: HTTP/%{NUMBER:http_version})?|%{DATA:raw_request})" %{NUMBER:response_code:int} (?:%{NUMBER:bytes_sent:int}|-)
+
+# Microservice Application Structured Format: 2026-08-26T12:00:00.000Z [INFO] [order-service] [trace-123] Message
+APP_LOG_FORMAT %{TIMESTAMP_ISO8601:log_timestamp} \[%{LOGLEVEL:log_level}\] \[%{DATA:service_name}\] (?:\[%{DATA:trace_id}\] )?%{GREEDYDATA:log_message}

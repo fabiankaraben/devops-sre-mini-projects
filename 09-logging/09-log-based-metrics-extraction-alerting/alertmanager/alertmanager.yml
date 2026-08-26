@@ -1,0 +1,12 @@
+global:
+  resolve_timeout: 1m
+
+route:
+  group_by: ['alertname', 'severity', 'job']
+  group_wait: 2s
+  group_interval: 5s
+  repeat_interval: 10m
+  receiver: default-receiver
+
+receivers:
+  - name: default-receiver

@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # Scrape log-extracted metrics from Promtail
+  - job_name: promtail
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - promtail:9080
+
+  # Scrape Loki internal and ruler metrics
+  - job_name: loki
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - loki:3100
+
+  # Self-scrape Prometheus server
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090

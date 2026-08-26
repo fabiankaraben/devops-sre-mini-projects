@@ -1,0 +1,25 @@
+{
+  "index_patterns": ["app-telemetry-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "plugins.index_state_management.rollover_alias": "app-telemetry-write"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "service": { "type": "keyword" },
+        "log_level": { "type": "keyword" },
+        "environment": { "type": "keyword" },
+        "status_code": { "type": "integer" },
+        "response_time_ms": { "type": "float" },
+        "message": { "type": "text" }
+      }
+    },
+    "aliases": {
+      "app-telemetry": {}
+    }
+  },
+  "priority": 100
+}

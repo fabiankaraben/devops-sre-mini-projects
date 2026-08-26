@@ -1,0 +1,38 @@
+# ==============================================================================
+# Docker Compose: Mini-Project 09-07 Vector Log Sanitization and PII Masking
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Vector High-Throughput Telemetry Pipeline & PII Sanitizer
+  # ----------------------------------------------------------------------------
+  vector:
+    build:
+      context: ./vector
+      dockerfile: Dockerfile
+    image: mini-proj-09-07-vector:local
+    container_name: vector-sanitizer
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+      - "8686:8686"
+    volumes:
+      - vector_sanitized_data:/var/log/vector
+    networks:
+      - vector-sanitizer-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8686/health 2>/dev/null | grep -q 'ok' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  vector_sanitized_data:
+    name: vector_sanitized_data
+
+networks:
+  vector-sanitizer-net:
+    name: vector-sanitizer-net
+    driver: bridge

@@ -1,0 +1,47 @@
+[
+  {
+    "@timestamp": "2026-08-26T15:00:00Z",
+    "service": "checkout-api",
+    "environment": "production",
+    "log_level": "INFO",
+    "status_code": 200,
+    "response_time_ms": 42.5,
+    "message": "Payment transaction processed successfully for order #8841"
+  },
+  {
+    "@timestamp": "2026-08-26T15:00:05Z",
+    "service": "auth-gateway",
+    "environment": "production",
+    "log_level": "WARN",
+    "status_code": 401,
+    "response_time_ms": 11.2,
+    "message": "JWT token expired for user session usr_8829"
+  },
+  {
+    "@timestamp": "2026-08-26T15:00:10Z",
+    "service": "order-service",
+    "environment": "production",
+    "log_level": "INFO",
+    "status_code": 201,
+    "response_time_ms": 95.8,
+    "message": "New order #8842 created and queued for fulfillment"
+  },
+  {
+    "@timestamp": "2026-08-26T15:00:15Z",
+    "service": "inventory-svc",
+    "environment": "production",
+    "log_level": "ERROR",
+    "status_code": 500,
+    "response_time_ms": 320.1,
+    "message": "Database connection pool timeout while decrementing stock"
+  },
+  {
+    "@timestamp": "2026-08-26T15:00:20Z",
+    "service": "payment-webhook",
+    "environment": "production",
+    "log_level": "INFO",
+    "status_code": 200,
+    "response_time_ms": 28.3,
+    "message": "Stripe webhook event 'charge.succeeded' delivered"
+  }
+]

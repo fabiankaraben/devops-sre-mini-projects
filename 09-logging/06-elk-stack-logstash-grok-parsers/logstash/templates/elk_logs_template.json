@@ -1,0 +1,135 @@
+{
+  "index_patterns": ["elk-logs-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "refresh_interval": "1s"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "@version": {
+          "type": "keyword"
+        },
+        "client_ip": {
+          "type": "ip"
+        },
+        "request_method": {
+          "type": "keyword"
+        },
+        "request_path": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text"
+            }
+          }
+        },
+        "http_version": {
+          "type": "keyword"
+        },
+        "response_code": {
+          "type": "integer"
+        },
+        "bytes_sent": {
+          "type": "long"
+        },
+        "request_time_ms": {
+          "type": "float"
+        },
+        "referrer": {
+          "type": "keyword"
+        },
+        "user_agent": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 512
+            }
+          }
+        },
+        "service_name": {
+          "type": "keyword"
+        },
+        "log_level": {
+          "type": "keyword"
+        },
+        "trace_id": {
+          "type": "keyword"
+        },
+        "log_message": {
+          "type": "text"
+        },
+        "tags": {
+          "type": "keyword"
+        },
+        "log_type": {
+          "type": "keyword"
+        },
+        "geoip": {
+          "properties": {
+            "ip": {
+              "type": "ip"
+            },
+            "location": {
+              "type": "geo_point"
+            },
+            "country_name": {
+              "type": "keyword"
+            },
+            "country_code2": {
+              "type": "keyword"
+            },
+            "country_code3": {
+              "type": "keyword"
+            },
+            "continent_code": {
+              "type": "keyword"
+            },
+            "region_name": {
+              "type": "keyword"
+            },
+            "city_name": {
+              "type": "keyword"
+            },
+            "postal_code": {
+              "type": "keyword"
+            },
+            "timezone": {
+              "type": "keyword"
+            },
+            "latitude": {
+              "type": "float"
+            },
+            "longitude": {
+              "type": "float"
+            }
+          }
+        },
+        "user_agent_details": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "os": {
+              "type": "keyword"
+            },
+            "os_name": {
+              "type": "keyword"
+            },
+            "device": {
+              "type": "keyword"
+            },
+            "version": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  }
+}

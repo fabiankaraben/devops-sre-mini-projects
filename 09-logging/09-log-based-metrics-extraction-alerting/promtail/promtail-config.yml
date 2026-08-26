@@ -1,0 +1,48 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          app: nginx
+          job: nginx-access
+          __path__: /var/log/nginx/access.log
+
+    pipeline_stages:
+      # Stage 1: Regex parse access log fields
+      - regex:
+          expression: '^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<method>\S+) (?P<path>\S+) (?P<protocol>[^"]+)" (?P<status>\d{3}) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)" (?P<request_time>[\d\.]+)$'
+
+      # Stage 2: Extract dynamic labels
+      - labels:
+          status:
+          method:
+
+      # Stage 3: Direct Prometheus Metrics Extraction
+      - metrics:
+          # Total HTTP Requests Counter with Dynamic Status & Method Labels
+          nginx_http_requests_total:
+            type: Counter
+            description: "Total number of HTTP requests processed by Nginx"
+            source: status
+            config:
+              action: inc
+
+          # Request Latency Histogram
+          nginx_request_duration_seconds:
+            type: Histogram
+            description: "Nginx HTTP request latency distribution in seconds"
+            source: request_time
+            config:
+              buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]

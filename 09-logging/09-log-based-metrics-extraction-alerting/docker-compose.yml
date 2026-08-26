@@ -1,0 +1,145 @@
+# ==============================================================================
+# Docker Compose: Mini-Project 09-09 Log-Based Metrics Extraction and Alerting
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Nginx Web Application with Structured Access Logs & Error Routes
+  # ----------------------------------------------------------------------------
+  nginx-app:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: mini-proj-09-09-nginx:local
+    container_name: log-alert-nginx
+    ports:
+      - "8080:8080"
+    volumes:
+      - shared_nginx_logs:/var/log/nginx
+    networks:
+      - log-metrics-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 2. Grafana Loki Log Aggregator with Built-In LogQL Ruler Alerting Engine
+  # ----------------------------------------------------------------------------
+  loki:
+    build:
+      context: ./loki
+      dockerfile: Dockerfile
+    image: mini-proj-09-09-loki:local
+    container_name: log-alert-loki
+    ports:
+      - "3100:3100"
+      - "9096:9096"
+    volumes:
+      - loki_data:/loki
+    networks:
+      - log-metrics-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/ready 2>/dev/null | grep -q 'ready' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 3. Promtail Log Shipper & Direct Prometheus Metrics Extractor (:9080)
+  # ----------------------------------------------------------------------------
+  promtail:
+    build:
+      context: ./promtail
+      dockerfile: Dockerfile
+    image: mini-proj-09-09-promtail:local
+    container_name: log-alert-promtail
+    ports:
+      - "9085:9080"
+    volumes:
+      - shared_nginx_logs:/var/log/nginx:ro
+    networks:
+      - log-metrics-net
+    depends_on:
+      loki:
+        condition: service_healthy
+      nginx-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9080/ready 2>/dev/null | grep -q 'Ready' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 4. Prometheus Server: Scrapes Log-Extracted Metrics & Evaluates Alerts
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    image: mini-proj-09-09-prometheus:local
+    container_name: log-alert-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - log-metrics-net
+    depends_on:
+      promtail:
+        condition: service_healthy
+      alertmanager:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy 2>/dev/null | grep -q 'Healthy' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 5. Prometheus Alertmanager: Alert Deduplication, Grouping & Notification UI
+  # ----------------------------------------------------------------------------
+  alertmanager:
+    build:
+      context: ./alertmanager
+      dockerfile: Dockerfile
+    image: mini-proj-09-09-alertmanager:local
+    container_name: log-alert-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - alertmanager_data:/alertmanager
+    networks:
+      - log-metrics-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9093/-/healthy 2>/dev/null | grep -q 'OK' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 25
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  shared_nginx_logs:
+    name: shared_nginx_logs
+  loki_data:
+    name: loki_log_data
+  prometheus_data:
+    name: prometheus_log_data
+  alertmanager_data:
+    name: alertmanager_log_data
+
+networks:
+  log-metrics-net:
+    name: log-metrics-net
+    driver: bridge
