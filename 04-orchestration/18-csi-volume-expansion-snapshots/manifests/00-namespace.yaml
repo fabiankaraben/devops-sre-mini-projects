@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage-demo
+  labels:
+    app.kubernetes.io/part-of: csi-storage-demo
+    pod-security.kubernetes.io/enforce: baseline

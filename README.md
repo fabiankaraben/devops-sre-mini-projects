@@ -2,7 +2,7 @@
 
 Welcome to **DevOps & SRE mini-projects** — an educational, challenge-driven repository designed to build and sharpen practical skills across the entire DevOps, Cloud Infrastructure, and Site Reliability Engineering (SRE) lifecycle.
 
-This repository serves as a progressive, hands-on learning roadmap and portfolio containing **120 structured mini-projects** organized into **12 technical domains** (10 challenges per domain, ordered progressively from foundational concepts to advanced production-grade architectures). Rather than focusing only on theory, each challenge models real-world engineering scenarios with self-contained companion workload generators, failure simulators, and automated verification procedures.
+This repository serves as a progressive, hands-on learning roadmap and portfolio containing **130 structured mini-projects** organized into **12 technical domains** (ordered progressively from foundational concepts to advanced production-grade architectures). Rather than focusing only on theory, each challenge models real-world engineering scenarios with self-contained companion workload generators, failure simulators, and automated verification procedures.
 
 ## What you will find in this repository
 
@@ -423,6 +423,109 @@ This repository serves as a progressive, hands-on learning roadmap and portfolio
     🏗️ **Infrastructure**: Local (K3s / K3d cluster + Kubebuilder / `envtest` suite)  
     🧪 **Testing**: Apply a `ScheduledBackup` custom resource; verify that the operator creates the backing CronJob/Pod, updates the CR status conditions, and cleans up upon deletion.  
     🔹 [Project directory](04-orchestration/10-custom-kubernetes-operator-kubebuilder)
+
+11. **Multi-Environment Manifest Management with Kustomize**  
+    🔹 **Goal & Context**: Manage multi-environment Kubernetes deployments (development, staging, and production) cleanly without duplication using Kustomize overlays, secret and config generators with hash suffixes, strategic merge patches, and JSON 6902 patches.  
+    📦 **Deliverables & Scope**:  
+    - `base/`: Base Kubernetes manifests (`deployment.yaml`, `service.yaml`, `kustomization.yaml`).  
+    - `overlays/development/`, `overlays/staging/`, `overlays/production/`: Environment-specific overlays with replica overrides, resource limits, namespace prefixing, and `configMapGenerator`/`secretGenerator`.  
+    - `validate_kustomize.sh`: Automation script executing `kubectl kustomize` for each environment and validating output diffs.  
+    🏗️ **Infrastructure**: Local (K3s / K3d / OrbStack Kubernetes / Kubectl)  
+    🧪 **Testing**: Run `validate_kustomize.sh`; verify that the production overlay generates 5 replicas with prod secrets while dev generates 1 replica with dev configs and debug flags enabled.  
+    🔹 [Project directory](04-orchestration/11-multi-environment-kustomize-overlays)
+
+12. **Advanced Pod Scheduling: Node Affinity, Taints, and Tolerations**  
+    🔹 **Goal & Context**: Control workload placement across heterogeneous Kubernetes nodes using Node Selectors, Node Affinity (`requiredDuringSchedulingIgnoredDuringExecution` vs `preferredDuringSchedulingIgnoredDuringExecution`), Pod Anti-Affinity for high-availability spread, and Taints and Tolerations for dedicated/specialized nodes (e.g. GPU, high-memory, spot instances).  
+    📦 **Deliverables & Scope**:  
+    - `taints_and_tolerations.yaml`: Pods configured with tolerations (`key=gpu:NoSchedule`, `key=spot:NoExecute`) matching tainted nodes.  
+    - `node_affinity.yaml`: Deployment with strict and preferred node affinity rules and `podAntiAffinity` (spreading pods across topology keys like `kubernetes.io/hostname` and failure domains).  
+    - `node_setup.sh`: Script labeling (`env=gpu`, `tier=frontend`) and tainting test cluster nodes.  
+    - `verify_scheduling.sh`: Verification script asserting exact node placements and scheduling rejection on unmatched taints.  
+    🏗️ **Infrastructure**: Local (Multi-node K3d / Kind cluster)  
+    🧪 **Testing**: Execute `verify_scheduling.sh`; verify that GPU pods land exclusively on tainted GPU nodes, standard pods are rejected from tainted nodes, and frontend pods spread across distinct physical nodes.  
+    🔹 [Project directory](04-orchestration/12-pod-scheduling-node-affinity-taints)
+
+13. **DaemonSets and Node-Level System Agents**  
+    🔹 **Goal & Context**: Deploy and manage node-level system agents (e.g. log collector, security auditor, node exporter) across all worker and control-plane nodes using Kubernetes DaemonSets, tolerating master/control-plane taints and configuring RollingUpdate update strategies with `maxUnavailable`.  
+    📦 **Deliverables & Scope**:  
+    - `daemonset.yaml`: DaemonSet definition mounting host filesystem (`/var/log`, `/proc`, `/sys`), running with appropriate security contexts, and tolerations for control-plane nodes (`node-role.kubernetes.io/control-plane:NoSchedule`).  
+    - `node_agent.py` / `node_agent.sh`: Lightweight agent gathering host stats and streaming to stdout.  
+    - `daemonset_rollout_test.sh`: Script testing rolling updates and verifying pod scheduling when new nodes are dynamically added or cordoned.  
+    🏗️ **Infrastructure**: Local (Multi-node K3d / Kind cluster)  
+    🧪 **Testing**: Apply the DaemonSet; verify that exactly one pod runs on every cluster node (including control-plane), and verify zero-downtime rolling updates when updating agent image version.  
+    🔹 [Project directory](04-orchestration/13-daemonsets-node-level-agents)
+
+14. **Static Pods and Control Plane Bootstrap Diagnostics**  
+    🔹 **Goal & Context**: Understand how Kubernetes bootstraps and operates without API server reliance by configuring, managing, and troubleshooting Static Pods directly supervised by the local Kubelet via `/etc/kubernetes/manifests`, and observing mirror pods created in the API server.  
+    📦 **Deliverables & Scope**:  
+    - `static-web.yaml`: Static pod manifest configured directly in the kubelet manifest directory.  
+    - `bootstrap_static_pods.sh`: Script provisioning static pod manifests into the kubelet search path and inspecting kubelet systemd service logs.  
+    - `mirror_pod_audit.sh`: Script testing mirror pod creation in `kubectl get pods`, verifying immutability via `kubectl delete`, and testing kubelet self-healing when the process is killed.  
+    🏗️ **Infrastructure**: Local (OrbStack Linux VM running K3s/Kubelet or Kind node container)  
+    🧪 **Testing**: Drop `static-web.yaml` into `/etc/kubernetes/manifests`; verify that the kubelet immediately spins up the container, mirror pod appears in `kubectl`, and attempting to delete it via API server automatically recreates it.  
+    🔹 [Project directory](04-orchestration/14-static-pods-control-plane-diagnostics)
+
+15. **Pod Priority Classes, Preemption, and Resource Quotas**  
+    🔹 **Goal & Context**: Guarantee service availability for critical production workloads during cluster resource starvation by implementing Kubernetes PriorityClasses (`high-priority`, `batch-low-priority`), preemption policies, and namespace-level ResourceQuotas and LimitRanges.  
+    📦 **Deliverables & Scope**:  
+    - `priority_classes.yaml`: `PriorityClass` resources (`critical-prod` with value 1000000 and `preemptLowerPriority`, `batch-workload` with value 1000 and `preemptionPolicy: Never`).  
+    - `resource_quota.yaml` & `limit_range.yaml`: Namespace limits constraining CPU/memory allocations.  
+    - `starvation_test.sh`: Script filling cluster CPU capacity with low-priority pods, then deploying a high-priority pod to trigger automated eviction and preemption.  
+    🏗️ **Infrastructure**: Local (K3s / K3d / Kind cluster with resource constraints)  
+    🧪 **Testing**: Run `starvation_test.sh`; observe low-priority batch pods transitioning to `Terminating`/`Evicted` and verify that the high-priority pod immediately transitions from `Pending` to `Running`.  
+    🔹 [Project directory](04-orchestration/15-priority-classes-preemption-quotas)
+
+16. **Kubernetes Cluster Logging with Fluent Bit / Vector DaemonSet**  
+    🔹 **Goal & Context**: Build an end-to-end container logging architecture in Kubernetes by deploying a Fluent Bit or Vector DaemonSet that tails `/var/log/pods`, enriches log records with Kubernetes metadata (pod, namespace, labels), filters sensitive data, and ships structured JSON logs to a centralized sink.  
+    📦 **Deliverables & Scope**:  
+    - `fluentbit-daemonset.yaml` (or `vector-daemonset.yaml`): DaemonSet configuration with custom parser pipelines, Kubernetes filter plugin, multi-line log parsing, and output buffering.  
+    - `log_generator_app/`: Application producing multi-line stack traces and JSON structured logs.  
+    - `verify_log_pipeline.sh`: Script tailing sink logs and asserting full metadata enrichment and regex parsing.  
+    🏗️ **Infrastructure**: Local (K3s / K3d / Kind cluster + Mock Log Sink / Elasticsearch / Loki)  
+    🧪 **Testing**: Deploy the log generator; run `verify_log_pipeline.sh` and verify that logs collected from `/var/log/pods` contain enriched namespace/pod labels and multi-line Java/Python stack traces are assembled into single log events.  
+    🔹 [Project directory](04-orchestration/16-cluster-logging-fluentbit-vector)
+
+17. **Kubernetes Cluster Monitoring and Alerting with Prometheus Operator**  
+    🔹 **Goal & Context**: Deploy a production-grade Kubernetes monitoring stack using the Prometheus Operator (`kube-prometheus-stack`), instrumenting applications using Custom Resource Definitions (`ServiceMonitor`, `PodMonitor`, `PrometheusRule`), and creating automated alerts and Grafana dashboards.  
+    📦 **Deliverables & Scope**:  
+    - `kube-prometheus-stack` values configuration or operator manifests.  
+    - `servicemonitor.yaml` & `podmonitor.yaml`: CRDs targeting application metric endpoints (`/metrics`).  
+    - `prometheus_rules.yaml`: Alerting rules triggering on high error rates (HTTP 5xx > 5%) and pod crash loops (`CrashLoopBackOff`).  
+    - `alert_test_generator.sh`: Script generating synthetic errors to trip alert thresholds and verifying firing alerts in Prometheus / Alertmanager.  
+    🏗️ **Infrastructure**: Local (K3s / K3d / Kind cluster + Prometheus Operator)  
+    🧪 **Testing**: Execute `alert_test_generator.sh`; check Prometheus UI and Alertmanager to confirm `HighHttpErrorRate` transitions from `Pending` to `Firing` and verify Grafana dashboard visualization.  
+    🔹 [Project directory](04-orchestration/17-monitoring-prometheus-operator-servicemonitor)
+
+18. **CSI Storage, Dynamic Volume Expansion, and Volume Snapshots**  
+    🔹 **Goal & Context**: Implement advanced Kubernetes storage lifecycle management using the Container Storage Interface (CSI), enabling dynamic volume provisioning, online PVC expansion without pod recreation, and crash-consistent VolumeSnapshots with point-in-time restore.  
+    📦 **Deliverables & Scope**:  
+    - `storageclass.yaml` with `allowVolumeExpansion: true` and reclaim policies (`Delete`/`Retain`).  
+    - `volume_snapshot_class.yaml` and `volumesnapshot.yaml`: CSI snapshot manifests.  
+    - `data_state_app.yaml`: Stateful workload continuously appending timestamped data to `/data`.  
+    - `snapshot_restore_pipeline.sh`: Script creating a snapshot, modifying live state, creating a new PVC from the snapshot dataSource, and verifying data restoration to the snapshot point.  
+    🏗️ **Infrastructure**: Local (K3d / Kind with CSI HostPath or K3s local-path with snapshotter CRDs)  
+    🧪 **Testing**: Run `snapshot_restore_pipeline.sh`; write data, trigger a VolumeSnapshot, modify the volume, restore to a new PVC, and assert exact point-in-time data parity.  
+    🔹 [Project directory](04-orchestration/18-csi-volume-expansion-snapshots)
+
+19. **Next-Generation Traffic Routing with Kubernetes Gateway API**  
+    🔹 **Goal & Context**: Modernize Kubernetes ingress networking by implementing the Kubernetes Gateway API specification (replacing legacy Ingress) using Envoy Gateway or Traefik, configuring `GatewayClass`, `Gateway`, `HTTPRoute`, path rewriting, header routing, and weighted traffic splits.  
+    📦 **Deliverables & Scope**:  
+    - Gateway API CRD manifests: `gateway.yaml` and `http_routes.yaml` managing multi-service routing (`/api/v1` vs `/api/v2`), header-based routing (`x-canary: true`), and response header transformations.  
+    - 2 backend microservices with distinct versions.  
+    - `gateway_traffic_test.sh`: Automated test suite testing routing policies, URL rewrites, and 80/20 traffic weight splits.  
+    🏗️ **Infrastructure**: Local (K3s / K3d / Kind with Gateway API CRDs and Envoy Gateway / Traefik)  
+    🧪 **Testing**: Execute `gateway_traffic_test.sh`; verify that requests route according to HTTPRoute rules, header-based canary matching directs traffic cleanly, and custom response headers are injected by the Gateway.  
+    🔹 [Project directory](04-orchestration/19-kubernetes-gateway-api-traffic-routing)
+
+20. **Application Lifecycle: Init Containers, Lifecycle Hooks, and Pod Disruption Budgets**  
+    🔹 **Goal & Context**: Master advanced Kubernetes pod lifecycle management by implementing `initContainers` for dependency checking and database schema migrations, `postStart` and `preStop` lifecycle hooks for graceful connection draining, and `PodDisruptionBudget` (PDB) to ensure high availability during cluster upgrades and node drains.  
+    📦 **Deliverables & Scope**:  
+    - `lifecycle_deployment.yaml`: Deployment featuring init containers (waiting for DB TCP availability), `preStop` hook executing `sleep 15` and graceful shutdown script, and `terminationGracePeriodSeconds: 30`.  
+    - `pdb.yaml`: `PodDisruptionBudget` enforcing `minAvailable: 2` (or `maxUnavailable: 1`).  
+    - `node_drain_simulation.sh`: Script initiating `kubectl drain` on worker nodes while firing continuous traffic to verify zero dropped requests during voluntary disruptions.  
+    🏗️ **Infrastructure**: Local (Multi-node K3d / Kind cluster)  
+    🧪 **Testing**: Execute `node_drain_simulation.sh`; verify that the init container gates pod startup until database dependency is green, the `preStop` hook drains inflight connections cleanly, and PDB prevents draining if minimum availability threshold is breached.  
+    🔹 [Project directory](04-orchestration/20-app-lifecycle-hooks-pdb-graceful-shutdown)
 
 ---
 

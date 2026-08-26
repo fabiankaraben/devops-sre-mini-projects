@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lifecycle-demo
+  labels:
+    app.kubernetes.io/part-of: lifecycle-demo
+    pod-security.kubernetes.io/enforce: baseline

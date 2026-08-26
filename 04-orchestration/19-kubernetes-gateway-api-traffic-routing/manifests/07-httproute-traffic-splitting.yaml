@@ -1,0 +1,24 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: traffic-splitting-route
+  namespace: gateway-apps
+  labels:
+    route.tier: weighted-rollout
+spec:
+  parentRefs:
+    - name: production-gateway
+      namespace: gateway-infra
+  hostnames:
+    - "rollout.example.local"
+  rules:
+    - backendRefs:
+        # 80% of traffic directed to stable v1
+        - name: v1-service
+          port: 8080
+          weight: 80
+
+        # 20% canary traffic directed to new v2
+        - name: v2-service
+          port: 8080
+          weight: 20

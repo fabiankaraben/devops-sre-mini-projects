@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-service
+  namespace: lifecycle-demo
+  labels:
+    app.kubernetes.io/name: database-service
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-service
+  template:
+    metadata:
+      labels:
+        app: database-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: db
+          image: alpine:3.20
+          command:
+            - /bin/sh
+            - -c
+            - "echo 'Mock Postgres DB Ready' && nc -lk -p 5432 -e echo 'DB_OK'"
+          ports:
+            - name: postgres
+              containerPort: 5432
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-service
+  namespace: lifecycle-demo
+  labels:
+    app: database-service
+spec:
+  type: ClusterIP
+  selector:
+    app: database-service
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

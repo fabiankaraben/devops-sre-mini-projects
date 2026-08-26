@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restored-data-pvc
+  namespace: storage-demo
+  labels:
+    app.kubernetes.io/name: restored-data-validator
+    restore.source: app-data-snapshot
+spec:
+  storageClassName: csi-expandable-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  dataSource:
+    name: app-data-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: restored-data-validator
+  namespace: storage-demo
+  labels:
+    app.kubernetes.io/name: restored-data-validator
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+  restartPolicy: Never
+  containers:
+    - name: validator
+      image: data-state-app:v1.0.0
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: http
+          containerPort: 8080
+      env:
+        - name: DATA_DIR
+          value: "/data"
+        - name: PORT
+          value: "8080"
+      volumeMounts:
+        - name: restored-storage
+          mountPath: /data
+  volumes:
+    - name: restored-storage
+      persistentVolumeClaim:
+        claimName: restored-data-pvc

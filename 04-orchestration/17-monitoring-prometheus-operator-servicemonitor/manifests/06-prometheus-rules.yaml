@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: monitored-app-rules
+  namespace: monitoring
+  labels:
+    role: alert-rules
+    app.kubernetes.io/name: prometheus
+spec:
+  groups:
+    - name: app-service-alerts
+      rules:
+        - alert: HighHttpErrorRate
+          expr: (sum(rate(http_requests_total{code=~"5.."}[1m])) / sum(rate(http_requests_total[1m]))) * 100 > 5
+          for: 1m
+          labels:
+            severity: critical
+            tier: api
+          annotations:
+            summary: "High HTTP 5xx error rate detected"
+            description: "Service {{ $labels.app }} error rate is above 5% threshold (current value: {{ $value | printf \"%.2f\" }}%)."
+
+        - alert: AppLatencyHigh
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) > 0.2
+          for: 1m
+          labels:
+            severity: warning
+            tier: api
+          annotations:
+            summary: "High P95 response latency detected"
+            description: "P95 latency is exceeding 200ms threshold (current: {{ $value | printf \"%.3f\" }}s)."
+
+        - alert: AppServiceDown
+          expr: app_up == 0
+          for: 1m
+          labels:
+            severity: critical
+            tier: infrastructure
+          annotations:
+            summary: "Application instance is down"
+            description: "Instance {{ $labels.instance }} has stopped reporting health status."

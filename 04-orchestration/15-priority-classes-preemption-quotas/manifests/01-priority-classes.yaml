@@ -1,0 +1,26 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: critical-production
+value: 1000000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "Mission-critical production workloads that preempt lower tier pods during starvation."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: standard-tier
+value: 50000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: true
+description: "Default cluster priority for standard application workloads."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: batch-low-priority
+value: 1000
+preemptionPolicy: Never
+globalDefault: false
+description: "Non-critical batch jobs that yield resources and never preempt running pods."

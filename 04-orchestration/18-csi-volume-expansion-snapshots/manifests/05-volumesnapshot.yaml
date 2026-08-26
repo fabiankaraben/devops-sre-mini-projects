@@ -1,0 +1,12 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: app-data-snapshot
+  namespace: storage-demo
+  labels:
+    app.kubernetes.io/name: data-state-app
+    snapshot.tier: backup
+spec:
+  volumeSnapshotClassName: csi-snapshot-class
+  source:
+    persistentVolumeClaimName: app-data-pvc

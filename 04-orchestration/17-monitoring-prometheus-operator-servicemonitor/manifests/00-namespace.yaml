@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production-apps
+  labels:
+    environment: production
+    monitoring: enabled
+    pod-security.kubernetes.io/enforce: baseline

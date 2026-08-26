@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-service-strict-pdb
+  namespace: lifecycle-demo
+  labels:
+    app.kubernetes.io/name: order-service
+    disruption.tier: mission-critical
+spec:
+  minAvailable: 100%
+  selector:
+    matchLabels:
+      app: order-service

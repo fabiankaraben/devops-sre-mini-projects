@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data-pvc
+  namespace: storage-demo
+  labels:
+    app.kubernetes.io/name: data-state-app
+spec:
+  storageClassName: csi-expandable-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # Dynamically expanding storage from 1Gi to 2Gi online
+      storage: 2Gi

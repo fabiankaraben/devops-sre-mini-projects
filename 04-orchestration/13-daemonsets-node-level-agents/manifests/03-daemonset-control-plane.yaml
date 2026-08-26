@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-system-agent-clusterwide
+  namespace: node-monitoring
+  labels:
+    app.kubernetes.io/name: node-system-agent
+    app.kubernetes.io/tier: cluster-wide
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-system-agent
+      app.kubernetes.io/tier: cluster-wide
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-system-agent
+        app.kubernetes.io/tier: cluster-wide
+    spec:
+      serviceAccountName: node-agent-sa
+      hostPID: true
+      # Tolerations allowing the daemon to run on both worker AND control-plane nodes
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+      containers:
+        - name: agent
+          image: node-system-agent:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metrics
+              containerPort: 9100
+              protocol: TCP
+          env:
+            - name: AGENT_VERSION
+              value: "v1.0.0"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: host-proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: host-sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: host-log
+              mountPath: /var/log
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      volumes:
+        - name: host-proc
+          hostPath:
+            path: /proc
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: host-log
+          hostPath:
+            path: /var/log

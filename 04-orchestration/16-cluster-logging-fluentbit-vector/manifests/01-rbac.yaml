@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluent-bit-sa
+  namespace: logging
+  labels:
+    app.kubernetes.io/name: fluent-bit
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluent-bit-role
+  labels:
+    app.kubernetes.io/name: fluent-bit
+rules:
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - pods
+      - pods/logs
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fluent-bit-rolebinding
+  labels:
+    app.kubernetes.io/name: fluent-bit
+subjects:
+  - kind: ServiceAccount
+    name: fluent-bit-sa
+    namespace: logging
+roleRef:
+  kind: ClusterRole
+  name: fluent-bit-role
+  apiGroup: rbac.authorization.k8s.io

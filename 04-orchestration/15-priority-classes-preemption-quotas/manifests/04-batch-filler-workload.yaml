@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: batch-filler-workload
+  namespace: batch-jobs
+  labels:
+    app.kubernetes.io/name: batch-filler-workload
+    tier: batch
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: batch-filler-workload
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: batch-filler-workload
+        tier: batch
+    spec:
+      priorityClassName: batch-low-priority
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: workload
+          image: priority-workload:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: PRIORITY_CLASS
+              value: "batch-low-priority"
+            - name: PRIORITY_TIER
+              value: "batch"
+            - name: RESOURCE_CPU_REQUEST
+              value: "50m"
+            - name: RESOURCE_MEM_REQUEST
+              value: "48Mi"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 48Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5

@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-service-pdb
+  namespace: lifecycle-demo
+  labels:
+    app.kubernetes.io/name: order-service
+    disruption.tier: production-standard
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: order-service

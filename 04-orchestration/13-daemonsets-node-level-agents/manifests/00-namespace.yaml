@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: node-monitoring
+  labels:
+    app.kubernetes.io/part-of: node-monitoring
+    pod-security.kubernetes.io/enforce: baseline

@@ -1,0 +1,8 @@
+- op: add
+  path: /metadata/annotations
+  value:
+    deployment.kubernetes.io/revision-history: "10"
+    security.ops/sla: "99.99"
+- op: replace
+  path: /spec/revisionHistoryLimit
+  value: 10

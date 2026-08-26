@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: lifecycle-demo
+  labels:
+    app.kubernetes.io/name: order-service
+    app.kubernetes.io/tier: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        app.kubernetes.io/tier: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      terminationGracePeriodSeconds: 30
+
+      # 1. Chained Init Containers (Dependency check & Schema Migration)
+      initContainers:
+        - name: wait-for-database
+          image: alpine:3.20
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "[INIT 1/2] Checking database dependency at database-service:5432..."
+              until nc -z -w 2 database-service 5432 2>/dev/null; do
+                echo "[INIT 1/2] Database not yet reachable. Waiting 2s..."
+                sleep 2
+              done
+              echo "[INIT 1/2] Database connection verified successfully!"
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+
+        - name: db-migration-init
+          image: alpine:3.20
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "[INIT 2/2] Running automated database schema migration..."
+              sleep 1
+              echo "schema-v2.4.1-migrated-ok" > /etc/app-init/schema-version.txt
+              echo "[INIT 2/2] Schema migration committed successfully."
+          volumeMounts:
+            - name: init-storage
+              mountPath: /etc/app-init
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+
+      # 2. Main Application Container
+      containers:
+        - name: app
+          image: lifecycle-app:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SERVICE_NAME
+              value: "order-service"
+            - name: PORT
+              value: "8080"
+            - name: SCHEMA_FILE_PATH
+              value: "/etc/app-init/schema-version.txt"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 150m
+              memory: 128Mi
+
+          # 3. Pod Lifecycle Hooks (Zero-Downtime Connection Draining)
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - "echo '[LIFECYCLE-HOOK] PostStart hook executed' >> /tmp/lifecycle.log"
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  # Sleep 10s gives kube-proxy time to remove endpoint before app receives SIGTERM
+                  - "sleep 10"
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+
+          volumeMounts:
+            - name: init-storage
+              mountPath: /etc/app-init
+
+      volumes:
+        - name: init-storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: lifecycle-demo
+  labels:
+    app: order-service
+spec:
+  type: ClusterIP
+  selector:
+    app: order-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-accelerated-workload
+  namespace: scheduling-demo
+  labels:
+    app.kubernetes.io/name: gpu-accelerated-workload
+    scheduling.demo/type: tolerated-gpu
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gpu-accelerated-workload
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gpu-accelerated-workload
+        scheduling.demo/type: tolerated-gpu
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      nodeSelector:
+        accelerator: gpu
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "gpu"
+          effect: "NoSchedule"
+      containers:
+        - name: workload
+          image: workload-reporter:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: WORKLOAD_TYPE
+              value: "gpu-tolerated-workload"
+            - name: TAINT_TOLERATED
+              value: "true"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: standard-cpu-workload
+  namespace: scheduling-demo
+  labels:
+    app.kubernetes.io/name: standard-cpu-workload
+    scheduling.demo/type: untolerated-workload
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: standard-cpu-workload
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: standard-cpu-workload
+        scheduling.demo/type: untolerated-workload
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      # Notice: No tolerations configured. This workload CANNOT land on nodes tainted with dedicated=gpu:NoSchedule
+      containers:
+        - name: workload
+          image: workload-reporter:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: WORKLOAD_TYPE
+              value: "standard-untolerated-workload"
+            - name: TAINT_TOLERATED
+              value: "false"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5

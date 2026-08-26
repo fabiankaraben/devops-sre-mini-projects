@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod-critical
+  labels:
+    environment: production
+    tier: critical
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: batch-jobs
+  labels:
+    environment: batch
+    tier: low-priority
+    pod-security.kubernetes.io/enforce: baseline

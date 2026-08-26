@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus-k8s
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: kube-prometheus-stack
+spec:
+  serviceAccountName: prometheus-k8s
+  replicas: 1
+  retention: 24h
+  scrapeInterval: 15s
+  evaluationInterval: 15s
+  serviceMonitorSelector:
+    matchLabels:
+      release: prometheus-stack
+  podMonitorSelector:
+    matchLabels:
+      release: prometheus-stack
+  ruleSelector:
+    matchLabels:
+      role: alert-rules
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-k8s
+  namespace: monitoring

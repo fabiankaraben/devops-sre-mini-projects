@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: critical-payment-api
+  namespace: prod-critical
+  labels:
+    app.kubernetes.io/name: critical-payment-api
+    tier: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: critical-payment-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: critical-payment-api
+        tier: production
+    spec:
+      priorityClassName: critical-production
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: workload
+          image: priority-workload:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: PRIORITY_CLASS
+              value: "critical-production"
+            - name: PRIORITY_TIER
+              value: "critical-production"
+            - name: RESOURCE_CPU_REQUEST
+              value: "100m"
+            - name: RESOURCE_MEM_REQUEST
+              value: "96Mi"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 96Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5

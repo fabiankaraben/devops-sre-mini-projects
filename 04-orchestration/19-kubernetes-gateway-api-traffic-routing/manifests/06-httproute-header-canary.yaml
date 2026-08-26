@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: header-canary-route
+  namespace: gateway-apps
+  labels:
+    route.tier: canary
+spec:
+  parentRefs:
+    - name: production-gateway
+      namespace: gateway-infra
+  hostnames:
+    - "canary.example.local"
+  rules:
+    # Canary match: Header x-canary: true routes to v2-service
+    - matches:
+        - headers:
+            - name: x-canary
+              value: "true"
+      backendRefs:
+        - name: v2-service
+          port: 8080
+
+    # Default fallback: all other requests route to stable v1-service
+    - backendRefs:
+        - name: v1-service
+          port: 8080
