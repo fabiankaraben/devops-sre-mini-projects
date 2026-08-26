@@ -1,0 +1,13 @@
+{
+  "service": "{{ app_tag | default('frontend') }}",
+  "hostname": "{{ inventory_hostname }}",
+  "environment": "{{ environment_tag | default('production') }}",
+  "role": "{{ role_tag | default('web') }}",
+  "cluster": "{{ cluster_tag | default('cluster-alpha') }}",
+  "version": "{{ app_target_version }}",
+  "port": {{ app_internal_port | default(8080) }},
+  "max_connections": {{ app_max_connections | default(250) }},
+  "keepalive_timeout": {{ app_keepalive_timeout | default(75) }},
+  "log_level": "{{ app_log_level | default('INFO') }}",
+  "deployed_by": "ansible-dynamic-inventory"
+}

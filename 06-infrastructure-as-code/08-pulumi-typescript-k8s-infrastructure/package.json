@@ -1,0 +1,38 @@
+{
+  "name": "08-pulumi-typescript-k8s-infrastructure",
+  "version": "1.0.0",
+  "description": "Production-grade Pulumi TypeScript Kubernetes Infrastructure with ComponentResources, Unit Testing via Mocks, and Local K3d Integration",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "pretest": "tsc",
+    "test": "mocha dist/tests/**/*.spec.js --timeout 10000",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "devops",
+    "sre",
+    "iac",
+    "pulumi",
+    "typescript",
+    "kubernetes",
+    "k3d",
+    "unit-testing"
+  ],
+  "author": "DevOps / SRE Mini-Projects",
+  "license": "MIT",
+  "dependencies": {
+    "@pulumi/kubernetes": "^4.18.0",
+    "@pulumi/pulumi": "^3.140.0"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.0",
+    "chai": "^4.4.1",
+    "mocha": "^10.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

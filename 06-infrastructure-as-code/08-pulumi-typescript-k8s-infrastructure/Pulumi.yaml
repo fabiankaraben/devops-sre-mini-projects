@@ -1,0 +1,3 @@
+name: k8s-pulumi-fleet
+runtime: nodejs
+description: Production-grade Pulumi TypeScript Kubernetes Infrastructure with ComponentResources, Unit Testing via Mocks, and Local K3d Integration

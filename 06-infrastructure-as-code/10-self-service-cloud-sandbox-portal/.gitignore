@@ -1,0 +1,23 @@
+# Ephemeral Sandbox Workspaces
+workspaces/
+data/
+
+# Binaries and build artifacts
+portal-server
+*.exe
+*.test
+
+# Execution logs and temporary files
+logs/
+*.log
+__pycache__/
+*.pyc
+
+# Terraform caches
+.terraform/
+*.tfstate*
+*.tfplan*
+
+# OS metadata
+.DS_Store
+Thumbs.db

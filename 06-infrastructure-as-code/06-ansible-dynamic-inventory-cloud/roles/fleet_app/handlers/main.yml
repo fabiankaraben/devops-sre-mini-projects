@@ -1,0 +1,13 @@
+---
+# ==============================================================================
+# Handlers for roles/fleet_app
+# ==============================================================================
+
+- name: "reload fleet app service"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_internal_port | default(8080) }}/reload"
+    method: POST
+    status_code: 200
+  register: reload_result
+  failed_when: false
+  changed_when: true

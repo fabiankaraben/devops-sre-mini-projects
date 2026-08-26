@@ -1,0 +1,77 @@
+# ==============================================================================
+# aws_ec2.yml - Production Ansible Dynamic Inventory Plugin Configuration
+# ==============================================================================
+# This configuration utilizes the official 'amazon.aws.aws_ec2' inventory plugin
+# to dynamically discover and group EC2 instances across AWS regions using tags.
+#
+# Usage:
+#   ansible-inventory -i aws_ec2.yml --graph
+#   ansible-playbook -i aws_ec2.yml rolling_update.yml --limit "tag_Environment_production:&tag_Role_web"
+# ==============================================================================
+
+plugin: amazon.aws.aws_ec2
+
+# Target AWS Regions to query for active instances
+regions:
+  - us-east-1
+  - us-west-2
+  - eu-west-1
+
+# Filter EC2 instances to only include running nodes belonging to this project
+filters:
+  instance-state-name:
+    - running
+  tag:Project:
+    - "DevOps-SRE-Fleet"
+
+# Set how hostnames are presented in Ansible inventory
+hostnames:
+  - tag:Name
+  - dns-name
+  - private-ip-address
+
+# Dynamically construct inventory groups based on EC2 Tag values and instance properties
+keyed_groups:
+  # Creates groups like: env_production, env_staging, env_development
+  - prefix: env
+    key: tags.Environment | default('unknown')
+    separator: "_"
+
+  # Creates groups like: role_web, role_api, role_db, role_worker
+  - prefix: role
+    key: tags.Role | default('unknown')
+    separator: "_"
+
+  # Creates groups like: app_frontend, app_backend
+  - prefix: app
+    key: tags.App | default('unknown')
+    separator: "_"
+
+  # Creates groups like: az_us_east_1a, az_us_east_1b
+  - prefix: az
+    key: placement.availability_zone
+    separator: "_"
+
+  # Standard AWS Tag format mirroring (e.g. tag_Environment_production)
+  - prefix: tag_Environment
+    key: tags.Environment
+    separator: "_"
+  - prefix: tag_Role
+    key: tags.Role
+    separator: "_"
+
+# Dynamically compute and inject host variables into hostvars
+compose:
+  ansible_host: public_ip_address | default(private_ip_address)
+  environment_tag: tags.Environment | default('production')
+  role_tag: tags.Role | default('web')
+  app_tag: tags.App | default('frontend')
+  instance_id: instance_id
+  availability_zone: placement.availability_zone
+  health_endpoint: "'http://' + (public_ip_address | default(private_ip_address)) + ':8080/health'"
+
+# Group definitions based on conditional Jinja2 expressions
+groups:
+  production_web_fleet: "'production' in (tags.Environment | default('')) and 'web' in (tags.Role | default(''))"
+  staging_fleet: "'staging' in (tags.Environment | default(''))"
+  database_nodes: "'db' in (tags.Role | default(''))"

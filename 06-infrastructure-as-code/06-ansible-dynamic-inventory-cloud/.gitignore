@@ -1,0 +1,15 @@
+# Ansible runtime caches and local artifacts
+.ansible/
+logs/
+*.log
+*.retry
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# OS artifacts
+.DS_Store
+Thumbs.db

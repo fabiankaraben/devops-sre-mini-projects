@@ -1,0 +1,21 @@
+# Terragrunt & Terraform runtime caches
+.terragrunt-cache/
+**/.terragrunt-cache/
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+**/*.tfplan
+
+# Generated files by root terragrunt.hcl
+provider.tf
+**/provider.tf
+backend.tf
+**/backend.tf
+
+# Logs and local test artifacts
+logs/
+*.log
+.DS_Store
+Thumbs.db

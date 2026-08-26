@@ -1,0 +1,14 @@
+---
+# ==============================================================================
+# Default variables for roles/fleet_app
+# ==============================================================================
+app_target_version: "2.0.0"
+app_config_dir: "/app"
+app_version_file: "/app/version.txt"
+app_config_file: "/app/config.json"
+app_internal_port: 8080
+app_max_connections: 250
+app_keepalive_timeout: 75
+app_log_level: "INFO"
+app_health_retries: 10
+app_health_delay: 2

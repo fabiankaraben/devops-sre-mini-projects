@@ -1,0 +1,17 @@
+# Terraform local state and plugin caches
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan*
+*.tfplan*
+
+# Execution logs and parsed JSON diffs
+logs/
+*.log
+__pycache__/
+*.pyc
+
+# OS metadata
+.DS_Store
+Thumbs.db

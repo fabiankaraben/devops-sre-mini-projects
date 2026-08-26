@@ -1,0 +1,7 @@
+config:
+  k8s-pulumi-fleet:environment: prod
+  k8s-pulumi-fleet:replicaCount: "3"
+  k8s-pulumi-fleet:appPort: "8080"
+  k8s-pulumi-fleet:enableNetworkPolicy: "true"
+  k8s-pulumi-fleet:logLevel: info
+encryptionsalt: v1:wCZTEGPe8HQ=:v1:1SPPlsireny+jzwC:gXzqA6Qow1anqbnsDg67yuaJ+zloPA==

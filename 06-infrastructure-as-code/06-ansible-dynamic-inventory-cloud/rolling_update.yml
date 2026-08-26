@@ -1,0 +1,79 @@
+---
+# ==============================================================================
+# rolling_update.yml - Zero-Downtime Rolling Update Playbook
+# ==============================================================================
+# Applies application patches and configuration updates sequentially across
+# dynamic host groups with strict health checks and serial concurrency control.
+#
+# Usage:
+#   ansible-playbook rolling_update.yml
+#   ansible-playbook rolling_update.yml -e "target_group=env_production:&role_web app_target_version=2.0.0 batch_size=1"
+# ==============================================================================
+
+- name: "Zero-Downtime Rolling Application Fleet Update"
+  hosts: "{{ target_group | default('env_production:&role_web') }}"
+  serial: "{{ batch_size | default(1) }}"
+  max_fail_percentage: 0
+  gather_facts: false
+
+  vars:
+    app_target_version: "{{ app_target_version | default('2.0.0') }}"
+    app_port: 8080
+
+  pre_tasks:
+    - name: "Display target node batch execution details"
+      ansible.builtin.debug:
+        msg: "🔄 Starting Rolling Update batch on: {{ inventory_hostname }} (Env: {{ environment_tag | default('unknown') }}, Role: {{ role_tag | default('unknown') }})"
+
+    - name: "Pre-Update Health Check: Verify node is responsive before modification"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: pre_health_result
+      retries: 5
+      delay: 1
+      until: pre_health_result.status == 200
+
+    - name: "Pre-Update Version Check: Query active running application version"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/version"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: pre_version_result
+
+    - name: "Display pre-update state"
+      ansible.builtin.debug:
+        msg: "✓ Node {{ inventory_hostname }} is HEALTHY. Current Version: {{ pre_version_result.json.version | default('unknown') }}. Upgrading to: {{ app_target_version }}"
+
+  roles:
+    - role: fleet_app
+
+  post_tasks:
+    - name: "Post-Update Health Check: Verify node recovers and responds with HTTP 200"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: post_health_result
+      retries: 10
+      delay: 2
+      until: post_health_result.status == 200
+
+    - name: "Post-Update Version Assertion: Query updated application endpoint"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/version"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: post_version_result
+
+    - name: "Assert new application version is successfully active"
+      ansible.builtin.assert:
+        that:
+          - "post_version_result.json.version == app_target_version"
+        fail_msg: "❌ Version mismatch! Expected {{ app_target_version }}, but got {{ post_version_result.json.version }}"
+        success_msg: "✅ Node {{ inventory_hostname }} successfully updated to version {{ app_target_version }} and passed health verification."
