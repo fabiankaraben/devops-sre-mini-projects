@@ -1,0 +1,35 @@
+# ==============================================================================
+# Prometheus Scrape Configuration for OpenTelemetry Collector Pipeline
+# ==============================================================================
+
+global:
+  scrape_interval: 2s
+  evaluation_interval: 2s
+
+scrape_configs:
+  # ----------------------------------------------------------------------------
+  # 1. OpenTelemetry Collector Internal Health & Pipeline Performance Metrics
+  # ----------------------------------------------------------------------------
+  - job_name: "otel-collector-internal"
+    static_configs:
+      - targets: ["otel-collector:8888"]
+        labels:
+          component: "telemetry-collector"
+          tier: "observability-pipeline"
+
+  # ----------------------------------------------------------------------------
+  # 2. Application Metrics Exported by OpenTelemetry Collector
+  # ----------------------------------------------------------------------------
+  - job_name: "otel-collector-app-metrics"
+    static_configs:
+      - targets: ["otel-collector:8889"]
+        labels:
+          component: "application-workload"
+          tier: "microservices"
+
+  # ----------------------------------------------------------------------------
+  # 3. Prometheus Server Self-Monitoring
+  # ----------------------------------------------------------------------------
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart - CloudStore</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="navbar">
+            <a href="/" class="brand-logo" id="nav-brand">⚡ CloudStore</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link" id="nav-catalog">Catalog</a>
+                <a href="/cart" class="nav-link active" id="nav-cart">Cart <span class="cart-badge" id="cart-count">{{ cart_count }}</span></a>
+                {% if user %}
+                    <span class="nav-link" id="user-badge">👤 {{ user.email }}</span>
+                {% else %}
+                    <a href="/login" class="btn btn-primary" id="nav-login">Sign In</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Your Shopping Cart</h2>
+
+        {% if cart_items %}
+        <table class="cart-table" id="cart-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cart_items %}
+                <tr id="cart-row-{{ item.id }}">
+                    <td>
+                        <strong>{{ item.name }}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">{{ item.category }}</div>
+                    </td>
+                    <td>${{ "%.2f"|format(item.price) }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ "%.2f"|format(item.price * item.quantity) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="checkout-summary">
+            <div class="summary-row">
+                <span>Items Subtotal</span>
+                <span id="subtotal-amount">${{ "%.2f"|format(total_amount) }}</span>
+            </div>
+            <div class="summary-row">
+                <span>Express SRE Shipping</span>
+                <span style="color: var(--accent-green);">FREE ($0.00)</span>
+            </div>
+            <div class="summary-row summary-total">
+                <span>Total Amount</span>
+                <span id="total-amount">${{ "%.2f"|format(total_amount) }}</span>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <a href="/" class="btn" style="background: rgba(255,255,255,0.1); color: var(--text-main);">Continue Shopping</a>
+                <a href="/checkout" class="btn btn-primary" id="btn-proceed-checkout" style="flex: 1;">
+                    Proceed to Checkout ➔
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 1rem;">
+            <p style="color: var(--text-muted); font-size: 1.2rem; margin-bottom: 1.5rem;">Your shopping cart is empty.</p>
+            <a href="/" class="btn btn-primary">Browse Catalog</a>
+        </div>
+        {% endif %}
+    </main>
+
+    <footer>
+        <p>© 2026 CloudStore Synthetic Monitoring Target App</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,123 @@
+# ==============================================================================
+# Docker Compose - OpenTelemetry Distributed Tracing Stack with Jaeger
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Tracing Backend: Jaeger All-In-One (Collector, In-Memory Storage, UI & API)
+  # ----------------------------------------------------------------------------
+  jaeger:
+    image: jaegertracing/all-in-one:1.57.0
+    container_name: jaeger-tracing
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+    ports:
+      - "16686:16686" # Jaeger Web UI and REST API
+      - "4317:4317"   # OpenTelemetry OTLP gRPC receiver
+      - "4318:4318"   # OpenTelemetry OTLP HTTP receiver
+    networks:
+      - tracing-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:16686/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 2. Authentication Microservice (:8082)
+  # ----------------------------------------------------------------------------
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    image: mini-proj-08-06-auth-service:local
+    container_name: auth-service
+    restart: unless-stopped
+    environment:
+      - PORT=8082
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
+      - ENVIRONMENT=local-dev
+    ports:
+      - "8082:8082"
+    networks:
+      - tracing-net
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8082/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 3. Payment Microservice (:8083)
+  # ----------------------------------------------------------------------------
+  payment-service:
+    build:
+      context: ./services/payment
+      dockerfile: Dockerfile
+    image: mini-proj-08-06-payment-service:local
+    container_name: payment-service
+    restart: unless-stopped
+    environment:
+      - PORT=8083
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
+      - ENVIRONMENT=local-dev
+    ports:
+      - "8083:8083"
+    networks:
+      - tracing-net
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8083/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 4. Frontend API Gateway (:8080)
+  # ----------------------------------------------------------------------------
+  frontend-service:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    image: mini-proj-08-06-frontend-service:local
+    container_name: frontend-service
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://auth-service:8082
+      - PAYMENT_SERVICE_URL=http://payment-service:8083
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
+      - JAEGER_UI_URL=http://localhost:16686
+      - ENVIRONMENT=local-dev
+    ports:
+      - "8080:8080"
+    networks:
+      - tracing-net
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+networks:
+  tracing-net:
+    name: tracing-stack-net
+    driver: bridge

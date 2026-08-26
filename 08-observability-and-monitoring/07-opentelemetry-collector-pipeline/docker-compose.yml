@@ -1,0 +1,117 @@
+# ==============================================================================
+# Docker Compose - OpenTelemetry Collector Telemetry Pipeline Stack (08-07)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Tracing Backend: Jaeger All-In-One (Receives Traces from OTel Collector)
+  # ----------------------------------------------------------------------------
+  jaeger:
+    image: jaegertracing/all-in-one:1.57.0
+    container_name: jaeger-pipeline
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+    ports:
+      - "16686:16686" # Jaeger Web UI and REST Query API
+    networks:
+      - collector-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:16686/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 2. Central Telemetry Router: OpenTelemetry Collector Contrib
+  # ----------------------------------------------------------------------------
+  otel-collector:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    image: mini-proj-08-07-otel-collector:local
+    container_name: otel-collector-pipeline
+    restart: unless-stopped
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8888:8888"   # Collector internal health & pipeline metrics
+      - "8889:8889"   # Prometheus exporter endpoint for app metrics
+      - "13133:13133" # Health check extension
+      - "55679:55679" # zPages extension
+    networks:
+      - collector-net
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/bin/wget", "-q", "--spider", "http://localhost:13133/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 3. Metrics Backend: Prometheus Server (Scrapes OTel Collector :8888 & :8889)
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    image: mini-proj-08-07-prometheus:local
+    container_name: prometheus-pipeline
+    restart: unless-stopped
+    ports:
+      - "9090:9090" # Prometheus Web UI and Query API
+    networks:
+      - collector-net
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 4. Instrumented Sample Microservice (Emits OTLP Traces & Metrics to Collector)
+  # ----------------------------------------------------------------------------
+  sample-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: mini-proj-08-07-sample-app:local
+    container_name: sample-app-pipeline
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - JAEGER_UI_URL=http://localhost:16686
+      - PROMETHEUS_URL=http://localhost:9090
+      - ENVIRONMENT=production
+    ports:
+      - "8080:8080" # Sample Application API
+    networks:
+      - collector-net
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+networks:
+  collector-net:
+    name: collector-pipeline-net
+    driver: bridge

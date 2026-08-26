@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation - CloudStore</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="navbar">
+            <a href="/" class="brand-logo" id="nav-brand">⚡ CloudStore</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link" id="nav-catalog">Catalog</a>
+                <a href="/cart" class="nav-link" id="nav-cart">Cart <span class="cart-badge" id="cart-count">0</span></a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="success-banner" id="confirmation-banner">
+            <div class="success-icon">✓</div>
+            <h1 style="color: var(--accent-green); font-size: 2.2rem; margin-bottom: 0.5rem;" id="order-confirmed-heading">
+                Order Successfully Confirmed!
+            </h1>
+            <p style="color: var(--text-muted); font-size: 1.1rem;">
+                Thank you for your purchase. Your order has been registered in the fulfillment system.
+            </p>
+
+            <div class="order-id-badge" id="order-id-badge">
+                Transaction Ref: {{ order_id }}
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <a href="/" class="btn btn-primary" id="btn-return-home">Back to Store Home</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 CloudStore Synthetic Monitoring Target App</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# ==============================================================================
+# 02-servicemonitor.yaml - ServiceMonitor Custom Resource Definition
+# ==============================================================================
+# Tells Prometheus Operator to discover and scrape the order-api Service endpoints.
+# ==============================================================================
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: order-api-servicemonitor
+  namespace: default
+  labels:
+    app: order-api
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: order-api
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 5s
+      scrapeTimeout: 3s

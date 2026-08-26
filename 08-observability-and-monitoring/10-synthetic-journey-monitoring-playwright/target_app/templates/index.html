@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudStore - Premium Cloud & DevOps Merchandise</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="navbar">
+            <a href="/" class="brand-logo" id="nav-brand">⚡ CloudStore</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link active" id="nav-catalog">Catalog</a>
+                <a href="/cart" class="nav-link" id="nav-cart">Cart <span class="cart-badge" id="cart-count">{{ cart_count }}</span></a>
+                {% if user %}
+                    <span class="nav-link" id="user-badge">👤 {{ user.email }}</span>
+                    <a href="/api/logout" class="nav-link" id="nav-logout">Logout</a>
+                {% else %}
+                    <a href="/login" class="btn btn-primary" id="nav-login">Sign In</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <div class="hero">
+        <h1>Cloud-Native Developer Gear</h1>
+        <p>High-reliability merchandise designed for DevOps, SREs, and Platform Engineers.</p>
+    </div>
+
+    <main class="container">
+        <h2>Featured Products</h2>
+        <div class="product-grid" id="product-grid">
+            {% for item in products %}
+            <div class="product-card" id="card-{{ item.id }}">
+                <div>
+                    <span class="product-badge">{{ item.category }}</span>
+                    <h3 class="product-title">{{ item.name }}</h3>
+                    <p class="product-desc">{{ item.description }}</p>
+                </div>
+                <div class="product-footer">
+                    <span class="product-price">${{ "%.2f"|format(item.price) }}</span>
+                    <form action="/api/cart/add" method="POST">
+                        <input type="hidden" name="product_id" value="{{ item.id }}">
+                        <button type="submit" class="btn btn-primary" id="btn-add-{{ item.id }}">
+                            Add to Cart
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 CloudStore Synthetic Monitoring Target App • Running for SRE Health Probes</p>
+    </footer>
+</body>
+</html>

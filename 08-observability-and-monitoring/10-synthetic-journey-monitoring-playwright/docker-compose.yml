@@ -1,0 +1,110 @@
+# ==============================================================================
+# docker-compose.yml - Synthetic User Journey Monitoring Stack
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Target E-Commerce Application (CloudStore)
+  # ----------------------------------------------------------------------------
+  target-app:
+    build:
+      context: ./target_app
+      dockerfile: Dockerfile
+    container_name: synthetic-target-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - synthetic-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz')\""]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 2. Playwright Synthetic Journey Monitoring Agent & Prometheus Exporter
+  # ----------------------------------------------------------------------------
+  synthetic-agent:
+    build:
+      context: ./synthetic_agent
+      dockerfile: Dockerfile
+    container_name: synthetic-agent
+    restart: unless-stopped
+    ports:
+      - "9115:9115"
+    environment:
+      TARGET_APP_URL: "http://target-app:8080"
+      SCREENSHOTS_DIR: "/app/screenshots"
+      SCHEDULE_INTERVAL_SECONDS: "15"
+    volumes:
+      - ./screenshots:/app/screenshots
+    depends_on:
+      target-app:
+        condition: service_healthy
+    networks:
+      - synthetic-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9115/healthz')\""]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 5s
+
+  # ----------------------------------------------------------------------------
+  # 3. Prometheus Server
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    container_name: synthetic-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    depends_on:
+      synthetic-agent:
+        condition: service_healthy
+    networks:
+      - synthetic-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 4. Grafana Dashboards
+  # ----------------------------------------------------------------------------
+  grafana:
+    build:
+      context: ./grafana
+      dockerfile: Dockerfile
+    container_name: synthetic-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks:
+      - synthetic-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 5s
+
+networks:
+  synthetic-net:
+    name: synthetic-monitoring-net
+    driver: bridge

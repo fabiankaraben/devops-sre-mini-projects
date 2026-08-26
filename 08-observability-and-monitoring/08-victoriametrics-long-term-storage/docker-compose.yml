@@ -1,0 +1,87 @@
+# ==============================================================================
+# Docker Compose - VictoriaMetrics Long-Term Storage Pipeline (08-08)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Long-Term TSDB: VictoriaMetrics Single-Node
+  # ----------------------------------------------------------------------------
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.101.0
+    container_name: victoriametrics-lts
+    restart: unless-stopped
+    command:
+      - "-storageDataPath=/storage"
+      - "-retentionPeriod=1y"
+      - "-httpListenAddr=:8428"
+      - "-search.maxPointsPerTimeseries=10000000"
+    ports:
+      - "8428:8428" # vmui Web Console, MetricsQL API & remote_write endpoint
+    volumes:
+      - victoriametrics_data:/storage
+    networks:
+      - victoriametrics-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8428/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 2. Scraper & Forwarder: Prometheus Server with remote_write
+  # ----------------------------------------------------------------------------
+  prometheus:
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    image: mini-proj-08-08-prometheus:local
+    container_name: prometheus-lts
+    restart: unless-stopped
+    ports:
+      - "9090:9090" # Prometheus Web Console and Query API
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - victoriametrics-net
+    depends_on:
+      victoriametrics:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  # ----------------------------------------------------------------------------
+  # 3. Workload Generator: High-Cardinality Mock Metric Exporter
+  # ----------------------------------------------------------------------------
+  mock-exporter:
+    build:
+      context: ./mock_exporter
+      dockerfile: Dockerfile
+    image: mini-proj-08-08-mock-exporter:local
+    container_name: mock-exporter-lts
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # Exporter /metrics and /healthz
+    networks:
+      - victoriametrics-net
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+networks:
+  victoriametrics-net:
+    name: victoriametrics-stack-net
+    driver: bridge
+
+volumes:
+  victoriametrics_data:
+    name: victoriametrics_storage_data
+  prometheus_data:
+    name: prometheus_lts_tsdb_data

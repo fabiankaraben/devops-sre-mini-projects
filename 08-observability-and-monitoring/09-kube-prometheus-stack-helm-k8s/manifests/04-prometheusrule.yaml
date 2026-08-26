@@ -1,0 +1,39 @@
+# ==============================================================================
+# 04-prometheusrule.yaml - PrometheusRule Alerting & Recording Rules
+# ==============================================================================
+# Defines declarative alerting rules evaluated by Prometheus Operator.
+# ==============================================================================
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: order-api-alert-rules
+  namespace: default
+  labels:
+    app: order-api
+    release: kube-prometheus-stack
+    role: alert-rules
+spec:
+  groups:
+    - name: order-api.alerts
+      rules:
+        - alert: OrderApiHighErrorRate
+          expr: sum(rate(http_requests_total{status=~"5.."}[1m])) by (endpoint) > 0
+          for: 5s
+          labels:
+            severity: critical
+            team: sre-ecommerce
+          annotations:
+            summary: "High HTTP 5xx Error Rate on Order API"
+            description: "Endpoint {{ $labels.endpoint }} is failing with 5xx HTTP responses."
+            runbook_url: "https://wiki.internal/runbooks/order-api-errors"
+
+        - alert: OrderApiHighLatency
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le, endpoint)) > 0.5
+          for: 10s
+          labels:
+            severity: warning
+            team: sre-ecommerce
+          annotations:
+            summary: "High p95 Latency on Order API"
+            description: "Endpoint {{ $labels.endpoint }} has p95 latency > 500ms."

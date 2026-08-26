@@ -1,0 +1,40 @@
+# ==============================================================================
+# alert_rules.yml - Synthetic User Journey SLO Alerting Rules
+# ==============================================================================
+
+groups:
+  - name: synthetic_user_journeys.alerts
+    rules:
+      # 1. Critical Availability Alert: Synthetic Journey Broken
+      - alert: SyntheticJourneyBroken
+        expr: synthetic_journey_up{journey="checkout_flow"} == 0
+        for: 5s
+        labels:
+          severity: critical
+          team: sre-ecommerce
+        annotations:
+          summary: "E-Commerce Checkout Synthetic Journey is FAILING"
+          description: "Headless Playwright agent failed to complete checkout flow on {{ $labels.journey }}."
+          runbook_url: "https://wiki.internal/sre/synthetic-checkout-failures"
+
+      # 2. Step Degradation Alert: High Checkout Step Latency
+      - alert: SyntheticStepHighLatency
+        expr: rate(synthetic_step_duration_seconds_sum{step="submit_order"}[1m]) / rate(synthetic_step_duration_seconds_count{step="submit_order"}[1m]) > 1.5
+        for: 5s
+        labels:
+          severity: warning
+          team: sre-ecommerce
+        annotations:
+          summary: "Checkout Step Latency is High (>1.5s)"
+          description: "Synthetic probe detected average submit_order step latency exceeding 1.5s SLA."
+
+      # 3. Frequent Step Failures
+      - alert: SyntheticStepFrequentFailures
+        expr: rate(synthetic_step_failures_total[1m]) > 0
+        for: 5s
+        labels:
+          severity: critical
+          team: sre-ecommerce
+        annotations:
+          summary: "Synthetic step failures detected on step {{ $labels.step }}"
+          description: "Automated probe captured failures on step {{ $labels.step }}."

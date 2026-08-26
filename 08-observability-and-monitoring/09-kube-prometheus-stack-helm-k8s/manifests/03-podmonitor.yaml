@@ -1,0 +1,23 @@
+# ==============================================================================
+# 03-podmonitor.yaml - PodMonitor Custom Resource Definition
+# ==============================================================================
+# Directly scrapes pod endpoints without requiring a Kubernetes Service abstraction.
+# ==============================================================================
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: order-api-podmonitor
+  namespace: default
+  labels:
+    app: order-api
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: order-api
+  podMetricsEndpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 5s
+      scrapeTimeout: 3s

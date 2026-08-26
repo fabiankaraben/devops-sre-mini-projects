@@ -1,0 +1,103 @@
+# ==============================================================================
+# OpenTelemetry Collector Configuration - Telemetry Pipeline (08-07)
+# ==============================================================================
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # 1. Memory Limiter: Drops/sheds data if memory usage approaches container limits
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+
+  # 2. Filter: Discard noisy health check spans from storage
+  filter/spans:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["http.target"] == "/healthz"'
+        - 'attributes["http.route"] == "/healthz"'
+        - 'name == "GET /healthz"'
+
+  # 3. Resource Enrichment: Add common deployment metadata
+  resource:
+    attributes:
+      - key: service.namespace
+        value: "ecommerce-telemetry"
+        action: upsert
+
+  # 4. Attribute Processor: Inject environment tags and redact/delete sensitive fields
+  attributes:
+    actions:
+      - key: environment
+        value: "production"
+        action: insert
+      - key: datacenter
+        value: "us-east-1"
+        action: insert
+      - key: credit_card
+        value: "[REDACTED]"
+        action: update
+      - key: api_key
+        action: delete
+
+  # 5. Batch Processor: Groups telemetry items into batches to optimize network throughput
+  batch:
+    send_batch_size: 256
+    timeout: 500ms
+    send_batch_max_size: 512
+
+exporters:
+  # 1. Export Traces to Jaeger via OTLP gRPC
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # 2. Expose Metrics for Prometheus Scraping
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: otel
+    send_timestamps: true
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # 3. Log Telemetry to Collector stdout for Diagnostics
+  debug:
+    verbosity: basic
+
+extensions:
+  # Liveness & Readiness probe endpoint
+  health_check:
+    endpoint: 0.0.0.0:13133
+  # In-process diagnostics
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, zpages]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/spans, resource, attributes, batch]
+      exporters: [otlp/jaeger, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [prometheus, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [debug]

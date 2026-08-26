@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: "Synthetic User Journey Monitoring"
+    orgId: 1
+    folder: "Synthetic Monitoring"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

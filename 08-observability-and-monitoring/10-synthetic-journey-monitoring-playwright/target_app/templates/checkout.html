@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - CloudStore</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="navbar">
+            <a href="/" class="brand-logo" id="nav-brand">⚡ CloudStore</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link" id="nav-catalog">Catalog</a>
+                <a href="/cart" class="nav-link" id="nav-cart">Cart <span class="cart-badge" id="cart-count">{{ cart_count }}</span></a>
+                {% if user %}
+                    <span class="nav-link" id="user-badge">👤 {{ user.email }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Secure Checkout</h2>
+
+        {% if error %}
+        <div class="error-alert" id="checkout-error" style="margin-top: 1rem;">
+            <strong>Transaction Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; margin-top: 1.5rem;">
+            <div class="form-card" style="margin: 0; max-width: none;" id="checkout-form-card">
+                <h3 style="margin-bottom: 1.25rem;">1. Shipping & Contact</h3>
+                <form action="/api/checkout" method="POST" id="checkout-form">
+                    <div class="form-group">
+                        <label class="form-label" for="full_name">Full Name</label>
+                        <input class="form-input" type="text" id="full_name" name="full_name" value="Jane DevOps" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="address">Delivery Address</label>
+                        <input class="form-input" type="text" id="address" name="address" value="101 Production Cluster Way, Node 0" required>
+                    </div>
+
+                    <h3 style="margin: 1.5rem 0 1.25rem;">2. Payment Method</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="card_number">Credit Card Number</label>
+                        <input class="form-input" type="text" id="card_number" name="card_number" value="4242 •••• •••• 4242" required>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="exp_date">Expiry</label>
+                            <input class="form-input" type="text" id="exp_date" name="exp_date" value="12/28" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="cvv">CVV</label>
+                            <input class="form-input" type="password" id="cvv" name="cvv" value="888" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-full" id="btn-place-order" style="margin-top: 1.5rem; font-size: 1.1rem; padding: 0.85rem;">
+                        💳 Complete Order (${{ "%.2f"|format(total_amount) }})
+                    </button>
+                </form>
+            </div>
+
+            <div>
+                <div class="checkout-summary" style="margin-top: 0;">
+                    <h3 style="margin-bottom: 1rem;">Order Summary</h3>
+                    {% for item in cart_items %}
+                    <div class="summary-row" style="font-size: 0.9rem;">
+                        <span>{{ item.quantity }}x {{ item.name }}</span>
+                        <span>${{ "%.2f"|format(item.price * item.quantity) }}</span>
+                    </div>
+                    {% endfor %}
+                    <div class="summary-row summary-total">
+                        <span>Total Due</span>
+                        <span id="checkout-total">${{ "%.2f"|format(total_amount) }}</span>
+                    </div>
+                </div>
+
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 0.75rem; padding: 1rem; margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                    🔒 <strong>Synthetic Monitoring Probe Notice:</strong> Transactions submitted here are monitored by Playwright automated agents measuring end-to-end user experience metrics.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 CloudStore Synthetic Monitoring Target App</p>
+    </footer>
+</body>
+</html>
