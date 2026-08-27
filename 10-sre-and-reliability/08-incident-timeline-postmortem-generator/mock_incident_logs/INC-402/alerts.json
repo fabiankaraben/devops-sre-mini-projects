@@ -1,0 +1,62 @@
+[
+  {
+    "id": "alert-8801",
+    "status": "firing",
+    "timestamp": "2026-08-26T14:26:00Z",
+    "name": "CheckoutServiceHigh5xxErrorRate",
+    "severity": "critical",
+    "service": "checkout-api",
+    "environment": "production-us-east-1",
+    "summary": "Checkout API error rate exceeded 15% (current: 28.4%)",
+    "description": "5xx HTTP error rate on /api/v1/checkout has breached SLO threshold for > 2 minutes.",
+    "fingerprint": "a9c1f20b84"
+  },
+  {
+    "id": "alert-8802",
+    "status": "firing",
+    "timestamp": "2026-08-26T14:27:30Z",
+    "name": "PostgresPoolConnectionsExhausted",
+    "severity": "critical",
+    "service": "checkout-api",
+    "environment": "production-us-east-1",
+    "summary": "PostgreSQL connection pool 100% saturated (10/10 active connections)",
+    "description": "All database connections in checkout-api pool are occupied. Pending connection requests are timing out.",
+    "fingerprint": "c71e98a3df"
+  },
+  {
+    "id": "alert-8803",
+    "status": "firing",
+    "timestamp": "2026-08-26T14:28:10Z",
+    "name": "CheckoutLatencyP99Breached",
+    "severity": "warning",
+    "service": "checkout-api",
+    "environment": "production-us-east-1",
+    "summary": "P99 latency > 3500ms on checkout-api (target: < 250ms)",
+    "description": "Checkout transactions are queuing waiting for available database connections.",
+    "fingerprint": "e305bb12fa"
+  },
+  {
+    "id": "alert-8802-res",
+    "status": "resolved",
+    "timestamp": "2026-08-26T14:53:00Z",
+    "name": "PostgresPoolConnectionsExhausted",
+    "severity": "critical",
+    "service": "checkout-api",
+    "environment": "production-us-east-1",
+    "summary": "PostgreSQL connection pool returned to nominal level (24/50 connections active)",
+    "description": "Connection pool utilization dropped below 50% following rollback deployment v2.4.0.",
+    "fingerprint": "c71e98a3df"
+  },
+  {
+    "id": "alert-8801-res",
+    "status": "resolved",
+    "timestamp": "2026-08-26T14:55:00Z",
+    "name": "CheckoutServiceHigh5xxErrorRate",
+    "severity": "critical",
+    "service": "checkout-api",
+    "environment": "production-us-east-1",
+    "summary": "Checkout API error rate back to baseline (0.02%)",
+    "description": "All checkout requests are completing successfully with HTTP 200 OK.",
+    "fingerprint": "a9c1f20b84"
+  }
+]

@@ -1,0 +1,82 @@
+{
+  "incident_id": "INC-305",
+  "title": "CoreDNS Conntrack Table Saturation causing Intermittent Resolution Failures",
+  "severity": "P2 - HIGH",
+  "status": "RESOLVED",
+  "environment": "production-eu-central-1",
+  "impacted_services": ["notification-gateway", "email-worker"],
+  "roles": {
+    "incident_commander": "@elena.db (Elena Rostova - Principal SRE)",
+    "tech_lead": "@tom.net (Tom Becker - Network SRE)",
+    "communications_lead": "@marcus.ops (Marcus Vance - Incident Coordinator)"
+  },
+  "timestamps": {
+    "incident_start": "2026-08-26T09:10:00Z",
+    "first_alert_fired": "2026-08-26T09:14:00Z",
+    "responder_acknowledged": "2026-08-26T09:16:00Z",
+    "incident_declared": "2026-08-26T09:18:00Z",
+    "mitigation_started": "2026-08-26T09:28:00Z",
+    "mitigation_deployed": "2026-08-26T09:32:00Z",
+    "incident_resolved": "2026-08-26T09:40:00Z"
+  },
+  "impact": {
+    "user_impact_summary": "Order confirmation emails and push notifications were delayed up to 25 minutes.",
+    "total_requests_during_window": 64000,
+    "failed_requests": 3100,
+    "peak_error_rate_pct": 8.4,
+    "revenue_loss_estimated_usd": 1200.00,
+    "slo_target_availability_pct": 99.9,
+    "actual_availability_pct": 95.16,
+    "error_budget_consumed_pct": 12.0
+  },
+  "five_whys": [
+    {
+      "why_number": 1,
+      "question": "Why were emails delayed?",
+      "answer": "The notification-gateway could not resolve the SMTP relay DNS hostname."
+    },
+    {
+      "why_number": 2,
+      "question": "Why did DNS lookups time out?",
+      "answer": "Linux kernel conntrack tables on the worker nodes reached 100% capacity and began dropping UDP packets."
+    },
+    {
+      "why_number": 3,
+      "question": "Why were conntrack tables saturated with UDP connections?",
+      "answer": "NodeLocal DNSCache was not deployed on the cluster, causing all pods to query upstream CoreDNS over UDP."
+    },
+    {
+      "why_number": 4,
+      "question": "Why did notification-gateway generate excessive DNS queries?",
+      "answer": "An updated client library disabled connection pooling and reopened TCP connections on every email dispatch."
+    },
+    {
+      "why_number": 5,
+      "question": "Why was NodeLocal DNSCache not enabled by default?",
+      "answer": "Cluster provisioning templates for eu-central-1 were running on an older Terraform module version."
+    }
+  ],
+  "lessons_learned": {
+    "what_went_well": [
+      "Circuit breaker in email-worker queued failed deliveries for retry without dropping data."
+    ],
+    "what_went_poorly": [
+      "Missing alert on node conntrack utilization allowed issue to manifest as DNS timeouts first."
+    ],
+    "where_we_got_lucky": [
+      "No transactional checkout endpoints were directly blocked by the notification queue."
+    ]
+  },
+  "action_items": [
+    {
+      "id": "ACT-301",
+      "category": "PREVENT",
+      "priority": "P0",
+      "description": "Deploy NodeLocal DNSCache DaemonSet across all Kubernetes clusters.",
+      "owner": "@tom.net",
+      "target_date": "2026-09-08",
+      "jira_issue": "SRE-1301",
+      "status": "TODO"
+    }
+  ]
+}

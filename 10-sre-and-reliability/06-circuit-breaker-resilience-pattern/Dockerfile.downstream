@@ -1,0 +1,18 @@
+# ==============================================================================
+# Mock Downstream Microservice Container
+# ==============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY downstream_service.py .
+
+EXPOSE 8081
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=5 --start-period=2s \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')" || exit 1
+
+ENTRYPOINT ["python3", "downstream_service.py"]

@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: naive-app
+  namespace: graceful-demo
+  labels:
+    app: naive-app
+    tier: api
+    release: naive
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: naive-app
+  template:
+    metadata:
+      labels:
+        app: naive-app
+        tier: api
+        release: naive
+    spec:
+      terminationGracePeriodSeconds: 2
+      containers:
+        - name: server
+          image: python:3.11-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "-u", "/app/graceful_server.py"]
+          args: ["--port", "8080", "--mode", "naive", "--work-delay-ms", "250.0"]
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - name: http
+              containerPort: 8080
+          # Intentionally NO preStop hook to demonstrate the pod deletion race condition!
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
+          volumeMounts:
+            - name: code-volume
+              mountPath: /app
+      volumes:
+        - name: code-volume
+          configMap:
+            name: server-source-code

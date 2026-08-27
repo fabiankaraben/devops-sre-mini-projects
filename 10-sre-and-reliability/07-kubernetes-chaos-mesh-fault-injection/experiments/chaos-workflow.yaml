@@ -1,0 +1,38 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: resilience-validation-workflow
+  namespace: chaos-lab
+spec:
+  entry: serial-chaos-stages
+  templates:
+    - name: serial-chaos-stages
+      templateType: Serial
+      children:
+        - pod-kill-stage
+        - network-delay-stage
+    - name: pod-kill-stage
+      templateType: PodChaos
+      deadline: 15s
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces:
+            - chaos-lab
+          labelSelectors:
+            app: payment-api
+    - name: network-delay-stage
+      templateType: NetworkChaos
+      deadline: 15s
+      networkChaos:
+        action: delay
+        mode: all
+        selector:
+          namespaces:
+            - chaos-lab
+          labelSelectors:
+            app: payment-api
+        delay:
+          latency: '100ms'
+          jitter: '10ms'

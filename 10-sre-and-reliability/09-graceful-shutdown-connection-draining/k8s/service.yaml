@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: graceful-service
+  namespace: graceful-demo
+  labels:
+    app: graceful-app
+spec:
+  type: ClusterIP
+  selector:
+    app: graceful-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: naive-service
+  namespace: graceful-demo
+  labels:
+    app: naive-app
+spec:
+  type: ClusterIP
+  selector:
+    app: naive-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP

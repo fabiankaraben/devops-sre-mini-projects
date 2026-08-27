@@ -1,0 +1,19 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-latency-experiment
+  namespace: chaos-lab
+spec:
+  action: delay
+  mode: fixed-percent
+  value: '50'
+  selector:
+    namespaces:
+      - chaos-lab
+    labelSelectors:
+      app: payment-api
+  delay:
+    latency: '150ms'
+    jitter: '20ms'
+    correlation: '50'
+  duration: '25s'

@@ -1,0 +1,14 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-failure-experiment
+  namespace: chaos-lab
+spec:
+  action: pod-failure
+  mode: one
+  duration: '25s'
+  selector:
+    namespaces:
+      - chaos-lab
+    labelSelectors:
+      app: payment-api

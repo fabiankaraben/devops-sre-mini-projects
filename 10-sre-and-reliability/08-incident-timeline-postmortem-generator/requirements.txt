@@ -1,0 +1,4 @@
+# Python dependencies for Incident Timeline & Postmortem Generator
+# Note: Designed with standard library; pytest is used for the automated test suite.
+pytest>=8.0.0
+requests>=2.31.0

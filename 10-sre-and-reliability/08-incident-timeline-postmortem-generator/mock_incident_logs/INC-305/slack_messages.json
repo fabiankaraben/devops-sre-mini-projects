@@ -1,0 +1,34 @@
+[
+  {
+    "id": "msg-3051",
+    "timestamp": "2026-08-26T09:14:30Z",
+    "channel": "#incident-inc-305",
+    "user": "@prometheus-bot",
+    "text": "🚨 **ALERT FIRING**: `CoreDNSLookupErrorsHigh` on `production-eu-central-1`.",
+    "type": "bot_alert"
+  },
+  {
+    "id": "msg-3052",
+    "timestamp": "2026-08-26T09:16:00Z",
+    "channel": "#incident-inc-305",
+    "user": "@elena.db",
+    "text": "ACK on incident page. CoreDNS error rate is spiking. Ingress and notification workers cannot resolve external hostnames.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-3053",
+    "timestamp": "2026-08-26T09:32:00Z",
+    "channel": "#incident-inc-305",
+    "user": "@tom.net",
+    "text": "NodeLocal DNSCache deployed and conntrack limit doubled. DNS lookup latencies dropped to 0.4ms.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-3054",
+    "timestamp": "2026-08-26T09:40:00Z",
+    "channel": "#incident-inc-305",
+    "user": "@elena.db",
+    "text": "Alert cleared. Email and notification delivery back to zero backlog. Resolving INC-305.",
+    "type": "human_chat"
+  }
+]

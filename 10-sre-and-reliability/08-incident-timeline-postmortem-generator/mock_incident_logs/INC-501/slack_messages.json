@@ -1,0 +1,34 @@
+[
+  {
+    "id": "msg-501",
+    "timestamp": "2026-08-26T18:04:30Z",
+    "channel": "#incident-inc-501",
+    "user": "@alertmanager-bot",
+    "text": "🚨 **ALERT FIRING**: `KubePodCrashLooping` on `inventory-service` in `production-us-west-2`.",
+    "type": "bot_alert"
+  },
+  {
+    "id": "msg-502",
+    "timestamp": "2026-08-26T18:07:00Z",
+    "channel": "#incident-inc-501",
+    "user": "@jordan.sre",
+    "text": "ACK on incident page. Pods are getting OOMKilled repeatedly (exit code 137).",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-503",
+    "timestamp": "2026-08-26T18:18:30Z",
+    "channel": "#incident-inc-501",
+    "user": "@david.k8s",
+    "text": "Patching deployment resource limits to 1Gi memory. Replicas rolling out now.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-504",
+    "timestamp": "2026-08-26T18:28:10Z",
+    "channel": "#incident-inc-501",
+    "user": "@jordan.sre",
+    "text": "All pods healthy with 0 restarts. Traffic flowing normally. Resolving INC-501.",
+    "type": "human_chat"
+  }
+]

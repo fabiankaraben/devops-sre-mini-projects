@@ -1,0 +1,29 @@
+[
+  {
+    "event_id": "pd-ev-501",
+    "timestamp": "2026-08-26T18:04:15Z",
+    "type": "trigger",
+    "service": "Inventory-Production",
+    "urgency": "high",
+    "title": "KubePodCrashLooping: inventory-service",
+    "assigned_to": "@jordan.sre"
+  },
+  {
+    "event_id": "pd-ev-502",
+    "timestamp": "2026-08-26T18:07:00Z",
+    "type": "acknowledge",
+    "service": "Inventory-Production",
+    "urgency": "high",
+    "actor": "@jordan.sre",
+    "note": "Investigating OOMKilled crashloop"
+  },
+  {
+    "event_id": "pd-ev-503",
+    "timestamp": "2026-08-26T18:28:00Z",
+    "type": "resolve",
+    "service": "Inventory-Production",
+    "urgency": "high",
+    "actor": "@jordan.sre",
+    "note": "Memory limits adjusted to 1Gi. Pods healthy."
+  }
+]

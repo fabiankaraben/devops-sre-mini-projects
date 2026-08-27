@@ -1,0 +1,26 @@
+[
+  {
+    "id": "alert-3051",
+    "status": "firing",
+    "timestamp": "2026-08-26T09:14:00Z",
+    "name": "CoreDNSLookupErrorsHigh",
+    "severity": "critical",
+    "service": "kube-system/coredns",
+    "environment": "production-eu-central-1",
+    "summary": "CoreDNS lookup failure rate > 10% on cluster eu-central-1",
+    "description": "UDP DNS queries dropping due to conntrack table saturation.",
+    "fingerprint": "c119e048ab"
+  },
+  {
+    "id": "alert-3051-res",
+    "status": "resolved",
+    "timestamp": "2026-08-26T09:40:00Z",
+    "name": "CoreDNSLookupErrorsHigh",
+    "severity": "critical",
+    "service": "kube-system/coredns",
+    "environment": "production-eu-central-1",
+    "summary": "DNS lookup error rate back below 0.01%.",
+    "description": "Kernel conntrack table max raised and NodeLocal DNS applied.",
+    "fingerprint": "c119e048ab"
+  }
+]

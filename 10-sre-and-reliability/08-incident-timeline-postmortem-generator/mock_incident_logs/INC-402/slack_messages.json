@@ -1,0 +1,106 @@
+[
+  {
+    "id": "msg-101",
+    "timestamp": "2026-08-26T14:26:30Z",
+    "channel": "#incident-inc-402",
+    "user": "@datadog-bot",
+    "text": "🚨 **ALERT FIRING**: `CheckoutServiceHigh5xxErrorRate` on `production-us-east-1`. Error rate = 28.4% (Threshold: 5.0%). Runbook: https://wiki.internal/runbooks/checkout-5xx",
+    "type": "bot_alert"
+  },
+  {
+    "id": "msg-102",
+    "timestamp": "2026-08-26T14:29:10Z",
+    "channel": "#incident-inc-402",
+    "user": "@alex.sre",
+    "text": "Acknowledging page. I am stepping in as Incident Commander for this incident. Opening incident bridge.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-103",
+    "timestamp": "2026-08-26T14:30:00Z",
+    "channel": "#incident-inc-402",
+    "user": "@alex.sre",
+    "text": "Declaring **P1 - CRITICAL INCIDENT (INC-402)**: Checkout failures affecting all US regions. Roles: @sarah.dev (Tech Lead), @marcus.ops (Comms), @elena.db (DBA).",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-104",
+    "timestamp": "2026-08-26T14:32:15Z",
+    "channel": "#incident-inc-402",
+    "user": "@sarah.dev",
+    "text": "Checking logs on checkout-api pods. We are seeing `TimeoutError: Connection pool exhausted. Available connections: 0, Waiting requests: 142`.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-105",
+    "timestamp": "2026-08-26T14:34:40Z",
+    "channel": "#incident-inc-402",
+    "user": "@elena.db",
+    "text": "PostgreSQL instance CPU is only 18% and total active backend connections is only 100 out of max 1500. The bottleneck is definitely client-side connection pooling inside checkout-api.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-106",
+    "timestamp": "2026-08-26T14:37:00Z",
+    "channel": "#incident-inc-402",
+    "user": "@marcus.ops",
+    "text": "Status page updated: 'We are investigating an issue preventing some users from completing checkout.' Internal stakeholders notified.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-107",
+    "timestamp": "2026-08-26T14:40:10Z",
+    "channel": "#incident-inc-402",
+    "user": "@sarah.dev",
+    "text": "Found it. PR #842 merged 40 minutes ago in release v2.4.1 set `max_connections: 10` per pod. Under our 25 RPS load, 10 pods * 10 = 100 connections is saturating immediately.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-108",
+    "timestamp": "2026-08-26T14:42:30Z",
+    "channel": "#incident-inc-402",
+    "user": "@alex.sre",
+    "text": "Decision: Rollback immediately to v2.4.0. Do not attempt hotfix in place.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-109",
+    "timestamp": "2026-08-26T14:44:00Z",
+    "channel": "#incident-inc-402",
+    "user": "@alex.sre",
+    "text": "Rollback deployment triggered: `kubectl rollout undo deployment/checkout-api -n production`.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-110",
+    "timestamp": "2026-08-26T14:48:15Z",
+    "channel": "#incident-inc-402",
+    "user": "@sarah.dev",
+    "text": "All 10 pods running v2.4.0. Error rate dropping sharply: currently 1.2% and falling.",
+    "type": "human_chat"
+  },
+  {
+    "id": "msg-111",
+    "timestamp": "2026-08-26T14:53:00Z",
+    "channel": "#incident-inc-402",
+    "user": "@datadog-bot",
+    "text": "✅ **ALERT RESOLVED**: `PostgresPoolConnectionsExhausted` on `production-us-east-1`.",
+    "type": "bot_alert"
+  },
+  {
+    "id": "msg-112",
+    "timestamp": "2026-08-26T14:55:00Z",
+    "channel": "#incident-inc-402",
+    "user": "@datadog-bot",
+    "text": "✅ **ALERT RESOLVED**: `CheckoutServiceHigh5xxErrorRate` on `production-us-east-1`. Error rate = 0.02%.",
+    "type": "bot_alert"
+  },
+  {
+    "id": "msg-113",
+    "timestamp": "2026-08-26T14:56:30Z",
+    "channel": "#incident-inc-402",
+    "user": "@alex.sre",
+    "text": "All telemetry metrics nominal. Error rate < 0.05% for 5 minutes. Declaring INC-402 RESOLVED. Postmortem review scheduled for tomorrow at 10:00 AM.",
+    "type": "human_chat"
+  }
+]

@@ -1,0 +1,19 @@
+# ==============================================================================
+# Resilience API Gateway & Circuit Breaker Proxy Container
+# ==============================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY circuit_breaker.py .
+COPY resilience_gateway.py .
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=3s --timeout=2s --retries=5 --start-period=2s \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+ENTRYPOINT ["python3", "resilience_gateway.py"]

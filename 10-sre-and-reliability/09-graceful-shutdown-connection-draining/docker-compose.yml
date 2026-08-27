@@ -1,0 +1,16 @@
+services:
+  graceful-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sre-graceful-app:latest
+    container_name: sre-graceful-app
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - SHUTDOWN_MODE=graceful
+      - GRACE_TIMEOUT=15.0
+      - WORK_DELAY_MS=250.0
+      - POD_NAME=docker-compose-instance
+    stop_grace_period: 30s

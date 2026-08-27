@@ -1,0 +1,38 @@
+[
+  {
+    "event_id": "pd-ev-101",
+    "timestamp": "2026-08-26T14:26:15Z",
+    "type": "trigger",
+    "service": "Checkout-Production-Tier1",
+    "urgency": "high",
+    "title": "CheckoutServiceHigh5xxErrorRate (Error Rate: 28.4%)",
+    "assigned_to": "Tier-1 SRE Primary On-Call (@alex.sre)"
+  },
+  {
+    "event_id": "pd-ev-102",
+    "timestamp": "2026-08-26T14:29:00Z",
+    "type": "acknowledge",
+    "service": "Checkout-Production-Tier1",
+    "urgency": "high",
+    "actor": "@alex.sre",
+    "note": "Investigating via #incident-inc-402 bridge"
+  },
+  {
+    "event_id": "pd-ev-103",
+    "timestamp": "2026-08-26T14:31:00Z",
+    "type": "escalate",
+    "service": "Checkout-Production-Tier1",
+    "urgency": "high",
+    "actor": "@alex.sre",
+    "note": "Escalated to Database On-Call (@elena.db) and Payments Tech Lead (@sarah.dev)"
+  },
+  {
+    "event_id": "pd-ev-104",
+    "timestamp": "2026-08-26T14:55:30Z",
+    "type": "resolve",
+    "service": "Checkout-Production-Tier1",
+    "urgency": "high",
+    "actor": "@alex.sre",
+    "note": "Rollback v2.4.0 verified healthy. Error rate 0.02%."
+  }
+]

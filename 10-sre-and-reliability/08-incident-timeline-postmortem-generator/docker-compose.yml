@@ -1,0 +1,10 @@
+services:
+  postmortem-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sre-incident-postmortem-generator:latest
+    container_name: incident-postmortem-generator
+    volumes:
+      - ./reports:/app/reports
+    command: ["--incident-id", "INC-402", "--format", "all", "--output-dir", "/app/reports"]

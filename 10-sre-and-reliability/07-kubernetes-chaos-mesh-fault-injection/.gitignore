@@ -1,0 +1,13 @@
+.kubeconfig
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+.pytest_cache/
+chaos_report.md
+chaos_report.json
+reports/
+.venv/
+env/
+venv/
+.DS_Store

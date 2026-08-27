@@ -1,0 +1,14 @@
+[
+  {
+    "deployment_id": "dep-3051",
+    "timestamp": "2026-08-26T09:30:00Z",
+    "service": "kube-system/nodelocaldns",
+    "version": "v1.22.20",
+    "commit_sha": "e91024bda",
+    "environment": "production-eu-central-1",
+    "deployed_by": "@tom.net (DaemonSet Apply)",
+    "status": "SUCCESS",
+    "summary": "Applied NodeLocal DNSCache DaemonSet and increased net.netfilter.nf_conntrack_max to 524288.",
+    "changelog": "infra: add NodeLocal DNSCache and raise conntrack table max"
+  }
+]

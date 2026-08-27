@@ -1,0 +1,5 @@
+# Python dependencies for Kubernetes Chaos Mesh Validation Suite
+# Note: Traffic generator and reports are engineered using standard library
+# and optional requests package for high-throughput HTTP load generation.
+requests>=2.31.0
+urllib3>=2.0.0

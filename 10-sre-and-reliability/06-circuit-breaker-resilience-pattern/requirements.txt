@@ -1,0 +1,6 @@
+# Python dependencies for Circuit Breaker & Resilient Retry Engine
+# Note: Core services and test suites are engineered using Python standard library
+# (http.server, urllib, threading, socket) for zero runtime overhead and instant startup.
+# The dependencies below are optional for local development and advanced test extensions.
+requests>=2.31.0
+pytest>=8.0.0

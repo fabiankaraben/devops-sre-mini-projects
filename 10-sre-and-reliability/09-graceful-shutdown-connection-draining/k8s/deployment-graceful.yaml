@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graceful-app
+  namespace: graceful-demo
+  labels:
+    app: graceful-app
+    tier: api
+    release: stable
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: graceful-app
+  template:
+    metadata:
+      labels:
+        app: graceful-app
+        tier: api
+        release: stable
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: server
+          image: python:3.11-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "-u", "/app/graceful_server.py"]
+          args: ["--port", "8080", "--mode", "graceful", "--grace-timeout", "15.0", "--work-delay-ms", "250.0"]
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - name: http
+              containerPort: 8080
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 2
+            failureThreshold: 2
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
+          volumeMounts:
+            - name: code-volume
+              mountPath: /app
+      volumes:
+        - name: code-volume
+          configMap:
+            name: server-source-code

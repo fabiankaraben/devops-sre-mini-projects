@@ -1,0 +1,14 @@
+[
+  {
+    "commit_sha": "c928410ff1",
+    "timestamp": "2026-08-26T18:18:00Z",
+    "author": "David Kim (@david.k8s)",
+    "branch": "main",
+    "pr_number": 912,
+    "pr_title": "fix(k8s): increase inventory-service memory limits to 1Gi",
+    "message": "fix(k8s): increase inventory-service memory limits to 1Gi\n\nResolves OOMKilled crashlooping during high flash sale traffic.",
+    "files_changed": [
+      "k8s/inventory-service/deployment.yaml"
+    ]
+  }
+]

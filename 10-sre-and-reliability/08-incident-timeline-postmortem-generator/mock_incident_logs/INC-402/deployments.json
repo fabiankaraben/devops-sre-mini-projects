@@ -1,0 +1,38 @@
+[
+  {
+    "deployment_id": "dep-9014",
+    "timestamp": "2026-08-26T14:20:00Z",
+    "service": "checkout-api",
+    "version": "v2.4.1",
+    "commit_sha": "a3f910c842b10",
+    "environment": "production-us-east-1",
+    "deployed_by": "GitHub Actions (CI/CD Workflow #4192)",
+    "status": "SUCCESS",
+    "summary": "Production deployment of checkout-api:v2.4.1 completed across all 10 replicas.",
+    "changelog": "feat(db): optimize connection pool idle timeout and max connections"
+  },
+  {
+    "deployment_id": "dep-9015",
+    "timestamp": "2026-08-26T14:44:00Z",
+    "service": "checkout-api",
+    "version": "v2.4.0",
+    "commit_sha": "f8b192e402b11",
+    "environment": "production-us-east-1",
+    "deployed_by": "@alex.sre (Emergency Canary Rollback)",
+    "status": "IN_PROGRESS",
+    "summary": "Initiated emergency rollback of checkout-api to previous stable release v2.4.0.",
+    "changelog": "revert: Revert PR #842 due to connection pool starvation (INC-402)"
+  },
+  {
+    "deployment_id": "dep-9015-done",
+    "timestamp": "2026-08-26T14:48:00Z",
+    "service": "checkout-api",
+    "version": "v2.4.0",
+    "commit_sha": "f8b192e402b11",
+    "environment": "production-us-east-1",
+    "deployed_by": "Kubernetes Deployment Controller",
+    "status": "SUCCESS",
+    "summary": "Rollback deployment completed: 10/10 pods running v2.4.0 with healthy readiness probes.",
+    "changelog": "Rollback complete"
+  }
+]

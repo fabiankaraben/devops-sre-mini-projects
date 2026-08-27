@@ -1,0 +1,322 @@
+#!/usr/bin/env python3
+"""
+graceful_server.py - Production-Grade Microservice with Connection Draining
+============================================================================
+Demonstrates zero-downtime application lifecycle management:
+1. Catches SIGTERM / SIGINT signals gracefully.
+2. Degrades readiness probe (/readyz -> 503) so load balancers divert new traffic.
+3. Tracks in-flight HTTP requests and allows them to finish processing.
+4. Flushes database pools and shuts down server socket cleanly.
+5. Supports '--mode naive' to demonstrate real-world connection resets without draining.
+"""
+
+import argparse
+import http.server
+import json
+import logging
+import os
+import random
+import signal
+import socketserver
+import sys
+import threading
+import time
+from typing import Any, Dict, Tuple
+
+# Configure Structured Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(threadName)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("graceful_server")
+
+POD_NAME = os.environ.get("POD_NAME", os.environ.get("HOSTNAME", "local-server"))
+NODE_NAME = os.environ.get("NODE_NAME", "local-node")
+
+
+class ServerState:
+    """Thread-safe state manager for application lifecycle and active connections."""
+
+    def __init__(self, mode: str = "graceful", grace_timeout: float = 15.0, work_delay_ms: float = 250.0):
+        self.mode = mode.lower()
+        self.grace_timeout = grace_timeout
+        self.work_delay_ms = work_delay_ms
+        self.state = "RUNNING"  # RUNNING, DRAINING, STOPPED
+        self.active_requests = 0
+        self.total_served = 0
+        self.drained_requests = 0
+        self.shutdown_received_at: float = 0.0
+        self._lock = threading.RLock()
+        self._drain_event = threading.Event()
+
+    def start_request(self) -> Tuple[bool, str]:
+        """Registers a new in-flight request."""
+        with self._lock:
+            if self.state == "STOPPED":
+                return False, "Server is STOPPED"
+            # In graceful mode, we still allow requests already in socket buffer
+            self.active_requests += 1
+            return True, self.state
+
+    def finish_request(self, was_draining: bool) -> None:
+        """Completes an in-flight request and notifies draining waiter."""
+        with self._lock:
+            self.active_requests = max(0, self.active_requests - 1)
+            self.total_served += 1
+            if was_draining or self.state == "DRAINING":
+                self.drained_requests += 1
+
+            if self.state == "DRAINING" and self.active_requests == 0:
+                self._drain_event.set()
+
+    def initiate_shutdown(self) -> None:
+        """Initiates shutdown lifecycle."""
+        with self._lock:
+            if self.state != "RUNNING":
+                return
+            self.state = "DRAINING"
+            self.shutdown_received_at = time.time()
+            logger.warning(
+                f"🚨 [SHUTDOWN] Received termination signal on pod={POD_NAME}. "
+                f"Mode={self.mode}. State changed to DRAINING. Active requests: {self.active_requests}"
+            )
+            if self.active_requests == 0:
+                self._drain_event.set()
+
+    def wait_for_drain(self) -> None:
+        """Blocks until in-flight requests reach zero or grace timeout expires."""
+        if self.mode == "naive":
+            logger.error("💥 [NAIVE_SHUTDOWN] Mode is NAIVE. Abruptly killing active connections immediately!")
+            time.sleep(0.05)
+            return
+
+        logger.info(f"⏳ [DRAINING] Waiting for {self.active_requests} in-flight requests (timeout: {self.grace_timeout}s)...")
+        drained = self._drain_event.wait(timeout=self.grace_timeout)
+        with self._lock:
+            elapsed = round(time.time() - self.shutdown_received_at, 2)
+            if drained:
+                logger.info(f"✅ [DRAINED] All in-flight requests completed in {elapsed}s. Drained count: {self.drained_requests}.")
+            else:
+                logger.warning(f"⚠️ [TIMEOUT] Grace timeout exceeded ({elapsed}s). Remaining active: {self.active_requests}.")
+            self.state = "STOPPED"
+
+    def get_status(self) -> Dict[str, Any]:
+        """Returns snapshot of server lifecycle telemetry."""
+        with self._lock:
+            return {
+                "service": "graceful-server",
+                "pod_name": POD_NAME,
+                "node_name": NODE_NAME,
+                "mode": self.mode,
+                "state": self.state,
+                "active_requests": self.active_requests,
+                "total_served": self.total_served,
+                "drained_requests": self.drained_requests,
+                "grace_timeout_sec": self.grace_timeout,
+                "work_delay_ms": self.work_delay_ms,
+            }
+
+
+# Global State Instance
+server_state = ServerState()
+
+
+class GracefulHTTPHandler(http.server.BaseHTTPRequestHandler):
+    """HTTP Handler with readiness degradation and simulated transactional work."""
+
+    protocol_version = "HTTP/1.1"
+
+    def _send_json(self, status_code: int, data: Dict[str, Any], headers: Optional[Dict[str, str]] = None) -> None:
+        payload = json.dumps(data, indent=2).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("X-Pod-Name", POD_NAME)
+        self.send_header("X-Server-State", server_state.state)
+        self.send_header("Connection", "close")
+        if headers:
+            for k, v in headers.items():
+                self.send_header(k, v)
+        self.end_headers()
+        try:
+            self.wfile.write(payload)
+            self.wfile.flush()
+        except Exception:
+            pass
+        self.close_connection = True
+
+    def do_GET(self) -> None:
+        path = self.path.split("?")[0]
+
+        # 1. Liveness Probe: always 200 OK while process is alive
+        if path in ("/healthz", "/health"):
+            self._send_json(200, {
+                "status": "ALIVE",
+                "pod_name": POD_NAME,
+                "state": server_state.state,
+            })
+            return
+
+        # 2. Readiness Probe: 200 OK when RUNNING, 503 Service Unavailable when DRAINING
+        if path in ("/readyz", "/ready"):
+            if server_state.state == "RUNNING":
+                self._send_json(200, {
+                    "status": "READY",
+                    "pod_name": POD_NAME,
+                    "active_requests": server_state.active_requests,
+                })
+            else:
+                self._send_json(503, {
+                    "status": "DRAINING",
+                    "error": "Pod is terminating / draining connections",
+                    "pod_name": POD_NAME,
+                    "active_requests": server_state.active_requests,
+                })
+            return
+
+        # 3. Status & Telemetry
+        if path == "/status":
+            self._send_json(200, server_state.get_status())
+            return
+
+        # 4. Work Endpoint
+        if path in ("/api/v1/work", "/work"):
+            self._handle_work_request()
+            return
+
+        # Default Fallback
+        self._send_json(200, {
+            "message": "Graceful Shutdown & Connection Draining Server",
+            "pod_name": POD_NAME,
+            "status": server_state.state,
+            "endpoints": ["/healthz", "/readyz", "/api/v1/work", "/status"],
+        })
+
+    def do_POST(self) -> None:
+        path = self.path.split("?")[0]
+        if path == "/shutdown":
+            logger.warning("[API] Received manual /shutdown trigger.")
+            threading.Thread(target=trigger_shutdown_sequence, daemon=True).start()
+            self._send_json(202, {"message": "Shutdown sequence initiated", "status": "DRAINING"})
+            return
+
+        if path in ("/api/v1/work", "/work"):
+            self._handle_work_request()
+            return
+
+        self.do_GET()
+
+    def _handle_work_request(self) -> None:
+        """Simulates transactional work (e.g. 250ms) while tracking in-flight state."""
+        allowed, current_state = server_state.start_request()
+        if not allowed:
+            self._send_json(503, {"error": "Server stopped", "status": "STOPPED"})
+            return
+
+        was_draining = (current_state == "DRAINING")
+        start_ts = time.time()
+        thread_name = threading.current_thread().name
+
+        try:
+            # Simulate realistic processing time (work_delay_ms with slight jitter)
+            base_delay = server_state.work_delay_ms / 1000.0
+            actual_delay = max(0.05, base_delay + random.uniform(-0.02, 0.05))
+            time.sleep(actual_delay)
+
+            # In naive mode: if shutdown happened while working, simulate socket abort
+            if server_state.mode == "naive" and server_state.state == "STOPPED":
+                logger.error(f"💥 [NAIVE_ABORT] Cutting off in-flight request on {thread_name} without response!")
+                self.close_connection = True
+                return
+
+            duration_ms = round((time.time() - start_ts) * 1000.0, 2)
+            self._send_json(200, {
+                "status": "COMPLETED",
+                "transaction_id": f"tx_{int(time.time()*1000)}_{random.randint(100, 999)}",
+                "pod_name": POD_NAME,
+                "node_name": NODE_NAME,
+                "worker_thread": thread_name,
+                "duration_ms": duration_ms,
+                "was_draining": was_draining,
+                "server_state": server_state.state,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            })
+
+        finally:
+            server_state.finish_request(was_draining)
+
+    def log_message(self, format: str, *args: Any) -> None:
+        pass
+
+
+class ThreadedGracefulServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+httpd_instance: Optional[ThreadedGracefulServer] = None
+shutdown_lock = threading.Lock()
+
+
+def trigger_shutdown_sequence() -> None:
+    """Executes the complete graceful shutdown procedure."""
+    with shutdown_lock:
+        server_state.initiate_shutdown()
+        # Wait for all in-flight requests to complete
+        server_state.wait_for_drain()
+
+        # In naive mode with active connections, terminate forcefully
+        if server_state.mode == "naive":
+            logger.critical("🛑 [NAIVE_EXIT] Exiting process abruptly (SIGKILL simulation).")
+            os._exit(1)
+
+        # Allow TCP buffer to flush to clients before closing socket
+        time.sleep(0.3)
+
+        logger.info("🛑 [SHUTDOWN] Closing server socket and shutting down HTTP daemon.")
+        if httpd_instance:
+            threading.Thread(target=httpd_instance.shutdown, daemon=True).start()
+
+
+def signal_handler(signum: int, frame: Any) -> None:
+    sig_name = signal.Signals(signum).name
+    logger.warning(f"📡 [SIGNAL] Caught signal {sig_name} ({signum}). Initiating graceful draining...")
+    threading.Thread(target=trigger_shutdown_sequence, daemon=True).start()
+
+
+def main() -> None:
+    global httpd_instance
+
+    parser = argparse.ArgumentParser(description="Graceful Shutdown & Connection Draining Server")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8080)), help="Port to listen on")
+    parser.add_argument("--mode", type=str, default=os.environ.get("SHUTDOWN_MODE", "graceful"), choices=["graceful", "naive"], help="Shutdown mode")
+    parser.add_argument("--grace-timeout", type=float, default=float(os.environ.get("GRACE_TIMEOUT", 15.0)), help="Graceful draining timeout in seconds")
+    parser.add_argument("--work-delay-ms", type=float, default=float(os.environ.get("WORK_DELAY_MS", 250.0)), help="Simulated transaction processing latency in ms")
+    args = parser.parse_args()
+
+    server_state.mode = args.mode
+    server_state.grace_timeout = args.grace_timeout
+    server_state.work_delay_ms = args.work_delay_ms
+
+    # Register OS signals
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    httpd_instance = ThreadedGracefulServer(("0.0.0.0", args.port), GracefulHTTPHandler)
+    logger.info(
+        f"🚀 Graceful Server listening on http://0.0.0.0:{args.port} | "
+        f"Pod: {POD_NAME} | Mode: {args.mode.upper()} | Grace Timeout: {args.grace_timeout}s | Work Delay: {args.work_delay_ms}ms"
+    )
+
+    try:
+        httpd_instance.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd_instance.server_close()
+        logger.info("👋 Server process terminated cleanly with exit code 0.")
+
+
+if __name__ == "__main__":
+    main()

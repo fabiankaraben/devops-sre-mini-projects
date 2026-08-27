@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: graceful-ingress
+  namespace: graceful-demo
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: graceful-service
+                port:
+                  number: 80
+          - path: /naive
+            pathType: Prefix
+            backend:
+              service:
+                name: naive-service
+                port:
+                  number: 80

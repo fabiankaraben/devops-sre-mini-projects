@@ -1,0 +1,28 @@
+[
+  {
+    "commit_sha": "a3f910c842b10",
+    "timestamp": "2026-08-26T13:45:00Z",
+    "author": "Sarah Chen (@sarah.dev)",
+    "branch": "main",
+    "pr_number": 842,
+    "pr_title": "feat(db): optimize connection pool idle timeout and max connections",
+    "message": "feat(db): optimize connection pool idle timeout and max connections (#842)\n\nReduces idle connection overhead. Sets max_connections=10 and idle_timeout=0ms.",
+    "files_changed": [
+      "src/config/database.yaml",
+      "src/db/connection_pool.py"
+    ]
+  },
+  {
+    "commit_sha": "f8b192e402b11",
+    "timestamp": "2026-08-26T14:43:00Z",
+    "author": "Alex Rivera (@alex.sre)",
+    "branch": "main",
+    "pr_number": 845,
+    "pr_title": "revert: Revert PR #842 due to connection pool starvation (INC-402)",
+    "message": "revert: Revert PR #842 due to connection pool starvation (INC-402)\n\nRestores max_connections=50 and idle_timeout=30000ms to resolve production P1.",
+    "files_changed": [
+      "src/config/database.yaml",
+      "src/db/connection_pool.py"
+    ]
+  }
+]

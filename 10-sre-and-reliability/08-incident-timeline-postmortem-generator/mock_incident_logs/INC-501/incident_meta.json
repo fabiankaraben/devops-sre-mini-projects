@@ -1,0 +1,94 @@
+{
+  "incident_id": "INC-501",
+  "title": "Inventory Service Cascading OOMKilled Failure during Flash Sale",
+  "severity": "P2 - HIGH",
+  "status": "RESOLVED",
+  "environment": "production-us-west-2",
+  "impacted_services": ["inventory-service", "catalog-api"],
+  "roles": {
+    "incident_commander": "@jordan.sre (Jordan Lee - Senior SRE)",
+    "tech_lead": "@david.k8s (David Kim - Kubernetes Platform Engineer)",
+    "communications_lead": "@rachel.ops (Rachel Gomez - Incident Manager)"
+  },
+  "timestamps": {
+    "incident_start": "2026-08-26T18:00:00Z",
+    "first_alert_fired": "2026-08-26T18:04:00Z",
+    "responder_acknowledged": "2026-08-26T18:07:00Z",
+    "incident_declared": "2026-08-26T18:08:00Z",
+    "mitigation_started": "2026-08-26T18:18:00Z",
+    "mitigation_deployed": "2026-08-26T18:22:00Z",
+    "incident_resolved": "2026-08-26T18:28:00Z"
+  },
+  "impact": {
+    "user_impact_summary": "Users experienced stock lookup timeouts and inventory reservation delays during initial flash sale rush.",
+    "total_requests_during_window": 125000,
+    "failed_requests": 8400,
+    "peak_error_rate_pct": 14.8,
+    "revenue_loss_estimated_usd": 6200.00,
+    "slo_target_availability_pct": 99.9,
+    "actual_availability_pct": 93.28,
+    "error_budget_consumed_pct": 18.5
+  },
+  "five_whys": [
+    {
+      "why_number": 1,
+      "question": "Why did inventory lookups time out?",
+      "answer": "All 4 inventory-service pods entered CrashLoopBackOff due to OOMKilled terminations."
+    },
+    {
+      "why_number": 2,
+      "question": "Why did the pods exceed their memory limits (256Mi)?",
+      "answer": "An in-memory local caching mechanism stored unbounded flash sale item queries without TTL eviction."
+    },
+    {
+      "why_number": 3,
+      "question": "Why was unbounded local caching enabled in inventory-service?",
+      "answer": "The service was originally designed for lower traffic catalogs and had not been refactored to use centralized Redis."
+    },
+    {
+      "why_number": 4,
+      "question": "Why did the HPA (Horizontal Pod Autoscaler) not prevent memory saturation?",
+      "answer": "HPA was configured solely on CPU utilization (75%) rather than memory utilization or custom request rate metrics."
+    },
+    {
+      "why_number": 5,
+      "question": "Why were memory limits set to 256Mi without safety headroom?",
+      "answer": "Resource quotas had not been reviewed since initial cluster provisioning 8 months prior."
+    }
+  ],
+  "lessons_learned": {
+    "what_went_well": [
+      "Kubelet terminated memory-hogging pods before the node Linux kernel entered global kernel panic.",
+      "HPA scaled replicas from 4 to 12 once memory limits were raised to 1Gi."
+    ],
+    "what_went_poorly": [
+      "Lack of Redis-backed distributed cache created single-pod hotspots.",
+      "HPA metric was blind to memory saturation."
+    ],
+    "where_we_got_lucky": [
+      "Flash sale marketing campaign peaked in stages, preventing total cascading crash of payment-gateway."
+    ]
+  },
+  "action_items": [
+    {
+      "id": "ACT-201",
+      "category": "PREVENT",
+      "priority": "P0",
+      "description": "Migrate in-memory catalog cache to centralized Redis cluster with strict LRU eviction.",
+      "owner": "@david.k8s",
+      "target_date": "2026-09-10",
+      "jira_issue": "SRE-1501",
+      "status": "TODO"
+    },
+    {
+      "id": "ACT-202",
+      "category": "DETECT",
+      "priority": "P1",
+      "description": "Configure Prometheus HPA to scale on both CPU (>70%) and Memory (>75%) utilization.",
+      "owner": "@jordan.sre",
+      "target_date": "2026-09-04",
+      "jira_issue": "SRE-1502",
+      "status": "TODO"
+    }
+  ]
+}

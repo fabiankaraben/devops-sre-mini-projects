@@ -1,0 +1,18 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-loss-experiment
+  namespace: chaos-lab
+spec:
+  action: loss
+  mode: fixed-percent
+  value: '50'
+  selector:
+    namespaces:
+      - chaos-lab
+    labelSelectors:
+      app: payment-api
+  loss:
+    loss: '25'
+    correlation: '25'
+  duration: '25s'

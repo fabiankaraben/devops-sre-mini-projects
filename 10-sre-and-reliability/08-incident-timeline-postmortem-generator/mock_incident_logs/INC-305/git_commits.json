@@ -1,0 +1,14 @@
+[
+  {
+    "commit_sha": "e91024bda",
+    "timestamp": "2026-08-26T09:28:00Z",
+    "author": "Tom Becker (@tom.net)",
+    "branch": "main",
+    "pr_number": 780,
+    "pr_title": "infra(k8s): enable NodeLocal DNSCache on eu-central-1",
+    "message": "infra(k8s): enable NodeLocal DNSCache on eu-central-1\n\nEliminates conntrack table exhaustion by terminating DNS queries locally on node loopback.",
+    "files_changed": [
+      "terraform/modules/k8s-cluster/dns.tf"
+    ]
+  }
+]

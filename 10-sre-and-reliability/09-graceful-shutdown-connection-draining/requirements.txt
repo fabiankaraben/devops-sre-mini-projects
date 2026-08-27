@@ -1,0 +1,4 @@
+# Python dependencies for Graceful Shutdown & Connection Draining project
+# Uses standard library; requests and urllib3 used for high-concurrency load testing.
+requests>=2.31.0
+urllib3>=2.0.0

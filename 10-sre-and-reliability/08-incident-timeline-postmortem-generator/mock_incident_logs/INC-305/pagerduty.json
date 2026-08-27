@@ -1,0 +1,29 @@
+[
+  {
+    "event_id": "pd-ev-3051",
+    "timestamp": "2026-08-26T09:14:15Z",
+    "type": "trigger",
+    "service": "CoreDNS-Infrastructure",
+    "urgency": "high",
+    "title": "CoreDNSLookupErrorsHigh on eu-central-1",
+    "assigned_to": "@elena.db"
+  },
+  {
+    "event_id": "pd-ev-3052",
+    "timestamp": "2026-08-26T09:16:00Z",
+    "type": "acknowledge",
+    "service": "CoreDNS-Infrastructure",
+    "urgency": "high",
+    "actor": "@elena.db",
+    "note": "Investigating DNS resolution drops"
+  },
+  {
+    "event_id": "pd-ev-3053",
+    "timestamp": "2026-08-26T09:40:00Z",
+    "type": "resolve",
+    "service": "CoreDNS-Infrastructure",
+    "urgency": "high",
+    "actor": "@elena.db",
+    "note": "NodeLocal DNSCache active. Resolved."
+  }
+]

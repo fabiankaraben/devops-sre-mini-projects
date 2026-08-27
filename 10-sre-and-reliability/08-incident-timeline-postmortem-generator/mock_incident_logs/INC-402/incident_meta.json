@@ -1,0 +1,118 @@
+{
+  "incident_id": "INC-402",
+  "title": "Database Connection Pool Exhaustion on Checkout Service",
+  "severity": "P1 - CRITICAL",
+  "status": "RESOLVED",
+  "environment": "production-us-east-1",
+  "impacted_services": ["checkout-api", "payment-gateway", "order-processing"],
+  "roles": {
+    "incident_commander": "@alex.sre (Alex Rivera - Staff SRE)",
+    "tech_lead": "@sarah.dev (Sarah Chen - Lead Backend Engineer)",
+    "communications_lead": "@marcus.ops (Marcus Vance - Incident Coordinator)",
+    "database_sre": "@elena.db (Elena Rostova - Principal DBA)"
+  },
+  "timestamps": {
+    "incident_start": "2026-08-26T14:20:00Z",
+    "first_alert_fired": "2026-08-26T14:26:00Z",
+    "responder_acknowledged": "2026-08-26T14:29:00Z",
+    "incident_declared": "2026-08-26T14:30:00Z",
+    "mitigation_started": "2026-08-26T14:43:00Z",
+    "mitigation_deployed": "2026-08-26T14:48:00Z",
+    "incident_resolved": "2026-08-26T14:55:00Z"
+  },
+  "impact": {
+    "user_impact_summary": "Customers experienced intermittent HTTP 500 errors and timeout failures during checkout cart finalization.",
+    "total_requests_during_window": 48250,
+    "failed_requests": 14200,
+    "peak_error_rate_pct": 29.43,
+    "revenue_loss_estimated_usd": 18450.00,
+    "slo_target_availability_pct": 99.9,
+    "actual_availability_pct": 70.57,
+    "error_budget_consumed_pct": 42.8
+  },
+  "five_whys": [
+    {
+      "why_number": 1,
+      "question": "Why did checkout requests fail with HTTP 500 errors?",
+      "answer": "The checkout-api service exhausted all available database connections in its connection pool."
+    },
+    {
+      "why_number": 2,
+      "question": "Why was the database connection pool exhausted?",
+      "answer": "A configuration change in release v2.4.1 decreased max connections from 50 to 10 per replica while setting idle timeout to 0ms."
+    },
+    {
+      "why_number": 3,
+      "question": "Why was the connection pool setting changed in v2.4.1?",
+      "answer": "A performance refactoring PR intended to optimize memory footprint mistakenly applied test-suite pool settings to production."
+    },
+    {
+      "why_number": 4,
+      "question": "Why did staging tests not detect the connection starvation under load?",
+      "answer": "Synthetic integration tests in staging ran with low concurrency (2 RPS), which did not saturate the 10-connection limit."
+    },
+    {
+      "why_number": 5,
+      "question": "Why was there no automated load testing gate in the CI/CD pipeline prior to deployment?",
+      "answer": "Automated performance load testing (k6) was only scheduled weekly rather than as a mandatory blocking gate on pull requests."
+    }
+  ],
+  "lessons_learned": {
+    "what_went_well": [
+      "Prometheus alert 'CheckoutServiceHigh5xxErrorRate' fired within 6 minutes of release v2.4.1.",
+      "Incident Commander declared P1 swiftly and assembled cross-functional team in #incident-inc-402.",
+      "Automated canary rollback procedure executed cleanly within 5 minutes of decision."
+    ],
+    "what_went_poorly": [
+      "No automated canary release gate: v2.4.1 was rolled out to 100% of traffic immediately.",
+      "Staging environment load testing did not mimic production peak concurrency.",
+      "Database connection metrics dashboard was not pinned in the main SRE triage view."
+    ],
+    "where_we_got_lucky": [
+      "Outage occurred during off-peak European hours, limiting overall customer transactions affected.",
+      "Database server itself did not crash or corrupt transactions; Postgres remained healthy."
+    ]
+  },
+  "action_items": [
+    {
+      "id": "ACT-101",
+      "category": "PREVENT",
+      "priority": "P0",
+      "description": "Add automated pre-deployment load test step (k6) to CI/CD pipeline validating 100 RPS pool limits.",
+      "owner": "@sarah.dev",
+      "target_date": "2026-09-05",
+      "jira_issue": "SRE-1420",
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "ACT-102",
+      "category": "MITIGATE",
+      "priority": "P0",
+      "description": "Implement progressive Canary Deployments (10% -> 25% -> 100%) via ArgoCD with automated rollback on error rate > 1%.",
+      "owner": "@alex.sre",
+      "target_date": "2026-09-12",
+      "jira_issue": "SRE-1421",
+      "status": "TODO"
+    },
+    {
+      "id": "ACT-103",
+      "category": "DETECT",
+      "priority": "P1",
+      "description": "Create Multi-Window Multi-Burn-Rate Prometheus alert on DB pool saturation (>80% utilization for 2m).",
+      "owner": "@elena.db",
+      "target_date": "2026-09-08",
+      "jira_issue": "SRE-1422",
+      "status": "TODO"
+    },
+    {
+      "id": "ACT-104",
+      "category": "PROCESS",
+      "priority": "P2",
+      "description": "Update Runbook for Database Pool Exhaustion with step-by-step pool resizing without full service restart.",
+      "owner": "@marcus.ops",
+      "target_date": "2026-09-15",
+      "jira_issue": "SRE-1423",
+      "status": "TODO"
+    }
+  ]
+}

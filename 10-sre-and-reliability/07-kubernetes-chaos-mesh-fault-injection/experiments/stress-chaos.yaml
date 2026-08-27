@@ -1,0 +1,20 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-memory-stress-experiment
+  namespace: chaos-lab
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - chaos-lab
+    labelSelectors:
+      app: payment-api
+  stressors:
+    cpu:
+      workers: 1
+      load: 80
+    memory:
+      workers: 1
+      size: '64MB'
+  duration: '25s'

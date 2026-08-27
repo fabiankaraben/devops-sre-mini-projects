@@ -1,0 +1,11 @@
+[
+  {"timestamp": "2026-08-26T14:15:00Z", "rps": 24.8, "error_rate_pct": 0.01, "pool_utilization_pct": 22.0, "latency_p95_ms": 14.2},
+  {"timestamp": "2026-08-26T14:20:00Z", "rps": 25.1, "error_rate_pct": 0.02, "pool_utilization_pct": 24.5, "latency_p95_ms": 15.0},
+  {"timestamp": "2026-08-26T14:25:00Z", "rps": 26.0, "error_rate_pct": 8.40, "pool_utilization_pct": 89.0, "latency_p95_ms": 850.0},
+  {"timestamp": "2026-08-26T14:30:00Z", "rps": 25.4, "error_rate_pct": 28.40, "pool_utilization_pct": 100.0, "latency_p95_ms": 3840.0},
+  {"timestamp": "2026-08-26T14:35:00Z", "rps": 24.9, "error_rate_pct": 29.43, "pool_utilization_pct": 100.0, "latency_p95_ms": 4200.0},
+  {"timestamp": "2026-08-26T14:40:00Z", "rps": 25.2, "error_rate_pct": 27.80, "pool_utilization_pct": 100.0, "latency_p95_ms": 3950.0},
+  {"timestamp": "2026-08-26T14:45:00Z", "rps": 25.0, "error_rate_pct": 18.20, "pool_utilization_pct": 74.0, "latency_p95_ms": 1200.0},
+  {"timestamp": "2026-08-26T14:50:00Z", "rps": 24.7, "error_rate_pct": 1.10, "pool_utilization_pct": 32.0, "latency_p95_ms": 22.0},
+  {"timestamp": "2026-08-26T14:55:00Z", "rps": 25.0, "error_rate_pct": 0.02, "pool_utilization_pct": 23.5, "latency_p95_ms": 13.8}
+]

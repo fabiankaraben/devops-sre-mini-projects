@@ -1,0 +1,59 @@
+services:
+  downstream-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.downstream
+    image: sre-downstream-service:latest
+    container_name: downstream-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - SERVICE_NAME=downstream-service
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8081/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - sre-resilience-net
+
+  resilience-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    image: sre-circuit-breaker-gateway:latest
+    container_name: resilience-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DOWNSTREAM_URL=http://downstream-service:8081
+      - FAILURE_THRESHOLD=5
+      - RECOVERY_TIMEOUT=5.0
+      - HALF_OPEN_SUCCESS_THRESHOLD=2
+      - CALL_TIMEOUT=1.0
+      - MAX_RETRIES=3
+      - BASE_BACKOFF=0.1
+      - MAX_BACKOFF=2.0
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/health\")' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    depends_on:
+      downstream-service:
+        condition: service_healthy
+    networks:
+      - sre-resilience-net
+
+networks:
+  sre-resilience-net:
+    driver: bridge
+    name: sre-resilience-net

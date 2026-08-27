@@ -1,0 +1,14 @@
+[
+  {
+    "deployment_id": "dep-5011",
+    "timestamp": "2026-08-26T18:19:00Z",
+    "service": "inventory-service",
+    "version": "v1.8.3-hotfix",
+    "commit_sha": "c928410ff1",
+    "environment": "production-us-west-2",
+    "deployed_by": "@david.k8s (Kubectl Patch)",
+    "status": "SUCCESS",
+    "summary": "Hotfixed Kubernetes deployment resources: memory limit raised from 256Mi to 1Gi.",
+    "changelog": "fix(k8s): raise memory limits to 1Gi to eliminate OOMKills"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "alert-5011",
+    "status": "firing",
+    "timestamp": "2026-08-26T18:04:00Z",
+    "name": "KubePodCrashLooping",
+    "severity": "critical",
+    "service": "inventory-service",
+    "environment": "production-us-west-2",
+    "summary": "Pod inventory-service-7f99b-4k2v is crash-looping (OOMKilled exit 137)",
+    "description": "Container memory usage exceeded limit (256Mi). Linux cgroup invoked OOM killer.",
+    "fingerprint": "b881ef103a"
+  },
+  {
+    "id": "alert-5011-res",
+    "status": "resolved",
+    "timestamp": "2026-08-26T18:28:00Z",
+    "name": "KubePodCrashLooping",
+    "severity": "critical",
+    "service": "inventory-service",
+    "environment": "production-us-west-2",
+    "summary": "All inventory-service pods running nominally with memory limits 1Gi.",
+    "description": "Memory saturation resolved; crash loop stopped.",
+    "fingerprint": "b881ef103a"
+  }
+]
